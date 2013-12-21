@@ -4,8 +4,8 @@ import (
 	"github.com/benbearchen/asuran/dnsproxy"
 	"github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/profile"
-	"github.com/benbearchen/asuran/web/proxy"
 	"github.com/benbearchen/asuran/util/cmd"
+	"github.com/benbearchen/asuran/web/proxy"
 
 	"fmt"
 	"time"

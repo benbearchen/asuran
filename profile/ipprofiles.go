@@ -14,6 +14,7 @@ type ProfileOperator interface {
 	FindByName(name string) *Profile
 	FindByOwner(ip string) *Profile
 	Open(ip string) *Profile
+	Owner(owner string) []*Profile
 }
 
 func NewIpProfiles() *IpProfiles {

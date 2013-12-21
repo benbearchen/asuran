@@ -26,7 +26,7 @@ type domainData struct {
 
 type profileData struct {
 	Name    string
-	Ip      string
+	IP      string
 	Owner   string
 	Path    string
 	Urls    []urlActionData
@@ -67,6 +67,38 @@ func (p *Profile) WriteHtml(w io.Writer) {
 func WriteCommandUsage(w io.Writer) {
 	t, err := template.New("profile-command-usage").Parse(`<html><body><pre>{{.}}</pre></body><html>`)
 	err = t.Execute(w, CommandUsage())
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type ownerIPData struct {
+	Even bool
+	Name string
+	IP   string
+}
+
+type ownerData struct {
+	OwnerIP string
+	IPs     []ownerIPData
+}
+
+func formatOwnerData(ownerIP string, profiles []*Profile) ownerData {
+	ips := make([]ownerIPData, 0)
+	if profiles != nil && len(profiles) > 0 {
+		even := true
+		for _, p := range profiles {
+			even = !even
+			ips = append(ips, ownerIPData{even, p.Name, p.Ip})
+		}
+	}
+
+	return ownerData{ownerIP, ips}
+}
+
+func WriteOwnerHtml(w io.Writer, ownerIP string, profiles []*Profile) {
+	t, err := template.ParseFiles("template/owner.tmpl")
+	err = t.Execute(w, formatOwnerData(ownerIP, profiles))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

@@ -66,6 +66,10 @@ func (p *profileOperator) Open(ip string) *Profile {
 	return p.p.CreateProfile("", ip, "")
 }
 
+func (p *profileOperator) Owner(owner string) []*Profile {
+	return p.p.FindByOwner(owner)
+}
+
 func (p *IpProfiles) OperatorProfile() ProfileOperator {
 	o := profileOperator{p}
 	return &o

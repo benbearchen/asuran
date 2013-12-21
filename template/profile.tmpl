@@ -1,5 +1,6 @@
 <html>
 <head>
+<title>{{.IP}}'s profile</title>
 <style type="text/css">
 /* copy from http://www.w3school.com.cn/tiy/t.asp?f=csse_table_fancy */
 #profile
@@ -45,7 +46,7 @@ function appendCmd(cmd)
 
 <body>
 <p>配置名字：{{.Name}}</p>
-<p>当前作用 IP：{{.Ip}}</p>
+<p>当前作用 IP：{{.IP}}</p>
 <p>操作者 IP：{{.Owner}}</p>
 <table id="profile">
 <tr>
@@ -84,7 +85,7 @@ function appendCmd(cmd)
 <hr/>
 
 <form action="/profile/{{.Path}}" method="post">
-<h2>命令（<a href="/profile/usage" target="_blank">说明</a>）：</h2>
+<h2>命令（<a href="/profile/commands" target="_blank">说明</a>）：</h2>
 <textarea rows="10" cols="80" id="CommandBoxId" name="cmd"></textarea>
 <input type="submit" value="执行命令"/>
 </form>

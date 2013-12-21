@@ -122,36 +122,7 @@ func (p *Proxy) OnRequest(
 	} else if _, m := httpd.MatchPath(urlPath, "/usage"); m {
 		p.WriteUsage(w)
 	} else if page, m := httpd.MatchPath(urlPath, "/profile"); m {
-		if p.profileOp == nil {
-			fmt.Fprintln(w, "can't locate profile")
-			return
-		}
-
-		if page == "/usage" {
-			profile.WriteCommandUsage(w)
-			return
-		}
-
-		profileIP := ""
-		if page != "" {
-			pageName := page[1:]
-			if ip := gonet.ParseIP(pageName); ip != nil {
-				profileIP = ip.String()
-			}
-		}
-
-		f := p.profileOp.FindByIp(profileIP)
-		if f == nil {
-			fmt.Fprintln(w, "has no profile owner by", remoteIP)
-			return
-		}
-
-		r.ParseForm()
-		if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
-			f.Command(v[0])
-		}
-
-		f.WriteHtml(w)
+		p.ownProfile(remoteIP, page, w, r)
 	} else if urlPath == "/" || urlPath == "/about" {
 		scheme := r.URL.Scheme
 		if scheme == "" {
@@ -273,3 +244,44 @@ func (p *Proxy) NewDomainOperator() profile.DomainOperator {
 	return &o
 }
 
+func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.Request) {
+	if p.profileOp == nil {
+		fmt.Fprintln(w, "can't locate profile")
+		return
+	}
+
+	if page == "/commands" {
+		profile.WriteCommandUsage(w)
+		return
+	} else if page == "" || page == "/" {
+		profiles := p.profileOp.Owner(ownerIP)
+		profile.WriteOwnerHtml(w, ownerIP, profiles)
+		return
+	}
+
+	profileIP := ""
+	if page != "" {
+		pageName := page[1:]
+		if ip := gonet.ParseIP(pageName); ip != nil {
+			profileIP = ip.String()
+		}
+	}
+
+	f := p.profileOp.FindByIp(profileIP)
+	if f == nil {
+		f = p.profileOp.Open(profileIP)
+	}
+
+	if f.Owner == "" {
+		f.Owner = ownerIP
+	}
+
+	r.ParseForm()
+	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
+		if f.Owner == ownerIP {
+			f.Command(v[0])
+		}
+	}
+
+	f.WriteHtml(w)
+}
