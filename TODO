@@ -1,0 +1,12 @@
+ver 0.1
+=========
+Key Features
+* History
+* HTTP Headers
+  ** Range
+  ** Other Headers
+* Goroutine safe
+* Profile
+  ** Save and Upload
+  ** Policy Pack
+* Manual
