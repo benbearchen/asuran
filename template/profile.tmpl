@@ -90,6 +90,9 @@ function appendCmd(cmd)
 <input type="submit" value="执行命令"/>
 </form>
 
+<a href="/profile/{{.Path}}/export" target="_blank">导出命令</a>
+<hr/>
+
 <h3>命令用例：</h3>
 <ul>
 <li><button type="button" onclick="appendCmd('delay 1.5s g.cn/search key=hello');">设置延时 1.5 秒：<b>delay 1.5s g.cn/search key=hello</b></button>

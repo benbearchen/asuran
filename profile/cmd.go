@@ -101,7 +101,7 @@ func (p *Profile) Command(command string) {
 	commandLines := strings.Split(command, "\n")
 	for _, line := range commandLines {
 		line = strings.TrimSpace(line)
-		if len(line) <= 0 {
+		if len(line) <= 0 || line[0] == '#' {
 			continue
 		}
 
@@ -355,4 +355,24 @@ func (d *DomainAction) EditCommand() string {
 
 func (d *DomainAction) DeleteCommand() string {
 	return "domain delete " + d.Domain + "\n"
+}
+
+func (p *Profile) ExportCommand() string {
+	export := "# 此为客户端配置导出，可复制所有内容至“命令”输入窗口重新加载此配置 #\n\n"
+	export += "# Name: " + p.Name + "\n"
+	export += "# IP: " + p.Ip + "\n"
+	export += "# Owner: " + p.Owner + "\n"
+
+	export += "\n# 以下为 URL 命令定义 #\n"
+	for _, u := range p.Urls {
+		export += u.EditCommand()
+	}
+
+	export += "\n# 以下为域名命令定义 #\n"
+	for _, d := range p.Domains {
+		export += d.EditCommand()
+	}
+
+	export += "\n# end # \n"
+	return export
 }

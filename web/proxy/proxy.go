@@ -260,11 +260,22 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	profileIP := ""
-	if page != "" {
-		pageName := page[1:]
-		if ip := gonet.ParseIP(pageName); ip != nil {
+	op := ""
+	pages := strings.Split(page, "/")
+	if len(pages) >= 2 {
+		if ip := gonet.ParseIP(pages[1]); ip != nil {
 			profileIP = ip.String()
 		}
+
+		if len(pages) >= 3 {
+			op = pages[2]
+		}
+	}
+
+	if profileIP == "" {
+		profiles := p.profileOp.Owner(ownerIP)
+		profile.WriteOwnerHtml(w, ownerIP, profiles)
+		return
 	}
 
 	f := p.profileOp.FindByIp(profileIP)
@@ -274,6 +285,11 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 	if f.Owner == "" {
 		f.Owner = ownerIP
+	}
+
+	if op == "export" {
+		fmt.Fprintln(w, f.ExportCommand())
+		return
 	}
 
 	r.ParseForm()
