@@ -8,6 +8,7 @@ import (
 	"github.com/benbearchen/asuran/web/proxy"
 
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -93,7 +94,14 @@ func main() {
 		} else if command == "help" {
 			usage()
 		} else if rest, ok := cmd.CheckCommand(command, "bench"); ok {
-			benchN("http://" + rest)
+			url := "http://"
+			if strings.HasPrefix(rest, url) {
+				url = rest
+			} else {
+				url += rest
+			}
+
+			benchN(url)
 		} else if command != "" {
 			usage()
 			fmt.Println("UNKNOWN command: " + command)
