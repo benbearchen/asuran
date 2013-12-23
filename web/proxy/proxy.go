@@ -5,6 +5,7 @@ import (
 	"github.com/benbearchen/asuran/net/httpd"
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
+	"github.com/benbearchen/asuran/web/proxy/life"
 
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 type Proxy struct {
 	webServers map[int]*httpd.Http
 	cache      *cache.Cache
+	lives      *life.IPLives
 	urlOp      profile.UrlOperator
 	profileOp  profile.ProfileOperator
 	domainOp   profile.DomainOperator
@@ -28,6 +30,7 @@ func NewProxy() *Proxy {
 	p := new(Proxy)
 	p.webServers = make(map[int]*httpd.Http)
 	p.cache = cache.NewCache()
+	p.lives = life.NewIPLives()
 	p.Bind(80)
 
 	ips := net.LocalIPs()
@@ -157,6 +160,13 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	//fmt.Println("proxy: " + target)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	needCache := false
+
+	f := p.lives.Open(remoteIP)
+	var u *life.UrlState
+	if f != nil {
+		u = f.OpenUrl(target)
+	}
+
 	if p.urlOp != nil {
 		act := p.urlOp.Action(remoteIP, target)
 		//fmt.Println("url act: " + act.String())
@@ -169,11 +179,17 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		switch delay.Act {
 		case profile.DelayActDelayEach:
 			if delay.Time > 0 {
+				// TODO: create request before sleep, more effective
 				time.Sleep(delay.Duration())
 			}
 			break
 		case profile.DelayActDropUntil:
-			// TODO:
+			if u != nil {
+				if u.DropUntil(delay.Duration()) {
+					// TODO: more safe method, maybe net.http.Hijacker
+					panic("")
+				}
+			}
 			break
 		}
 	}
