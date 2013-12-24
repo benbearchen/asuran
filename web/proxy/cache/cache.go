@@ -2,8 +2,7 @@ package cache
 
 type Cache struct {
 	contents map[string]urlContent
-	save     chan urlContent
-	take     chan take
+	c        chan interface{}
 }
 
 type urlContent struct {
@@ -16,23 +15,25 @@ type take struct {
 	Take chan urlContent
 }
 
+type clear struct {
+}
+
 func NewCache() *Cache {
 	c := new(Cache)
 	c.contents = make(map[string]urlContent)
-	c.save = make(chan urlContent)
-	c.take = make(chan take)
+	c.c = make(chan interface{})
 
 	go cacheWorker(c)
 	return c
 }
 
 func (c *Cache) Save(url string, bytes []byte) {
-	c.save <- urlContent{url, bytes}
+	c.c <- urlContent{url, bytes}
 }
 
 func (c *Cache) Take(url string) ([]byte, bool) {
 	urlChan := make(chan urlContent)
-	c.take <- take{url, urlChan}
+	c.c <- take{url, urlChan}
 	content := <-urlChan
 	if content.Url == url {
 		return content.Bytes, true
@@ -41,22 +42,29 @@ func (c *Cache) Take(url string) ([]byte, bool) {
 	return []byte{}, false
 }
 
+func (c *Cache) Clear() {
+	c.c <- clear{}
+}
+
 func cacheWorker(c *Cache) {
 	for {
 		select {
-		case content, ok := <-c.save:
+		case e, ok := <-c.c:
 			if !ok {
 				return
-			} else {
-				c.contents[content.Url] = content
 			}
-		case take, ok := <-c.take:
-			if !ok {
-				return
-			} else if content, ok := c.contents[take.Url]; ok {
-				take.Take <- content
-			} else {
-				take.Take <- urlContent{}
+
+			switch e := e.(type) {
+			case urlContent:
+				c.contents[e.Url] = e
+			case take:
+				if content, ok := c.contents[e.Url]; ok {
+					e.Take <- content
+				} else {
+					e.Take <- urlContent{}
+				}
+			case clear:
+				c.contents = make(map[string]urlContent)
 			}
 		}
 	}

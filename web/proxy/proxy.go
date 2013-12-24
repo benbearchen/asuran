@@ -4,7 +4,6 @@ import (
 	"github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/net/httpd"
 	"github.com/benbearchen/asuran/profile"
-	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 
 	"fmt"
@@ -18,7 +17,6 @@ import (
 
 type Proxy struct {
 	webServers map[int]*httpd.Http
-	cache      *cache.Cache
 	lives      *life.IPLives
 	urlOp      profile.UrlOperator
 	profileOp  profile.ProfileOperator
@@ -29,7 +27,6 @@ type Proxy struct {
 func NewProxy() *Proxy {
 	p := new(Proxy)
 	p.webServers = make(map[int]*httpd.Http)
-	p.cache = cache.NewCache()
 	p.lives = life.NewIPLives()
 	p.Bind(80)
 
@@ -195,7 +192,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if needCache {
-		bytes, ok := p.checkCache(target)
+		bytes, ok := f.CheckCache(target)
 		if ok {
 			fmt.Fprintf(w, "%s", string(bytes))
 			return
@@ -213,18 +210,10 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		} else {
 			fmt.Fprintf(w, "%s", content)
 			if needCache {
-				go p.saveContentToCache(target, content)
+				go f.SaveContentToCache(target, content)
 			}
 		}
 	}
-}
-
-func (p *Proxy) checkCache(url string) ([]byte, bool) {
-	return p.cache.Take(url)
-}
-
-func (p *Proxy) saveContentToCache(url string, content string) {
-	p.cache.Save(url, []byte(content))
 }
 
 func (p *Proxy) initDevice(w io.Writer, ip string) {

@@ -2,6 +2,7 @@ package life
 
 import (
 	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/web/proxy/cache"
 
 	"time"
 )
@@ -52,6 +53,7 @@ type Life struct {
 	IP      string
 	Urls    map[string]*UrlState
 	Domains map[string]*DomainState
+	Cache   *cache.Cache
 }
 
 func NewLife(ip string) *Life {
@@ -59,6 +61,7 @@ func NewLife(ip string) *Life {
 	f.IP = ip
 	f.Urls = make(map[string]*UrlState)
 	f.Domains = make(map[string]*DomainState)
+	f.Cache = cache.NewCache()
 
 	return &f
 }
@@ -101,4 +104,14 @@ func (f *Life) Restart() {
 	for _, d := range f.Domains {
 		d.BeginTime = time.Time{}
 	}
+
+	f.Cache.Clear()
+}
+
+func (f *Life) CheckCache(url string) ([]byte, bool) {
+	return f.Cache.Take(url)
+}
+
+func (f *Life) SaveContentToCache(url string, content string) {
+	f.Cache.Save(url, []byte(content))
 }
