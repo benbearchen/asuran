@@ -48,6 +48,9 @@ function appendCmd(cmd)
 <p>配置名字：{{.Name}}</p>
 <p>当前作用 IP：{{.IP}}</p>
 <p>操作者 IP：{{.Owner}}</p>
+<hr/>
+<a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">重启客户端状态</a>
+<hr/>
 <table id="profile">
 <tr>
 <th>编辑</th>

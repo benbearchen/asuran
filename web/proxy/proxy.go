@@ -306,6 +306,16 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	if op == "export" {
 		fmt.Fprintln(w, f.ExportCommand())
 		return
+	} else if op == "restart" {
+		if f := p.lives.Open(profileIP); f != nil {
+			f.Restart()
+			fmt.Fprintln(w, profileIP+" 已经重新初始化")
+		} else {
+			fmt.Fprintln(w, profileIP+" 不存在")
+		}
+
+		fmt.Fprintln(w, "# 关了这个窗口吧 #")
+		return
 	}
 
 	r.ParseForm()
