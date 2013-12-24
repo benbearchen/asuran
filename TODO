@@ -1,12 +1,20 @@
 ver 0.1
 =========
-Key Features
+Key Features:
 * History
-* HTTP Headers
+  ** Intime refresh
+  ** Convert url as profile command
+* HTTP
+  ** Post
   ** Range
   ** Other Headers
-* Goroutine safe
 * Profile
   ** Save and Upload
   ** Policy Pack
+  ** Profile Command
+     ** PIPE url with other url
+     ** Replace url with static CONTENT
 * Manual
+
+Implements:
+* Goroutine safe
