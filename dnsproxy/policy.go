@@ -3,7 +3,7 @@ package dnsproxy
 import (
 	"github.com/benbearchen/asuran/profile"
 
-	"fmt"
+	_ "fmt"
 	"net"
 	"strings"
 )
@@ -25,7 +25,7 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	}
 
 	a := p.op.Action(clientIP, pureDomain)
-	fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
+	//fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
 	switch a.Act {
 	case profile.DomainActNone:
 		return passDomain(domain)

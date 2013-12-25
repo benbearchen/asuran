@@ -51,27 +51,29 @@ type DomainState struct {
 
 type Life struct {
 	IP      string
-	Urls    map[string]*UrlState
-	Domains map[string]*DomainState
-	Cache   *cache.Cache
+	urls    map[string]*UrlState
+	domains map[string]*DomainState
+	cache   *cache.Cache
+	history *History
 }
 
 func NewLife(ip string) *Life {
 	f := Life{}
 	f.IP = ip
-	f.Urls = make(map[string]*UrlState)
-	f.Domains = make(map[string]*DomainState)
-	f.Cache = cache.NewCache()
+	f.urls = make(map[string]*UrlState)
+	f.domains = make(map[string]*DomainState)
+	f.cache = cache.NewCache()
+	f.history = NewHistory()
 
 	return &f
 }
 
 func (f *Life) OpenUrl(url string) *UrlState {
-	u, ok := f.Urls[url]
+	u, ok := f.urls[url]
 	if !ok {
 		now := time.Now()
 		u = &UrlState{url, now, now, make([]UrlEvent, 0)}
-		f.Urls[url] = u
+		f.urls[url] = u
 	} else {
 		if u.BeginTime.IsZero() {
 			u.BeginTime = time.Now()
@@ -82,11 +84,11 @@ func (f *Life) OpenUrl(url string) *UrlState {
 }
 
 func (f *Life) OpenDomain(domain string) *DomainState {
-	d, ok := f.Domains[domain]
+	d, ok := f.domains[domain]
 	if !ok {
 		now := time.Now()
 		d = &DomainState{domain, now, now, make([]DomainEvent, 0)}
-		f.Domains[domain] = d
+		f.domains[domain] = d
 	} else {
 		if d.BeginTime.IsZero() {
 			d.BeginTime = time.Now()
@@ -97,21 +99,29 @@ func (f *Life) OpenDomain(domain string) *DomainState {
 }
 
 func (f *Life) Restart() {
-	for _, u := range f.Urls {
+	for _, u := range f.urls {
 		u.BeginTime = time.Time{}
 	}
 
-	for _, d := range f.Domains {
+	for _, d := range f.domains {
 		d.BeginTime = time.Time{}
 	}
 
-	f.Cache.Clear()
+	f.cache.Clear()
 }
 
 func (f *Life) CheckCache(url string) ([]byte, bool) {
-	return f.Cache.Take(url)
+	return f.cache.Take(url)
 }
 
 func (f *Life) SaveContentToCache(url string, content string) {
-	f.Cache.Save(url, []byte(content))
+	f.cache.Save(url, []byte(content))
+}
+
+func (f *Life) Log(s string) {
+	f.history.Log(StringHistory(s))
+}
+
+func (f *Life) FormatHistory() string {
+	return f.history.Format()
 }

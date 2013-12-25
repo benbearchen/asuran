@@ -23,3 +23,16 @@ func (v *IPLives) Open(ip string) *Life {
 
 	return f
 }
+
+func (v *IPLives) OpenExists(ip string) *Life {
+	if len(ip) == 0 {
+		return nil
+	}
+
+	f, ok := v.lives[ip]
+	if !ok {
+		return nil
+	} else {
+		return f
+	}
+}

@@ -161,6 +161,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	f := p.lives.Open(remoteIP)
 	var u *life.UrlState
 	if f != nil {
+		f.Log("proxy " + target)
 		u = f.OpenUrl(target)
 	}
 
@@ -231,6 +232,7 @@ type proxyDomainOperator struct {
 
 func (p *proxyDomainOperator) Action(ip, domain string) profile.DomainAction {
 	if domain == "i.me" {
+		p.p.LogDomain(ip, "init", domain)
 		return profile.DomainAction{domain, profile.DomainActRedirect, p.p.serveIP}
 	} else if p.p.domainOp != nil {
 		a := p.p.domainOp.Action(ip, domain)
@@ -238,8 +240,10 @@ func (p *proxyDomainOperator) Action(ip, domain string) profile.DomainAction {
 			a.IP = p.p.serveIP
 		}
 
+		p.p.LogDomain(ip, "query", domain)
 		return a
 	} else {
+		p.p.LogDomain(ip, "undef", domain)
 		return profile.DomainAction{}
 	}
 }
@@ -305,6 +309,13 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 		fmt.Fprintln(w, "# 关了这个窗口吧 #")
 		return
+	} else if op == "history" {
+		if f := p.lives.OpenExists(profileIP); f != nil {
+			fmt.Fprintln(w, f.FormatHistory())
+		} else {
+			fmt.Fprintln(w, profileIP+" 不存在")
+		}
+		return
 	}
 
 	r.ParseForm()
@@ -315,4 +326,10 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	f.WriteHtml(w)
+}
+
+func (p *Proxy) LogDomain(ip, action, domain string) {
+	if f := p.lives.Open(ip); f != nil {
+		f.Log("domain " + action + " " + domain)
+	}
 }
