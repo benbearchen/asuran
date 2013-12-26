@@ -212,9 +212,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		} else {
 			c := cache.NewUrlCache(target, resp, content)
 			c.Response(w)
-			if needCache {
-				go f.SaveContentToCache(c)
-			}
+			go f.SaveContentToCache(c)
 		}
 	}
 }
@@ -314,6 +312,22 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	} else if op == "history" {
 		if f := p.lives.OpenExists(profileIP); f != nil {
 			fmt.Fprintln(w, f.FormatHistory())
+		} else {
+			fmt.Fprintln(w, profileIP+" 不存在")
+		}
+		return
+	} else if op == "look" {
+		if f := p.lives.OpenExists(profileIP); f != nil {
+			lookUrl := page
+			if len(pages) >= 4 {
+				lookUrl = "http://" + strings.Join(pages[3:], "/")
+			}
+
+			if c := f.CheckCache(lookUrl); c != nil {
+				c.Response(w)
+			} else {
+				fmt.Fprintln(w, "can't look up "+lookUrl)
+			}
 		} else {
 			fmt.Fprintln(w, profileIP+" 不存在")
 		}
