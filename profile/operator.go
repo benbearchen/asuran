@@ -5,8 +5,8 @@ type urlOperator struct {
 }
 
 func (u *urlOperator) Action(ip, url string) UrlProxyAction {
-	profile, ok := u.p.profiles[ip]
-	if ok {
+	profile := u.p.FindByIp(ip)
+	if profile != nil {
 		return profile.UrlAction(url)
 	} else {
 		return MakeEmptyUrlProxyAction()
@@ -14,8 +14,8 @@ func (u *urlOperator) Action(ip, url string) UrlProxyAction {
 }
 
 func (u *urlOperator) Delay(ip, url string) DelayAction {
-	profile, ok := u.p.profiles[ip]
-	if ok {
+	profile := u.p.FindByIp(ip)
+	if profile != nil {
 		return profile.UrlDelay(url)
 	} else {
 		return MakeEmptyDelay()
@@ -29,15 +29,6 @@ func (p *IpProfiles) OperatorUrl() UrlOperator {
 
 type profileOperator struct {
 	p *IpProfiles
-}
-
-func (p *profileOperator) Json(ip string) string {
-	profile, ok := p.p.profiles[ip]
-	if ok {
-		return profile.EncodeJson()
-	} else {
-		return ""
-	}
 }
 
 func (p *profileOperator) FindByIp(ip string) *Profile {
@@ -79,9 +70,9 @@ type domainOperator struct {
 	p *IpProfiles
 }
 
-func (p *domainOperator) Action(ip, domain string) DomainAction {
-	profile, ok := p.p.profiles[ip]
-	if ok {
+func (d *domainOperator) Action(ip, domain string) DomainAction {
+	profile := d.p.FindByIp(ip)
+	if profile != nil {
 		return profile.Domain(domain)
 	} else {
 		return DomainAction{}

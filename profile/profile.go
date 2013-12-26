@@ -1,9 +1,9 @@
 package profile
 
 import (
-	"encoding/json"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -176,6 +176,8 @@ type Profile struct {
 	Owner   string
 	Urls    map[string]*urlAction
 	Domains map[string]*DomainAction
+
+	lock sync.RWMutex
 }
 
 func NewProfile(name, ip, owner string) *Profile {
@@ -189,6 +191,9 @@ func NewProfile(name, ip, owner string) *Profile {
 }
 
 func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	u, ok := p.Urls[urlPattern]
 	if ok {
 		u.Act = UrlProxyAction{act, responseCode}
@@ -199,11 +204,14 @@ func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) 
 
 	host := getHostOfUrlPattern(urlPattern)
 	if len(host) != 0 {
-		p.ProxyDomainIfNotExists(host)
+		p.proxyDomainIfNotExists(host)
 	}
 }
 
 func (p *Profile) UrlAction(url string) UrlProxyAction {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
 	for pattern, u := range p.Urls {
 		if urlMatch(url, pattern) {
 			return u.Act
@@ -214,6 +222,9 @@ func (p *Profile) UrlAction(url string) UrlProxyAction {
 }
 
 func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	u, ok := p.Urls[urlPattern]
 	if ok {
 		u.Delay = MakeDelay(act, delay)
@@ -224,11 +235,14 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32
 
 	host := getHostOfUrlPattern(urlPattern)
 	if len(host) != 0 {
-		p.ProxyDomainIfNotExists(host)
+		p.proxyDomainIfNotExists(host)
 	}
 }
 
 func (p *Profile) UrlDelay(url string) DelayAction {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
 	for pattern, u := range p.Urls {
 		if urlMatch(url, pattern) {
 			return u.Delay
@@ -239,6 +253,9 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 }
 
 func (p *Profile) SetDomainAction(domain string, act DomainAct, targetIP string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	d, ok := p.Domains[domain]
 	if ok {
 		d.Act = act
@@ -249,6 +266,9 @@ func (p *Profile) SetDomainAction(domain string, act DomainAct, targetIP string)
 }
 
 func (p *Profile) Domain(domain string) DomainAction {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
 	d, ok := p.Domains[domain]
 	if ok {
 		return *d
@@ -258,6 +278,13 @@ func (p *Profile) Domain(domain string) DomainAction {
 }
 
 func (p *Profile) ProxyDomainIfNotExists(domain string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.proxyDomainIfNotExists(domain)
+}
+
+func (p *Profile) proxyDomainIfNotExists(domain string) {
 	if len(domain) == 0 {
 		return
 	}
@@ -271,14 +298,23 @@ func (p *Profile) ProxyDomainIfNotExists(domain string) {
 }
 
 func (p *Profile) DeleteDomain(domain string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	delete(p.Domains, domain)
 }
 
 func (p *Profile) Delete(urlPattern string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	delete(p.Urls, urlPattern)
 }
 
 func (p *Profile) CloneNew(newName, newIp string) *Profile {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
 	n := NewProfile(newName, newIp, p.Owner)
 	for u, url := range p.Urls {
 		c := *url
@@ -291,24 +327,6 @@ func (p *Profile) CloneNew(newName, newIp string) *Profile {
 	}
 
 	return n
-}
-
-func (p *Profile) EncodeJson() string {
-	bytes, err := json.Marshal(p)
-	if err != nil {
-		return ""
-	} else {
-		return string(bytes)
-	}
-}
-
-func DecodeJson(f string) *Profile {
-	p := new(Profile)
-	if json.Unmarshal([]byte(f), p) != nil {
-		return nil
-	} else {
-		return p
-	}
 }
 
 func urlMatch(url, urlPattern string) bool {

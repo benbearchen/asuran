@@ -193,9 +193,9 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if needCache {
-		bytes, ok := f.CheckCache(target)
-		if ok {
-			fmt.Fprintf(w, "%s", string(bytes))
+		c := f.CheckCache(target)
+		if c != nil {
+			fmt.Fprintf(w, "%s", string(c.Bytes))
 			return
 		}
 	}
