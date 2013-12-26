@@ -162,16 +162,15 @@ func (f *Life) checkCache(url string) *cache.UrlCache {
 }
 
 type cSaveContentToCache struct {
-	url     string
-	content string
+	cache *cache.UrlCache
 }
 
-func (f *Life) SaveContentToCache(url string, content string) {
-	f.c <- cSaveContentToCache{url, content}
+func (f *Life) SaveContentToCache(cache *cache.UrlCache) {
+	f.c <- cSaveContentToCache{cache}
 }
 
-func (f *Life) saveContentToCache(url string, content string) {
-	f.cache.Save(url, []byte(content))
+func (f *Life) saveContentToCache(cache *cache.UrlCache) {
+	f.cache.Save(cache)
 }
 
 type cLog struct {
@@ -217,7 +216,7 @@ func (f *Life) work() {
 		case cCheckCache:
 			e.c <- f.checkCache(e.url)
 		case cSaveContentToCache:
-			f.saveContentToCache(e.url, e.content)
+			f.saveContentToCache(e.cache)
 		case cLog:
 			f.log(e.s)
 		case cFormatHistory:

@@ -4,6 +4,7 @@ import (
 	"github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/net/httpd"
 	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 
 	"fmt"
@@ -195,7 +196,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	if needCache {
 		c := f.CheckCache(target)
 		if c != nil {
-			fmt.Fprintf(w, "%s", string(c.Bytes))
+			c.Response(w)
 			return
 		}
 	}
@@ -205,13 +206,14 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Bad Gateway", 502)
 	} else {
 		defer resp.Close()
-		content, err := resp.ReadAll()
+		content, err := resp.ReadAllBytes()
 		if err != nil {
 			http.Error(w, "Bad Gateway", 502)
 		} else {
-			fmt.Fprintf(w, "%s", content)
+			c := cache.NewUrlCache(target, resp, content)
+			c.Response(w)
 			if needCache {
-				go f.SaveContentToCache(target, content)
+				go f.SaveContentToCache(c)
 			}
 		}
 	}

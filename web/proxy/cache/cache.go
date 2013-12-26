@@ -1,8 +1,30 @@
 package cache
 
+import (
+	"github.com/benbearchen/asuran/net"
+
+	"net/http"
+)
+
 type UrlCache struct {
-	Url   string
-	Bytes []byte
+	Url          string
+	Bytes        []byte
+	Header       http.Header
+	ResponseCode int
+}
+
+func NewUrlCache(url string, resp *net.HttpResponse, content []byte) *UrlCache {
+	return &UrlCache{url, content, resp.Header(), resp.ResponseCode()}
+}
+
+func (c *UrlCache) Response(w http.ResponseWriter) {
+	h := w.Header()
+	for k, v := range c.Header {
+		h[k] = v
+	}
+
+	w.WriteHeader(c.ResponseCode)
+	w.Write(c.Bytes)
 }
 
 type Cache struct {
@@ -16,8 +38,8 @@ func NewCache() *Cache {
 	return c
 }
 
-func (c *Cache) Save(url string, bytes []byte) {
-	c.contents[url] = UrlCache{url, bytes}
+func (c *Cache) Save(cache *UrlCache) {
+	c.contents[cache.Url] = *cache
 }
 
 func (c *Cache) Take(url string) *UrlCache {

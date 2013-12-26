@@ -41,3 +41,11 @@ func (r *HttpResponse) ReadAll() (string, error) {
 
 	return string(bytes), nil
 }
+
+func (r *HttpResponse) Header() http.Header {
+	return r.resp.Header
+}
+
+func (r *HttpResponse) ResponseCode() int {
+	return r.resp.StatusCode
+}
