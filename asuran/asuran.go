@@ -75,7 +75,14 @@ func benchN(target string) {
 	}
 }
 
+func version() {
+	fmt.Println(`asuran 0.1, a web proxy with dns
+`)
+}
+
 func main() {
+	version()
+
 	p := proxy.NewProxy()
 	ipProfiles := profile.NewIpProfiles()
 	p.BindUrlOperator(ipProfiles.OperatorUrl())
@@ -93,6 +100,8 @@ func main() {
 			return
 		} else if command == "help" {
 			usage()
+		} else if command == "version" {
+			version()
 		} else if rest, ok := cmd.CheckCommand(command, "bench"); ok {
 			url := "http://"
 			if strings.HasPrefix(rest, url) {
