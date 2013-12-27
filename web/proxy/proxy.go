@@ -9,6 +9,7 @@ import (
 
 	"fmt"
 	"io"
+	"io/ioutil"
 	gonet "net"
 	"net/http"
 	"runtime"
@@ -110,6 +111,8 @@ func (p *Proxy) OnRequest(
 	} else if targetHost != "localhost" && targetHost != "127.0.0.1" && targetHost != p.serveIP {
 		target := "http://" + r.Host + urlPath
 		p.proxyUrl(target, w, r)
+	} else if _, m := httpd.MatchPath(urlPath, "/post"); m {
+		p.postTest(w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/test/"); m {
 		if page == "" {
 			page = "localhost"
@@ -130,11 +133,28 @@ func (p *Proxy) OnRequest(
 			scheme = "http"
 		}
 
-		fmt.Fprintln(w, "url: "+r.Method+" "+scheme+"://"+r.Host+urlPath)
-		fmt.Fprintln(w, "remote: "+r.RemoteAddr)
+		fmt.Fprintf(w, "url%%v: %v\n", r.URL)
+		fmt.Fprintln(w, "url.String(): "+r.URL.String())
+		fmt.Fprintln(w)
 
+		ex := ""
+		if len(r.URL.RawQuery) > 0 {
+			ex += "?" + r.URL.RawQuery
+		}
+
+		fmt.Fprintln(w, "url: "+r.Method+" "+scheme+"://"+r.Host+urlPath+ex)
+		fmt.Fprintln(w, "remote: "+r.RemoteAddr)
+		fmt.Fprintln(w, "requestURI: "+r.RequestURI)
+		fmt.Fprintln(w, "host: "+r.Host)
+
+		fmt.Fprintln(w)
 		for k, v := range r.Header {
 			fmt.Fprintln(w, "header: "+k+": "+strings.Join(v, "|"))
+		}
+
+		fmt.Fprintln(w)
+		for _, s := range r.TransferEncoding {
+			fmt.Fprintln(w, "transferEncoding: "+s)
 		}
 
 		fmt.Fprintln(w, "")
@@ -159,21 +179,26 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	needCache := false
 
+	fullUrl := target
+	if len(r.URL.RawQuery) > 0 {
+		fullUrl += "?" + r.URL.RawQuery
+	}
+
 	f := p.lives.Open(remoteIP)
 	var u *life.UrlState
 	if f != nil {
-		f.Log("proxy " + target)
-		u = f.OpenUrl(target)
+		f.Log("proxy " + fullUrl)
+		u = f.OpenUrl(fullUrl)
 	}
 
 	if p.urlOp != nil {
-		act := p.urlOp.Action(remoteIP, target)
+		act := p.urlOp.Action(remoteIP, fullUrl)
 		//fmt.Println("url act: " + act.String())
 		if act.Act == profile.UrlActCache {
 			needCache = true
 		}
 
-		delay := p.urlOp.Delay(remoteIP, target)
+		delay := p.urlOp.Delay(remoteIP, fullUrl)
 		//fmt.Println("url delay: " + delay.String())
 		switch delay.Act {
 		case profile.DelayActDelayEach:
@@ -193,15 +218,15 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if needCache {
-		c := f.CheckCache(target)
+	if needCache && r.Method == "GET" {
+		c := f.CheckCache(fullUrl)
 		if c != nil {
 			c.Response(w)
 			return
 		}
 	}
 
-	resp, err := net.NewHttpGet(target)
+	resp, err := net.NewHttp(fullUrl, r)
 	if err != nil {
 		http.Error(w, "Bad Gateway", 502)
 	} else {
@@ -210,7 +235,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			http.Error(w, "Bad Gateway", 502)
 		} else {
-			c := cache.NewUrlCache(target, resp, content)
+			c := cache.NewUrlCache(fullUrl, resp, content)
 			c.Response(w)
 			go f.SaveContentToCache(c)
 		}
@@ -323,6 +348,10 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				lookUrl = "http://" + strings.Join(pages[3:], "/")
 			}
 
+			if len(r.URL.RawQuery) > 0 {
+				lookUrl += "?" + r.URL.RawQuery
+			}
+
 			if c := f.CheckCache(lookUrl); c != nil {
 				c.Response(w)
 			} else {
@@ -348,4 +377,20 @@ func (p *Proxy) LogDomain(ip, action, domain string) {
 	if f := p.lives.Open(ip); f != nil {
 		f.Log("domain " + action + " " + domain)
 	}
+}
+
+func (p *Proxy) postTest(w http.ResponseWriter, r *http.Request) {
+	head := "<html><body>"
+	if r.Method == "POST" {
+		b, err := ioutil.ReadAll(r.Body)
+		if err == nil {
+			head += string(b)
+			fmt.Printf("recv body: %s\n", string(b))
+		}
+	}
+
+	fmt.Println()
+
+	form := `<form method="POST" action="/post"><input type="text" name="right_items" value="5 6"><input type="submit" value="post"></form></body></html>`
+	fmt.Fprintln(w, head+form)
 }
