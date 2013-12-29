@@ -147,18 +147,34 @@ func (f *Life) restart() {
 }
 
 type cCheckCache struct {
+	url       string
+	rangeInfo string
+	c         chan *cache.UrlCache
+}
+
+func (f *Life) CheckCache(url, rangeInfo string) *cache.UrlCache {
+	c := make(chan *cache.UrlCache)
+	f.c <- cCheckCache{url, rangeInfo, c}
+	return <-c
+}
+
+func (f *Life) checkCache(url, rangeInfo string) *cache.UrlCache {
+	return f.cache.Take(url, rangeInfo)
+}
+
+type cLookCache struct {
 	url string
 	c   chan *cache.UrlCache
 }
 
-func (f *Life) CheckCache(url string) *cache.UrlCache {
+func (f *Life) LookCache(url string) *cache.UrlCache {
 	c := make(chan *cache.UrlCache)
-	f.c <- cCheckCache{url, c}
+	f.c <- cLookCache{url, c}
 	return <-c
 }
 
-func (f *Life) checkCache(url string) *cache.UrlCache {
-	return f.cache.Take(url)
+func (f *Life) lookCache(url string) *cache.UrlCache {
+	return f.cache.Look(url)
 }
 
 type cSaveContentToCache struct {
@@ -214,7 +230,9 @@ func (f *Life) work() {
 		case cRestart:
 			f.restart()
 		case cCheckCache:
-			e.c <- f.checkCache(e.url)
+			e.c <- f.checkCache(e.url, e.rangeInfo)
+		case cLookCache:
+			e.c <- f.lookCache(e.url)
 		case cSaveContentToCache:
 			f.saveContentToCache(e.cache)
 		case cLog:

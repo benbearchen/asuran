@@ -184,10 +184,16 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		fullUrl += "?" + r.URL.RawQuery
 	}
 
+	rangeInfo := cache.CheckRange(r)
 	f := p.lives.Open(remoteIP)
 	var u *life.UrlState
 	if f != nil {
-		f.Log("proxy " + fullUrl)
+		info := "proxy " + fullUrl
+		if len(rangeInfo) > 0 {
+			info += " " + rangeInfo
+		}
+
+		f.Log(info)
 		u = f.OpenUrl(fullUrl)
 	}
 
@@ -219,7 +225,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if needCache && r.Method == "GET" {
-		c := f.CheckCache(fullUrl)
+		c := f.CheckCache(fullUrl, rangeInfo)
 		if c != nil {
 			c.Response(w)
 			return
@@ -235,7 +241,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			http.Error(w, "Bad Gateway", 502)
 		} else {
-			c := cache.NewUrlCache(fullUrl, resp, content)
+			c := cache.NewUrlCache(fullUrl, resp, content, rangeInfo)
 			c.Response(w)
 			go f.SaveContentToCache(c)
 		}
@@ -352,7 +358,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				lookUrl += "?" + r.URL.RawQuery
 			}
 
-			if c := f.CheckCache(lookUrl); c != nil {
+			if c := f.LookCache(lookUrl); c != nil {
 				c.Response(w)
 			} else {
 				fmt.Fprintln(w, "can't look up "+lookUrl)
