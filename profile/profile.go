@@ -104,6 +104,8 @@ type urlAction struct {
 	UrlPattern string
 	Act        UrlProxyAction
 	Delay      DelayAction
+
+	pattern [3]string
 }
 
 type UrlOperator interface {
@@ -198,7 +200,7 @@ func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) 
 	if ok {
 		u.Act = UrlProxyAction{act, responseCode}
 	} else {
-		u := &urlAction{urlPattern, UrlProxyAction{act, responseCode}, MakeEmptyDelay()}
+		u := &urlAction{urlPattern, UrlProxyAction{act, responseCode}, MakeEmptyDelay(), parseUrlAsPattern(urlPattern)}
 		p.Urls[urlPattern] = u
 	}
 
@@ -212,8 +214,9 @@ func (p *Profile) UrlAction(url string) UrlProxyAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	for pattern, u := range p.Urls {
-		if urlMatch(url, pattern) {
+	ps := parseUrlAsPattern(url)
+	for _, u := range p.Urls {
+		if urlPatternMatch(&ps, &u.pattern) {
 			return u.Act
 		}
 	}
@@ -229,7 +232,7 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32
 	if ok {
 		u.Delay = MakeDelay(act, delay)
 	} else {
-		u := &urlAction{urlPattern, MakeEmptyUrlProxyAction(), MakeDelay(act, delay)}
+		u := &urlAction{urlPattern, MakeEmptyUrlProxyAction(), MakeDelay(act, delay), parseUrlAsPattern(urlPattern)}
 		p.Urls[urlPattern] = u
 	}
 
@@ -243,8 +246,9 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	for pattern, u := range p.Urls {
-		if urlMatch(url, pattern) {
+	ps := parseUrlAsPattern(url)
+	for _, u := range p.Urls {
+		if urlPatternMatch(&ps, &u.pattern) {
 			return u.Delay
 		}
 	}
@@ -329,13 +333,87 @@ func (p *Profile) CloneNew(newName, newIp string) *Profile {
 	return n
 }
 
-func urlMatch(url, urlPattern string) bool {
-	if url == urlPattern {
-		return true
-	} else if strings.Index(url, urlPattern) >= 0 {
+func parseUrlAsPattern(url string) [3]string {
+	if strings.HasPrefix(url, "http://") {
+		url = url[len("http://"):]
+	}
+
+	s := strings.Index(url, "/")
+	q := strings.Index(url, "?")
+	if s >= 0 && q > s {
+		return [3]string{url[0:s], url[s:q], url[q:]}
+	} else if s >= 0 {
+		return [3]string{url[0:s], url[s:], ""}
+	} else {
+		return [3]string{url, "", ""}
+	}
+}
+
+func matchDomain(domain, pattern string) bool {
+	if pattern == "" || domain == pattern {
 		return true
 	}
-	// TODO: 支持正则
+
+	// TODO: more pattern
+	return false
+}
+
+func matchPath(path, pattern string) bool {
+	if strings.HasPrefix(path, pattern) {
+		return true
+	}
+
+	// TODO: more pattern
+	return false
+}
+
+func parseQuery(query string) map[string]string {
+	m := make(map[string]string)
+	if len(query) > 0 {
+		query = query[1:]
+	}
+
+	kv := strings.Split(query, "&")
+	for _, s := range kv {
+		if len(s) == 0 {
+			continue
+		}
+
+		e := strings.Index(s, "=")
+		if e == 0 {
+			continue
+		} else if e < 0 {
+			m[s] = ""
+		} else {
+			m[s[:e]] = s[e+1:]
+		}
+	}
+
+	return m
+}
+
+func matchQuery(query, pattern string) bool {
+	if pattern == "" {
+		return true
+	}
+
+	q := parseQuery(query)
+	p := parseQuery(pattern)
+
+	for k, v := range p {
+		value, ok := q[k]
+		if !ok || v != value {
+			return false
+		}
+	}
+
+	return true
+}
+
+func urlPatternMatch(url, pattern *[3]string) bool {
+	if matchDomain(url[0], pattern[0]) && matchPath(url[1], pattern[1]) && matchQuery(url[2], pattern[2]) {
+		return true
+	}
 
 	return false
 }

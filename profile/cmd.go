@@ -175,6 +175,10 @@ func restToPattern(content string) string {
 		return ""
 	}
 
+	if strings.HasPrefix(url, "http://") {
+		url = url[len("http://"):]
+	}
+
 	q := strings.Index(url, "?")
 	s := strings.Index(url, "/")
 	if q >= 0 && s < 0 {
