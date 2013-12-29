@@ -36,11 +36,86 @@
 
 <script type="text/javascript">
 
-function appendCmd(cmd)
-{
+function appendCmd(cmd) {
   var cmdBox = document.getElementById('CommandBoxId');
-  cmdBox.value = cmdBox.value + cmd + "\n";
+  if (cmdBox.value == "" || cmdBox.value.slice(-1) == "\n") {
+    cmdBox.value = cmdBox.value + cmd + "\n";
+  } else {
+    cmdBox.value = cmdBox.value + "\n" + cmd + "\n";
+  }
 }
+
+function selectOpt(id) {
+  var s = document.getElementById(id);
+  return s.value;
+}
+
+function proxyCmd(act) {
+  var u = document.getElementById('ProxyUrl');
+  if (u.value == "") {
+    alert('proxy 操作的 URL 不能为空');
+    return;
+  }
+
+  appendCmd('proxy ' + act + ' ' + u.value);
+}
+
+function delayCmd(act) {
+  var d = document.getElementById('DelayDuration');
+  if (d.value == "") {
+    alert('delay 操作的时长不能为空');
+    return;
+  }
+
+  var u = document.getElementById('ProxyUrl');
+  if (u.value == "") {
+    alert('proxy 操作的 URL 不能为空');
+    return;
+  }
+
+  appendCmd('delay ' + act + ' ' + d.value + ' ' + u.value);
+}
+
+function deleteCmd() {
+  var u = document.getElementById('ProxyUrl');
+  if (u.value == "") {
+    alert('delete 操作的 URL 不能为空');
+    return;
+  }
+
+  appendCmd('delete ' + u.value);
+}
+
+function redirectOpt() {
+  var ip = document.getElementById('DomainRedirectIP');
+  if (ip.value == "") {
+    return "";
+  }
+
+  var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
+  if (!re.test(ip.value))
+  {
+    alert("无效 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
+    return;
+  }
+
+  return " " + ip.value;
+}
+
+function domainCmd(act, opt) {
+  if (opt === undefined) {
+    return;
+  }
+
+  var d = document.getElementById('Domain');
+  if (d.value == "") {
+    alert('doman 操作的域名不能为空');
+    return;
+  }
+
+  appendCmd('domain ' + act + ' ' + d.value + opt);
+}
+
 </script>
 </head>
 
@@ -55,7 +130,7 @@ function appendCmd(cmd)
 <hr/>
 <table id="profile">
 <tr>
-<th>编辑</th>
+<th>编辑命令</th>
 <th>URL 匹配模式</th>
 <th>代理行为</th>
 <th>延时设定</th>
@@ -73,7 +148,7 @@ function appendCmd(cmd)
 
 <table id="profile">
 <tr>
-<th>编辑</th>
+<th>编辑命令</th>
 <th>域名</th>
 <th>查询行为</th>
 <th>目标 IP</th>
@@ -90,21 +165,52 @@ function appendCmd(cmd)
 <hr/>
 
 <form action="/profile/{{.Path}}" method="post">
-<h2>命令（<a href="/profile/commands" target="_blank">说明</a>）：</h2>
+<table width="500"><tr>
+<td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
+</tr>
+</table>
 <textarea rows="10" cols="80" id="CommandBoxId" name="cmd"></textarea>
-<input type="submit" value="执行命令"/>
 </form>
 
-<a href="/profile/{{.Path}}/export" target="_blank">导出命令</a>
+
 <hr/>
 
-<h3>命令用例：</h3>
-<ul>
-<li><button type="button" onclick="appendCmd('delay 1.5s g.cn/search key=hello');">设置延时 1.5 秒：<b>delay 1.5s g.cn/search key=hello</b></button>
-<li><button type="button" onclick="appendCmd('delay drop 15m g.cn/search key=hello');">设置 15 分钟无法访问：<b>delay drop 15m g.cn/search key=hello</b></button>
-<li><button type="button" onclick="appendCmd('proxy cache g.cn/search key=hello');">设置代理模式：<b>proxy cache g.cn/search key=hello</b></button>
-<li><button type="button" onclick="appendCmd('proxy drop 404 g.cn/search key=hello');">设置 URL 被 404：<b>proxy drop 404 g.cn/search key=hello</b></button>
-<li><button type="button" onclick="appendCmd('delete g.cn/search key=hello');">删除某条设置：<b>delete g.cn/search key=hello</b></button>
-</ul>
+<b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
+<table border="1">
+<tr>
+<td rowspan="3">proxy</td><td colspan="2"><button type="button" onclick="proxyCmd('default');">[default]</button>: 使用代理</td><td rowspan="6">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 可以由<br/>&lt;domain[:port]/&gt;[path][?query=option]<br/>三部分组成<br/>至少需要服务器地址</td>
+</tr>
+<tr>
+<td colspan="2"><button type="button" onclick="proxyCmd('cache');">cache</button>: 代理并缓存</td>
+</tr>
+<tr>
+<td colspan="2"><button type="button" onclick="proxyCmd('drop '+selectOpt('DropOption'));">drop</button> <select id="DropOption"><option value="404">404</option><option value="502">502</option></select>: 代理但以状态码出错</td>
+</tr>
+<tr>
+<td rowspan="2">delay</td><td><button type="button" onclick="delayCmd('default');">[default]</button>: 每次请求延时</td><td rowspan="2">时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
+</tr>
+<tr>
+<td><button type="button" onclick="delayCmd('drop');">drop</button>: <br/>前“时长”时间内都掉线</td>
+</tr>
+<tr>
+<td colspan="3"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>
+</tr>
+
+<tr><td colspan="4">注: 任何对 URL 的代理行为，均要求域名重定向到代理服务器。如域名还没有配置，则会自动添加</td></tr>
+
+<tr>
+<td rowspan="4">domain</td><td colspan="2"><button type="button" onclick="domainCmd('default', '');">[default]</button>: 默认返回正常 IP</td><td rowspan="4">域名: <input type="text" id="Domain"/></td>
+</tr>
+<tr>
+<td colspan="2"><button type="button" onclick="domainCmd('block', '');">block</button>: 拦截并不返回</td>
+</tr>
+<tr>
+<td><button type="button" onclick="domainCmd('redirect', redirectOpt());">redirect</button>: 重定向到</td><td>IP:<input type="text" id="DomainRedirectIP"/><br/>或: 留空则代理服务器</td>
+</tr>
+<tr>
+<td colspan="2"><button type="button" onclick="domainCmd('delete', '');">delete</button>: 删除域名配置</td>
+</tr>
+</table>
+
 </body>
 </html>

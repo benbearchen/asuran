@@ -46,7 +46,7 @@ function editProfile(ip)
   var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
   if (!re.test(ip))
   {
-    alert("无效客户端 IP（应为四段数字“xxx.xx.xxx.xx”且数字位于 0~255 之间）");
+    alert("无效客户端 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
     return;
   }
 

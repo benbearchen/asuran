@@ -52,7 +52,7 @@ duration:
               例：90s 或 1.5m
 
 url-pattern:
-    [host:port]/path [key=value]
+    [domain[:port]]/[path][?key=value]
               分域名[端口]、根路径与查询参数三种匹配。
               域名忽略则匹配所有域名。
               根路径可以匹配到目录或文件。
@@ -170,17 +170,20 @@ func (p *Profile) CommandDomain(content string) {
 }
 
 func restToPattern(content string) string {
-	path, query := cmd.TakeFirstArg(content)
-	if len(query) > 0 {
-		q, r := cmd.TakeFirstArg(query)
-		if len(r) > 0 {
-			return ""
-		}
-
-		return path + " " + q
-	} else {
-		return path
+	url, rest := cmd.TakeFirstArg(content)
+	if len(rest) > 0 {
+		return ""
 	}
+
+	q := strings.Index(url, "?")
+	s := strings.Index(url, "/")
+	if q >= 0 && s < 0 {
+		url = url[0:q] + "/" + url[q:]
+	} else if s < 0 {
+		url = url + "/"
+	}
+
+	return url
 }
 
 func commandDelayMode(p *Profile, mode, args string) {
