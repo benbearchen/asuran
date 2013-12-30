@@ -1,0 +1,33 @@
+<html>
+<head><title>asuran</title></head>
+<body>
+<b>asuran</b> 是一个通过 DNS 实现透明代理的服务。
+<hr/>
+asuran {{.Version}} 当前支持：
+<ul>
+<li>每个客户端一个配置，可独立定义过滤、代理的域名、URL
+<li>支持拦截域名解析或者将域名重定向到 asuran 以实现代理服务
+<li>支持按域名、URL 路径、查询参数匹配 URL，并对 URL 实现以下操作：
+<ul>
+<li>延时、或按时阻止 URL
+<li>缓存 URL
+</ul>
+<li>HTTP 特性：<ul>
+  <li>支持代理 GET，且可缓存
+  <li>支持代理 POST，但不可缓存
+  <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求
+  <li>代理对一般 HTTP Header 原样返回（Transfer-Encoding/chunked 可能就不行了）
+</ul>
+<li>客户端行为历史记录<ul>
+  <li>记录域名查询
+  <li>记录使用代理的 URL，且可以查看（某一）URL 最后一次请求的内容
+</ul>
+</ul>
+当前不支持：
+<ul>
+<li>HTTPS
+</ul>
+<hr/>
+使用手册：<a href="/usage">http://{{.ServeIP}}/usage</a>
+</body>
+</html>

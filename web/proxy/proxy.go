@@ -127,7 +127,11 @@ func (p *Proxy) OnRequest(
 		p.WriteUsage(w)
 	} else if page, m := httpd.MatchPath(urlPath, "/profile"); m {
 		p.ownProfile(remoteIP, page, w, r)
-	} else if urlPath == "/" || urlPath == "/about" {
+	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
+		p.res(w, r, urlPath)
+	} else if urlPath == "/" {
+		p.index(w)
+	} else if urlPath == "/about" {
 		scheme := r.URL.Scheme
 		if scheme == "" {
 			scheme = "http"
@@ -251,6 +255,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 func (p *Proxy) initDevice(w io.Writer, ip string) {
 	if p.profileOp != nil {
 		p.profileOp.Open(ip)
+		p.lives.Open(ip)
 		p.WriteInitDevice(w, ip)
 	} else {
 		fmt.Fprintln(w, "sorry, can't create profile for you!")
@@ -323,15 +328,16 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		f = p.profileOp.Open(profileIP)
 	}
 
-	if f.Owner == "" && ownerIP != profileIP {
+	if op == "" && f.Owner == "" && ownerIP != profileIP {
 		f.Owner = ownerIP
+		p.lives.Open(profileIP)
 	}
 
 	if op == "export" {
 		fmt.Fprintln(w, f.ExportCommand())
 		return
 	} else if op == "restart" {
-		if f := p.lives.Open(profileIP); f != nil {
+		if f := p.lives.OpenExists(profileIP); f != nil {
 			f.Restart()
 			fmt.Fprintln(w, profileIP+" 已经重新初始化")
 		} else {

@@ -39,7 +39,7 @@ function editProfile(ip)
 {
   if (ip == "")
   {
-    alert("客户端 IP 为空");
+    alert("设备 IP 为空");
     return;
   }
 
@@ -58,13 +58,13 @@ function editProfile(ip)
 
 <table id="profile">
 <tr>
-<th>编辑</th>
+<th>操作</th>
 <th>名字</th>
-<th>客户端 IP</th>
+<th>已知设备 IP</th>
 </tr>
 {{range .IPs}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><input type="button" value="编辑" onclick="editProfile('{{.IP}}');"/></td>
+<td><input type="button" value="管理" onclick="editProfile('{{.IP}}');"/></td>
 <td>{{.Name}}</td>
 <td>{{.IP}}</td>
 </tr>
@@ -72,8 +72,8 @@ function editProfile(ip)
 </table>
 <hr/>
 
-<h2>请输入要管理的客户端 IP：</h2>
+待<b>测试设备 IP 地址</b>：
 <input type="text" id="ip"/>
-<input type="button" value="编辑" onclick="editProfile(document.getElementById('ip').value)"/>
+<input type="button" value="初始化/管理设备" onclick="editProfile(document.getElementById('ip').value)"/>
 </body>
 </html>
