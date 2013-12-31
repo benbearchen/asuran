@@ -21,28 +21,26 @@ Build 编译
 ---------
 * Install go 1.2 (can download from [go download page](https://code.google.com/p/go/downloads/list)), add go to PATH
 * Set environment GOPATH, witch specifies your go projects dir.  Then mkdir %GOPATH%\src or $GOPATH/src. (see [go code style](http://golang.org/doc/code.html))
-* Get sources.  You should have git.  
+* Get sources.  You should have git.  Then:
 
+### \*NIX:
     $ go get github.com/miekg/dns
     $ go get github.com/benbearchen/asuran
-
-  If you using msys-git, you should do this:
-
-    \\> cd %GOPATH%\src
-    \\> git clone http://github.com/miekg/dns.git github.com\miekg\dns
-    \\> git clone http://github.com/benbearchen/asuran.git github.com\benbearchen\asuran
+### or Windows msys-git:
+    $ cd $GOPATH/src
+    $ git clone http://github.com/miekg/dns.git github.com/miekg/dns
+    $ git clone http://github.com/benbearchen/asuran.git github.com/benbearchen/asuran
 
 * Build & Run:
 
+### \*NIX
     $ cd $GOPATH/src/github.com/benbearchen/asuran
     $ go build asuran.go
     $ ./asuran
-
-  or Windows:
-
-    \\> cd %GOAPTH%/src/github.com/benbearchen/asuran
-    \\> go build asuran.go
-    \\> asuran
+### Windows:
+    \> cd %GOAPTH%/src/github.com/benbearchen/asuran
+    \> go build asuran.go
+    \> asuran
 
 * Run asuran anywhere?  Just copy executable asuran\[.exe\] and dir template/.
 * Maybe you should open UDP port 53 and TCP port 80 in firewall
