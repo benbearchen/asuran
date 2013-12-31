@@ -30,6 +30,7 @@ domain delete <domain-name>
 注：
 * <> 尖括号表示参数一定要有，否则出错
 * [] 中括号表示参数可有可无
+* 下面注释以“**”开始的行，表示未实现功能
 -------
 
 delay mode:   只能处于一下模式之一种
@@ -56,8 +57,8 @@ url-pattern:
               分域名[端口]、根路径与查询参数三种匹配。
               域名忽略则匹配所有域名。
               根路径可以匹配到目录或文件。
-              查询参数可以任意顺序，但参数必须全部有。
-              支持部分通配符，正则以 % 开头。
+              查询参数匹配时忽略顺序，但列出参数必须全有。
+              ** 支持部分通配符，正则以 % 开头。 **
 
 domain mode:
     [default] 域名默认为正常通行，返回正常结果。
@@ -74,7 +75,7 @@ examples:
 
 delay 5s g.cn/search
 
-proxy default github.com/ cmd=1
+proxy default github.com/?cmd=1
 
 proxy cache golang.org/doc/code.html
 
