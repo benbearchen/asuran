@@ -28,8 +28,8 @@ Build 编译
     $ go get github.com/benbearchen/asuran
 ### or Windows msys-git:
     $ cd $GOPATH/src
-    $ git clone http://github.com/miekg/dns.git github.com/miekg/dns
-    $ git clone http://github.com/benbearchen/asuran.git github.com/benbearchen/asuran
+    $ git clone https://github.com/miekg/dns.git github.com/miekg/dns
+    $ git clone https://github.com/benbearchen/asuran.git github.com/benbearchen/asuran
 
 * Build & Run:
 
