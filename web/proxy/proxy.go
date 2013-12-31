@@ -38,7 +38,8 @@ func NewProxy() *Proxy {
 	} else {
 		for _, ip := range ips {
 			p.serveIP = ip
-			fmt.Println("proxy on ip: ", ip)
+			fmt.Println("proxy on ip: " + ip)
+			fmt.Println("visit http://" + ip + "/ for more information")
 		}
 	}
 
