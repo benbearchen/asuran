@@ -38,7 +38,7 @@ Build 编译
     $ go build asuran.go
     $ ./asuran
 ### Windows:
-    \> cd %GOAPTH%/src/github.com/benbearchen/asuran
+    \> cd %GOAPTH%\src\github.com\benbearchen\asuran
     \> go build asuran.go
     \> asuran
 
