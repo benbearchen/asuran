@@ -1,12 +1,16 @@
 package proxy
 
 import (
+	"github.com/benbearchen/asuran/web/proxy/cache"
+	"github.com/benbearchen/asuran/web/proxy/life"
+
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -73,4 +77,104 @@ func (p *Proxy) res(w http.ResponseWriter, r *http.Request, path string) {
 
 	f = filepath.Join(dir, "template", f)
 	http.ServeFile(w, r, f)
+}
+
+type urlHistoryData struct {
+	Even   bool
+	ID     string
+	Time   string
+	Client string
+}
+
+type urlHistoryListData struct {
+	Client    string
+	Url       string
+	Histories []urlHistoryData
+}
+
+func formatUrlHistoryDataList(histories []*cache.UrlHistory, client string) []urlHistoryData {
+	d := make([]urlHistoryData, 0, len(histories))
+	even := true
+	for _, h := range histories {
+		even = !even
+		d = append(d, urlHistoryData{even, strconv.FormatUint(uint64(h.ID), 10), h.Time.Format("2006-01-02 15:04:05"), client})
+	}
+
+	return d
+}
+
+func (p *Proxy) writeUrlHistoryList(w http.ResponseWriter, profileIP, url string, histories []*cache.UrlHistory) {
+	t, err := template.ParseFiles("template/history.urllist.tmpl")
+	err = t.Execute(w, urlHistoryListData{profileIP, url, formatUrlHistoryDataList(histories, profileIP)})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type jsopData struct {
+	OPName string
+	JsOP   template.JS
+	JsArg  string
+}
+
+type historyEventData struct {
+	Even        bool
+	Time        string
+	Domain      string
+	URL         string
+	URLBody     string
+	EventString string
+	OPs         []jsopData
+	Client      string
+}
+
+type historyData struct {
+	Client string
+	Events []historyEventData
+}
+
+func formatHistoryEventDataList(events []*life.HistoryEvent, client string) []historyEventData {
+	list := make([]historyEventData, 0, len(events))
+	even := true
+	for _, e := range events {
+		d := historyEventData{}
+		d.OPs = make([]jsopData, 0)
+		d.Client = client
+
+		even = !even
+		d.Even = even
+		d.Time = e.Time.Format("2006-01-02 15:04:05")
+
+		s := strings.Split(e.String, " ")
+		if len(s) >= 3 && s[0] == "domain" {
+			domain := s[2]
+			d.Domain = "域名 " + s[1] + " " + domain
+			d.OPs = append(d.OPs, jsopData{"代理域名", template.JS("domainRedirect"), domain})
+		} else if len(s) >= 2 && s[0] == "proxy" {
+			url := s[1]
+			d.URL = url
+			if strings.HasPrefix(url, "http://") {
+				d.URLBody = url[7:]
+			} else {
+				d.URLBody = url
+			}
+
+			d.OPs = append(d.OPs, jsopData{"缓存", template.JS("proxyCache"), url})
+		} else {
+			d.EventString = e.String
+		}
+
+		list = append(list, d)
+	}
+
+	return list
+}
+
+func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Life) {
+	t, err := template.ParseFiles("template/history.tmpl")
+	list := formatHistoryEventDataList(f.HistoryEvents(), profileIP)
+	err = t.Execute(w, historyData{profileIP, list})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
 }

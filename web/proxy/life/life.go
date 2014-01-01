@@ -144,6 +144,7 @@ func (f *Life) restart() {
 	}
 
 	f.cache.Clear()
+	f.history.Clear()
 }
 
 type cCheckCache struct {
@@ -177,16 +178,47 @@ func (f *Life) lookCache(url string) *cache.UrlCache {
 	return f.cache.Look(url)
 }
 
+type cListHistory struct {
+	url string
+	c   chan []*cache.UrlHistory
+}
+
+func (f *Life) ListHistory(url string) []*cache.UrlHistory {
+	c := make(chan []*cache.UrlHistory)
+	f.c <- cListHistory{url, c}
+	return <-c
+}
+
+func (f *Life) listHistory(url string) []*cache.UrlHistory {
+	return f.cache.List(url)
+}
+
+type cLookHistoryByID struct {
+	id uint32
+	c  chan *cache.UrlHistory
+}
+
+func (f *Life) LookHistoryByID(id uint32) *cache.UrlHistory {
+	c := make(chan *cache.UrlHistory)
+	f.c <- cLookHistoryByID{id, c}
+	return <-c
+}
+
+func (f *Life) lookHistoryByID(id uint32) *cache.UrlHistory {
+	return f.cache.History(id)
+}
+
 type cSaveContentToCache struct {
 	cache *cache.UrlCache
+	save  bool
 }
 
-func (f *Life) SaveContentToCache(cache *cache.UrlCache) {
-	f.c <- cSaveContentToCache{cache}
+func (f *Life) SaveContentToCache(cache *cache.UrlCache, save bool) {
+	f.c <- cSaveContentToCache{cache, save}
 }
 
-func (f *Life) saveContentToCache(cache *cache.UrlCache) {
-	f.cache.Save(cache)
+func (f *Life) saveContentToCache(cache *cache.UrlCache, save bool) {
+	f.cache.Save(cache, save)
 }
 
 type cLog struct {
@@ -215,6 +247,20 @@ func (f *Life) formatHistory() string {
 	return f.history.Format()
 }
 
+type cHistoryEvents struct {
+	c chan []*HistoryEvent
+}
+
+func (f *Life) HistoryEvents() []*HistoryEvent {
+	c := make(chan []*HistoryEvent)
+	f.c <- cHistoryEvents{c}
+	return <-c
+}
+
+func (f *Life) historyEvents() []*HistoryEvent {
+	return f.history.Events()
+}
+
 func (f *Life) work() {
 	for {
 		e, ok := <-f.c
@@ -233,12 +279,18 @@ func (f *Life) work() {
 			e.c <- f.checkCache(e.url, e.rangeInfo)
 		case cLookCache:
 			e.c <- f.lookCache(e.url)
+		case cListHistory:
+			e.c <- f.listHistory(e.url)
+		case cLookHistoryByID:
+			e.c <- f.lookHistoryByID(e.id)
 		case cSaveContentToCache:
-			f.saveContentToCache(e.cache)
+			f.saveContentToCache(e.cache, e.save)
 		case cLog:
 			f.log(e.s)
 		case cFormatHistory:
 			e.c <- f.formatHistory()
+		case cHistoryEvents:
+			e.c <- f.historyEvents()
 		}
 	}
 }

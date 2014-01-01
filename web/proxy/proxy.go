@@ -13,6 +13,7 @@ import (
 	gonet "net"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -248,7 +249,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		} else {
 			c := cache.NewUrlCache(fullUrl, resp, content, rangeInfo)
 			c.Response(w)
-			go f.SaveContentToCache(c)
+			go f.SaveContentToCache(c, needCache)
 		}
 	}
 }
@@ -349,30 +350,30 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		return
 	} else if op == "history" {
 		if f := p.lives.OpenExists(profileIP); f != nil {
-			fmt.Fprintln(w, f.FormatHistory())
+			p.writeHistory(w, profileIP, f)
 		} else {
 			fmt.Fprintln(w, profileIP+" 不存在")
 		}
 		return
-	} else if op == "look" {
-		if f := p.lives.OpenExists(profileIP); f != nil {
-			lookUrl := page
-			if len(pages) >= 4 {
-				lookUrl = "http://" + strings.Join(pages[3:], "/")
+	} else if op == "look" || op == "list" || op == "detail" {
+		if len(pages) >= 4 {
+			id, err := strconv.ParseInt(pages[3], 10, 32)
+			if err == nil {
+				p.lookHistoryByID(w, profileIP, uint32(id), op)
+				return
 			}
-
-			if len(r.URL.RawQuery) > 0 {
-				lookUrl += "?" + r.URL.RawQuery
-			}
-
-			if c := f.LookCache(lookUrl); c != nil {
-				c.Response(w)
-			} else {
-				fmt.Fprintln(w, "can't look up "+lookUrl)
-			}
-		} else {
-			fmt.Fprintln(w, profileIP+" 不存在")
 		}
+
+		lookUrl := ""
+		if len(pages) >= 4 {
+			lookUrl = "http://" + strings.Join(pages[3:], "/")
+		}
+
+		if len(r.URL.RawQuery) > 0 {
+			lookUrl += "?" + r.URL.RawQuery
+		}
+
+		p.lookHistory(w, profileIP, lookUrl, op)
 		return
 	}
 
@@ -384,6 +385,52 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	f.WriteHtml(w)
+}
+
+func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
+	f := p.lives.OpenExists(profileIP)
+	if f == nil {
+		fmt.Fprintln(w, profileIP+" 不存在")
+		return
+	}
+
+	h := f.LookHistoryByID(id)
+	if h != nil {
+		switch op {
+		case "look":
+			h.Response(w)
+		case "detail":
+			h.Detail(w)
+		}
+	} else {
+		fmt.Fprintf(w, "history %u not exist", id)
+	}
+}
+
+func (p *Proxy) lookHistory(w http.ResponseWriter, profileIP, lookUrl, op string) {
+	f := p.lives.OpenExists(profileIP)
+	if f == nil {
+		fmt.Fprintln(w, profileIP+" 不存在")
+		return
+	}
+
+	switch op {
+	case "look":
+		if c := f.LookCache(lookUrl); c != nil {
+			c.Response(w)
+		} else {
+			fmt.Fprintln(w, "can't look up "+lookUrl)
+		}
+	case "detail":
+		if c := f.LookCache(lookUrl); c != nil {
+			c.Detail(w)
+		} else {
+			fmt.Fprintln(w, "can't look up "+lookUrl+" for detail")
+		}
+	case "list":
+		histories := f.ListHistory(lookUrl)
+		p.writeUrlHistoryList(w, profileIP, lookUrl, histories)
+	}
 }
 
 func (p *Proxy) LogDomain(ip, action, domain string) {

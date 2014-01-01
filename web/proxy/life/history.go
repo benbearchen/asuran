@@ -18,17 +18,17 @@ func StringHistory(s string) HistoryEvent {
 }
 
 type History struct {
-	events []HistoryEvent
+	events []*HistoryEvent
 }
 
 func NewHistory() *History {
 	h := History{}
-	h.events = make([]HistoryEvent, 0, 100)
+	h.Clear()
 	return &h
 }
 
 func (h *History) Log(e HistoryEvent) {
-	h.events = append(h.events, e)
+	h.events = append(h.events, &e)
 }
 
 func (h *History) Format() string {
@@ -38,4 +38,17 @@ func (h *History) Format() string {
 	}
 
 	return r
+}
+
+func (h *History) Events() []*HistoryEvent {
+	events := make([]*HistoryEvent, 0, len(h.events))
+	for _, e := range h.events {
+		events = append(events, e)
+	}
+
+	return events
+}
+
+func (h *History) Clear() {
+	h.events = make([]*HistoryEvent, 0, 100)
 }
