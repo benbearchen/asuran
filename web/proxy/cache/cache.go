@@ -11,11 +11,12 @@ import (
 )
 
 type UrlCache struct {
-	Url          string
-	Bytes        []byte
-	Header       http.Header
-	ResponseCode int
-	RangeInfo    string
+	Url            string
+	RequestHeader  http.Header
+	Bytes          []byte
+	ResponseHeader http.Header
+	ResponseCode   int
+	RangeInfo      string
 }
 
 type UrlHistory struct {
@@ -25,13 +26,13 @@ type UrlHistory struct {
 	Time time.Time
 }
 
-func NewUrlCache(url string, resp *net.HttpResponse, content []byte, rangeInfo string) *UrlCache {
-	return &UrlCache{url, content, resp.Header(), resp.ResponseCode(), rangeInfo}
+func NewUrlCache(url string, r *http.Request, resp *net.HttpResponse, content []byte, rangeInfo string) *UrlCache {
+	return &UrlCache{url, r.Header, content, resp.Header(), resp.ResponseCode(), rangeInfo}
 }
 
 func (c *UrlCache) Response(w http.ResponseWriter) {
 	h := w.Header()
-	for k, v := range c.Header {
+	for k, v := range c.ResponseHeader {
 		h[k] = v
 	}
 
@@ -40,22 +41,31 @@ func (c *UrlCache) Response(w http.ResponseWriter) {
 }
 
 func (c *UrlCache) Detail(w http.ResponseWriter) {
-	t := "URL: " + c.Url + "\n"
+	t := "URL: " + c.Url + "\n\n"
 	if len(c.RangeInfo) > 0 {
 		t += "Request Range: " + c.RangeInfo + "\n"
 	}
 
+	t += "RequestHeaders: {{{\n"
+	for k, v := range c.RequestHeader {
+		for _, v := range v {
+			t += k + ": " + v + "\n"
+		}
+	}
+
+	t += "}}}\n\n"
+
 	t += "ResponseCode: " + strconv.Itoa(c.ResponseCode) + "\n"
-	t += "Headers: {{{\n"
-	for k, v := range c.Header {
+	t += "Content-Length: " + strconv.Itoa(len(c.Bytes)) + "\n"
+
+	t += "\nResponseHeaders: {{{\n"
+	for k, v := range c.ResponseHeader {
 		for _, v := range v {
 			t += k + ": " + v + "\n"
 		}
 	}
 
 	t += "}}}\n"
-
-	t += "Content-Length: " + strconv.Itoa(len(c.Bytes))
 
 	fmt.Fprintf(w, t)
 }
@@ -78,7 +88,7 @@ func (c *Cache) historyID() uint32 {
 	return atomic.AddUint32(&c.id, 1)
 }
 
-func (c *Cache) Save(cache *UrlCache, save bool) {
+func (c *Cache) Save(cache *UrlCache, save bool) uint32 {
 	if save {
 		c.contents[cache.Url] = *cache
 	}
@@ -91,6 +101,7 @@ func (c *Cache) Save(cache *UrlCache, save bool) {
 
 	c.urlIds[cache.Url] = append(ids, id)
 	c.indexes = append(c.indexes, &UrlHistory{*cache, id, time.Now()})
+	return id
 }
 
 func (c *Cache) Take(url, rangeInfo string) *UrlCache {

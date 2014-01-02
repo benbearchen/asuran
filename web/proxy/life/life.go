@@ -211,14 +211,17 @@ func (f *Life) lookHistoryByID(id uint32) *cache.UrlHistory {
 type cSaveContentToCache struct {
 	cache *cache.UrlCache
 	save  bool
+	c     chan uint32
 }
 
-func (f *Life) SaveContentToCache(cache *cache.UrlCache, save bool) {
-	f.c <- cSaveContentToCache{cache, save}
+func (f *Life) SaveContentToCache(cache *cache.UrlCache, save bool) uint32 {
+	c := make(chan uint32)
+	f.c <- cSaveContentToCache{cache, save, c}
+	return <-c
 }
 
-func (f *Life) saveContentToCache(cache *cache.UrlCache, save bool) {
-	f.cache.Save(cache, save)
+func (f *Life) saveContentToCache(cache *cache.UrlCache, save bool) uint32 {
+	return f.cache.Save(cache, save)
 }
 
 type cLog struct {
@@ -284,7 +287,7 @@ func (f *Life) work() {
 		case cLookHistoryByID:
 			e.c <- f.lookHistoryByID(e.id)
 		case cSaveContentToCache:
-			f.saveContentToCache(e.cache, e.save)
+			e.c <- f.saveContentToCache(e.cache, e.save)
 		case cLog:
 			f.log(e.s)
 		case cFormatHistory:

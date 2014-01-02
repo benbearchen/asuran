@@ -194,12 +194,6 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	f := p.lives.Open(remoteIP)
 	var u *life.UrlState
 	if f != nil {
-		info := "proxy " + fullUrl
-		if len(rangeInfo) > 0 {
-			info += " " + rangeInfo
-		}
-
-		f.Log(info)
 		u = f.OpenUrl(fullUrl)
 	}
 
@@ -230,7 +224,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if needCache && r.Method == "GET" {
+	if needCache && r.Method == "GET" && f != nil {
 		c := f.CheckCache(fullUrl, rangeInfo)
 		if c != nil {
 			c.Response(w)
@@ -247,9 +241,12 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			http.Error(w, "Bad Gateway", 502)
 		} else {
-			c := cache.NewUrlCache(fullUrl, resp, content, rangeInfo)
+			c := cache.NewUrlCache(fullUrl, r, resp, content, rangeInfo)
 			c.Response(w)
-			go f.SaveContentToCache(c, needCache)
+
+			if f != nil {
+				go p.saveContentToCache(fullUrl, f, c, needCache)
+			}
 		}
 	}
 }
@@ -403,7 +400,7 @@ func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint
 			h.Detail(w)
 		}
 	} else {
-		fmt.Fprintf(w, "history %u not exist", id)
+		fmt.Fprintf(w, "history %d not exist", id)
 	}
 }
 
@@ -453,4 +450,15 @@ func (p *Proxy) postTest(w http.ResponseWriter, r *http.Request) {
 
 	form := `<form method="POST" action="/post"><input type="text" name="right_items" value="5 6"><input type="submit" value="post"></form></body></html>`
 	fmt.Fprintln(w, head+form)
+}
+
+func (p *Proxy) saveContentToCache(fullUrl string, f *life.Life, c *cache.UrlCache, needCache bool) {
+	id := f.SaveContentToCache(c, needCache)
+
+	info := "proxy " + fullUrl + " " + strconv.FormatUint(uint64(id), 32)
+	if len(c.RangeInfo) > 0 {
+		info += " " + c.RangeInfo
+	}
+
+	f.Log(info)
 }
