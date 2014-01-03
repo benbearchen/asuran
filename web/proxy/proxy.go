@@ -265,13 +265,13 @@ type proxyDomainOperator struct {
 	p *Proxy
 }
 
-func (p *proxyDomainOperator) Action(ip, domain string) profile.DomainAction {
+func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if domain == "i.me" {
 		p.p.LogDomain(ip, "init", domain)
-		return profile.DomainAction{domain, profile.DomainActRedirect, p.p.serveIP}
+		return profile.NewDomainAction(domain, profile.DomainActRedirect, p.p.serveIP)
 	} else if p.p.domainOp != nil {
 		a := p.p.domainOp.Action(ip, domain)
-		if a.Act == profile.DomainActRedirect && a.IP == "" {
+		if a != nil && a.Act == profile.DomainActRedirect && a.IP == "" {
 			a.IP = p.p.serveIP
 		}
 
@@ -279,7 +279,7 @@ func (p *proxyDomainOperator) Action(ip, domain string) profile.DomainAction {
 		return a
 	} else {
 		p.p.LogDomain(ip, "undef", domain)
-		return profile.DomainAction{}
+		return nil
 	}
 }
 
@@ -455,7 +455,7 @@ func (p *Proxy) postTest(w http.ResponseWriter, r *http.Request) {
 func (p *Proxy) saveContentToCache(fullUrl string, f *life.Life, c *cache.UrlCache, needCache bool) {
 	id := f.SaveContentToCache(c, needCache)
 
-	info := "proxy " + fullUrl + " " + strconv.FormatUint(uint64(id), 32)
+	info := "proxy " + fullUrl + " " + strconv.FormatUint(uint64(id), 10)
 	if len(c.RangeInfo) > 0 {
 		info += " " + c.RangeInfo
 	}

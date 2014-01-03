@@ -102,10 +102,9 @@ func MakeEmptyUrlProxyAction() UrlProxyAction {
 
 type urlAction struct {
 	UrlPattern string
+	pattern    *UrlPattern
 	Act        UrlProxyAction
 	Delay      DelayAction
-
-	pattern [3]string
 }
 
 type UrlOperator interface {
@@ -122,13 +121,18 @@ const (
 )
 
 type DomainAction struct {
-	Domain string
-	Act    DomainAct
-	IP     string
+	Domain  string
+	pattern *DomainPattern
+	Act     DomainAct
+	IP      string
 }
 
 type DomainOperator interface {
-	Action(ip, domain string) DomainAction
+	Action(ip, domain string) *DomainAction
+}
+
+func NewDomainAction(domain string, act DomainAct, ip string) *DomainAction {
+	return &DomainAction{domain, nil, act, ip}
 }
 
 func (a DomainAct) String() string {
@@ -200,7 +204,7 @@ func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) 
 	if ok {
 		u.Act = UrlProxyAction{act, responseCode}
 	} else {
-		u := &urlAction{urlPattern, UrlProxyAction{act, responseCode}, MakeEmptyDelay(), parseUrlAsPattern(urlPattern)}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, responseCode}, MakeEmptyDelay()}
 		p.Urls[urlPattern] = u
 	}
 
@@ -214,9 +218,9 @@ func (p *Profile) UrlAction(url string) UrlProxyAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	ps := parseUrlAsPattern(url)
+	us := parseUrlSection(url)
 	for _, u := range p.Urls {
-		if urlPatternMatch(&ps, &u.pattern) {
+		if u.pattern.Match(us) {
 			return u.Act
 		}
 	}
@@ -232,7 +236,7 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32
 	if ok {
 		u.Delay = MakeDelay(act, delay)
 	} else {
-		u := &urlAction{urlPattern, MakeEmptyUrlProxyAction(), MakeDelay(act, delay), parseUrlAsPattern(urlPattern)}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, delay)}
 		p.Urls[urlPattern] = u
 	}
 
@@ -246,9 +250,9 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	ps := parseUrlAsPattern(url)
+	us := parseUrlSection(url)
 	for _, u := range p.Urls {
-		if urlPatternMatch(&ps, &u.pattern) {
+		if u.pattern.Match(us) {
 			return u.Delay
 		}
 	}
@@ -265,20 +269,26 @@ func (p *Profile) SetDomainAction(domain string, act DomainAct, targetIP string)
 		d.Act = act
 		d.IP = targetIP
 	} else {
-		p.Domains[domain] = &DomainAction{domain, act, targetIP}
+		p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), act, targetIP}
 	}
 }
 
-func (p *Profile) Domain(domain string) DomainAction {
+func (p *Profile) Domain(domain string) *DomainAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
 	d, ok := p.Domains[domain]
 	if ok {
-		return *d
-	} else {
-		return DomainAction{}
+		return d
 	}
+
+	for _, d := range p.Domains {
+		if d.pattern != nil && d.pattern.Match(domain) {
+			return d
+		}
+	}
+
+	return nil
 }
 
 func (p *Profile) ProxyDomainIfNotExists(domain string) {
@@ -298,7 +308,7 @@ func (p *Profile) proxyDomainIfNotExists(domain string) {
 		return
 	}
 
-	p.Domains[domain] = &DomainAction{domain, DomainActRedirect, ""}
+	p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), DomainActRedirect, ""}
 }
 
 func (p *Profile) DeleteDomain(domain string) {
@@ -331,91 +341,6 @@ func (p *Profile) CloneNew(newName, newIp string) *Profile {
 	}
 
 	return n
-}
-
-func parseUrlAsPattern(url string) [3]string {
-	if strings.HasPrefix(url, "http://") {
-		url = url[len("http://"):]
-	}
-
-	s := strings.Index(url, "/")
-	q := strings.Index(url, "?")
-	if s >= 0 && q > s {
-		return [3]string{url[0:s], url[s:q], url[q:]}
-	} else if s >= 0 {
-		return [3]string{url[0:s], url[s:], ""}
-	} else {
-		return [3]string{url, "", ""}
-	}
-}
-
-func matchDomain(domain, pattern string) bool {
-	if pattern == "" || domain == pattern {
-		return true
-	}
-
-	// TODO: more pattern
-	return false
-}
-
-func matchPath(path, pattern string) bool {
-	if strings.HasPrefix(path, pattern) {
-		return true
-	}
-
-	// TODO: more pattern
-	return false
-}
-
-func parseQuery(query string) map[string]string {
-	m := make(map[string]string)
-	if len(query) > 0 {
-		query = query[1:]
-	}
-
-	kv := strings.Split(query, "&")
-	for _, s := range kv {
-		if len(s) == 0 {
-			continue
-		}
-
-		e := strings.Index(s, "=")
-		if e == 0 {
-			continue
-		} else if e < 0 {
-			m[s] = ""
-		} else {
-			m[s[:e]] = s[e+1:]
-		}
-	}
-
-	return m
-}
-
-func matchQuery(query, pattern string) bool {
-	if pattern == "" {
-		return true
-	}
-
-	q := parseQuery(query)
-	p := parseQuery(pattern)
-
-	for k, v := range p {
-		value, ok := q[k]
-		if !ok || v != value {
-			return false
-		}
-	}
-
-	return true
-}
-
-func urlPatternMatch(url, pattern *[3]string) bool {
-	if matchDomain(url[0], pattern[0]) && matchPath(url[1], pattern[1]) && matchQuery(url[2], pattern[2]) {
-		return true
-	}
-
-	return false
 }
 
 func getHostOfUrlPattern(urlPattern string) string {

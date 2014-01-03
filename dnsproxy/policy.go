@@ -25,6 +25,10 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	}
 
 	a := p.op.Action(clientIP, pureDomain)
+	if a == nil {
+		return passDomain(domain)
+	}
+
 	//fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
 	switch a.Act {
 	case profile.DomainActNone:

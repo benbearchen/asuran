@@ -70,12 +70,12 @@ type domainOperator struct {
 	p *IpProfiles
 }
 
-func (d *domainOperator) Action(ip, domain string) DomainAction {
+func (d *domainOperator) Action(ip, domain string) *DomainAction {
 	profile := d.p.FindByIp(ip)
 	if profile != nil {
 		return profile.Domain(domain)
 	} else {
-		return DomainAction{}
+		return nil
 	}
 }
 
