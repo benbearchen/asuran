@@ -67,7 +67,7 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 
 	t += "}}}\n"
 
-	fmt.Fprintf(w, t)
+	fmt.Fprintln(w, t)
 }
 
 type Cache struct {
