@@ -8,6 +8,7 @@ Key Features:
   ** Post
   ** Range
   ** Other Headers
+  ** ResponseCode 304
 * Profile
   ** Save and Upload
   ** Policy Pack
@@ -18,6 +19,9 @@ Key Features:
      ** Random time generator
 * Proxy
   ** Host non 80 port
+* Match Pattern
+  * Domain support wildcard character *, like *.domain.com, etc
+  * URL match by domain(support wildcard), path(will support wildcard), query(matching all pattern's key=value, also key or value can support wildcard)
 * Manual
 
 Implements:
