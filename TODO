@@ -4,6 +4,7 @@ Key Features:
 * History
   ** Intime refresh
   ** Convert url as profile command
+  ** Save and look each request/response's content and details
 * HTTP
   ** Post
   ** Range
@@ -20,8 +21,11 @@ Key Features:
 * Proxy
   ** Host non 80 port
 * Match Pattern
-  * Domain support wildcard character *, like *.domain.com, etc
-  * URL match by domain(support wildcard), path(will support wildcard), query(matching all pattern's key=value, also key or value can support wildcard)
+  ** Domain support wildcard character *, like *.domain.com, etc
+  ** URL match by 
+     ** domain, support wildcard
+     ** path, will support wildcard
+     ** query, matching all pattern's key=value, also key or value will support wildcard
 * Manual
 
 Implements:
