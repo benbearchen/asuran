@@ -273,6 +273,16 @@ func (p *Profile) SetDomainAction(domain string, act DomainAct, targetIP string)
 	}
 }
 
+func (p *Profile) SetAllDomainAction(act DomainAct, targetIP string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, d := range p.Domains {
+		d.Act = act
+		d.IP = targetIP
+	}
+}
+
 func (p *Profile) Domain(domain string) *DomainAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -316,6 +326,15 @@ func (p *Profile) DeleteDomain(domain string) {
 	defer p.lock.Unlock()
 
 	delete(p.Domains, domain)
+}
+
+func (p *Profile) DeleteAllDomain() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for d, _ := range p.Domains {
+		delete(p.Domains, d)
+	}
 }
 
 func (p *Profile) Delete(urlPattern string) {

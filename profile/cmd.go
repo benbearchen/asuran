@@ -66,7 +66,8 @@ domain mode:
     redirect  把域名重定向到制定 IP。
               如果 IP 为空则重定向到代理服务器。
 
-domain-name:  域名，比如 g.cn
+domain-name:  域名，比如 g.cn。
+              特殊地，all 可以操作所有已经配置的域名。
 
 ip:           IP 地址，比如 192.168.1.3。
 
@@ -333,12 +334,22 @@ func commandDomainMode(p *Profile, mode, content string) {
 		act = DomainActRedirect
 	}
 
-	p.SetDomainAction(c, DomainAct(act), ip)
+	if c == "all" {
+		p.SetAllDomainAction(DomainAct(act), ip)
+	} else {
+		p.SetDomainAction(c, DomainAct(act), ip)
+	}
 }
 
 func commandDomainDelete(p *Profile, content string) {
 	c, rest := cmd.TakeFirstArg(content)
-	if c != "" && rest == "" {
+	if c == "" || rest != "" {
+		return
+	}
+
+	if c == "all" {
+		p.DeleteAllDomain()
+	} else {
 		p.DeleteDomain(c)
 	}
 }
