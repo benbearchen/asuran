@@ -149,6 +149,11 @@ func (p *Profile) CommandProxy(content string) {
 }
 
 func (p *Profile) CommandDelete(content string) {
+	if content == "all" {
+		p.DeleteAllUrl()
+		return
+	}
+
 	pattern := restToPattern(content)
 	if len(pattern) > 0 {
 		p.Delete(pattern)
@@ -204,7 +209,11 @@ func commandDelayMode(p *Profile, mode, args string) {
 			act = DelayActNone
 		}
 
-		p.SetUrlDelay(pattern, act, duration)
+		if pattern == "all/" {
+			p.SetAllUrlDelay(act, duration)
+		} else {
+			p.SetUrlDelay(pattern, act, duration)
+		}
 	}
 }
 
@@ -259,7 +268,9 @@ func commandProxyMode(p *Profile, mode, args string) {
 	}
 
 	pattern := restToPattern(args)
-	if len(pattern) > 0 {
+	if pattern == "all/" {
+		p.SetAllUrlAction(act, dropResponseCode)
+	} else if len(pattern) > 0 {
 		p.SetUrlAction(pattern, act, dropResponseCode)
 	}
 }

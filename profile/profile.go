@@ -214,6 +214,16 @@ func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) 
 	}
 }
 
+func (p *Profile) SetAllUrlAction(act UrlAct, responseCode int) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	a := UrlProxyAction{act, responseCode}
+	for _, u := range p.Urls {
+		u.Act = a
+	}
+}
+
 func (p *Profile) UrlAction(url string) UrlProxyAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -246,6 +256,16 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32
 	}
 }
 
+func (p *Profile) SetAllUrlDelay(act DelayActType, delay float32) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	d := MakeDelay(act, delay)
+	for _, u := range p.Urls {
+		u.Delay = d
+	}
+}
+
 func (p *Profile) UrlDelay(url string) DelayAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -258,6 +278,15 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 	}
 
 	return MakeEmptyDelay()
+}
+
+func (p *Profile) DeleteAllUrl() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for u, _ := range p.Urls {
+		delete(p.Urls, u)
+	}
 }
 
 func (p *Profile) SetDomainAction(domain string, act DomainAct, targetIP string) {
@@ -360,6 +389,11 @@ func (p *Profile) CloneNew(newName, newIp string) *Profile {
 	}
 
 	return n
+}
+
+func (p *Profile) Clear() {
+	p.DeleteAllUrl()
+	p.DeleteAllDomain()
 }
 
 func getHostOfUrlPattern(urlPattern string) string {
