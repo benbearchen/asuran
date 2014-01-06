@@ -178,7 +178,7 @@ function domainCmd(act, opt) {
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
 <table border="1">
 <tr>
-<td rowspan="3">proxy</td><td colspan="2"><button type="button" onclick="proxyCmd('default');">[default]</button>: 使用代理</td><td rowspan="6">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>TODO: 支持非 80 端口</td>
+<td rowspan="3">proxy</td><td colspan="2"><button type="button" onclick="proxyCmd('default');">[default]</button>: 使用代理</td><td rowspan="6">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>特殊地，all 可以操作所有已配置 URL<br/>TODO: 支持非 80 端口</td>
 </tr>
 <tr>
 <td colspan="2"><button type="button" onclick="proxyCmd('cache');">cache</button>: 代理并缓存</td>
