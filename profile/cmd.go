@@ -187,6 +187,10 @@ func restToPattern(content string) string {
 		return ""
 	}
 
+	if url == "all" {
+		return url
+	}
+
 	if strings.HasPrefix(url, "http://") {
 		url = url[len("http://"):]
 	}
@@ -214,7 +218,7 @@ func commandDelayMode(p *Profile, mode, args string) {
 			act = DelayActNone
 		}
 
-		if pattern == "all/" {
+		if pattern == "all" {
 			p.SetAllUrlDelay(act, duration)
 		} else {
 			p.SetUrlDelay(pattern, act, duration)
@@ -273,7 +277,7 @@ func commandProxyMode(p *Profile, mode, args string) {
 	}
 
 	pattern := restToPattern(args)
-	if pattern == "all/" {
+	if pattern == "all" {
 		p.SetAllUrlAction(act, dropResponseCode)
 	} else if len(pattern) > 0 {
 		p.SetUrlAction(pattern, act, dropResponseCode)
