@@ -11,8 +11,12 @@ import (
 )
 
 type UrlCache struct {
+	Time           time.Time
+	Duration       time.Duration
 	Url            string
+	Method         string
 	RequestHeader  http.Header
+	PostBody       []byte
 	Bytes          []byte
 	ResponseHeader http.Header
 	ResponseCode   int
@@ -22,12 +26,11 @@ type UrlCache struct {
 type UrlHistory struct {
 	UrlCache
 
-	ID   uint32
-	Time time.Time
+	ID uint32
 }
 
-func NewUrlCache(url string, r *http.Request, resp *net.HttpResponse, content []byte, rangeInfo string) *UrlCache {
-	return &UrlCache{url, r.Header, content, resp.Header(), resp.ResponseCode(), rangeInfo}
+func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpResponse, content []byte, rangeInfo string, start, end time.Time) *UrlCache {
+	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, content, resp.Header(), resp.ResponseCode(), rangeInfo}
 }
 
 func (c *UrlCache) Response(w http.ResponseWriter) {
@@ -41,7 +44,11 @@ func (c *UrlCache) Response(w http.ResponseWriter) {
 }
 
 func (c *UrlCache) Detail(w http.ResponseWriter) {
-	t := "URL: " + c.Url + "\n\n"
+	t := "StartTime: " + c.Time.Format("2006-01-02 15:04:05") + "\n"
+	t += "Duration: " + c.Duration.String() + "\n\n"
+
+	t += "URL: " + c.Url + "\n\n"
+	t += "Method: " + c.Method + "\n"
 	if len(c.RangeInfo) > 0 {
 		t += "Request Range: " + c.RangeInfo + "\n"
 	}
@@ -53,7 +60,26 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 		}
 	}
 
-	t += "}}}\n\n"
+	t += "}}}\n"
+
+	if c.Method == "POST" && c.PostBody != nil {
+		known := false
+		if h, ok := c.RequestHeader["Content-Type"]; ok {
+			for _, contentType := range h {
+				if contentType == "application/x-www-form-urlencoded" {
+					t += "POST DATA: " + string(c.PostBody) + "\n"
+					known = true
+					break
+				}
+			}
+		}
+
+		if !known {
+			t += "POST DATA len: " + strconv.Itoa(len(c.PostBody)) + "\n"
+		}
+	}
+
+	t += "\n"
 
 	t += "ResponseCode: " + strconv.Itoa(c.ResponseCode) + "\n"
 	t += "Content-Length: " + strconv.Itoa(len(c.Bytes)) + "\n"
@@ -100,7 +126,7 @@ func (c *Cache) Save(cache *UrlCache, save bool) uint32 {
 	}
 
 	c.urlIds[cache.Url] = append(ids, id)
-	c.indexes = append(c.indexes, &UrlHistory{*cache, id, time.Now()})
+	c.indexes = append(c.indexes, &UrlHistory{*cache, id})
 	return id
 }
 

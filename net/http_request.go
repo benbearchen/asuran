@@ -21,13 +21,15 @@ func NewHttpGet(url string) (*HttpResponse, error) {
 	return &HttpResponse{resp}, nil
 }
 
-func NewHttp(url string, r *http.Request) (*HttpResponse, error) {
+func NewHttp(url string, r *http.Request) (*HttpResponse, []byte, error) {
 	client := &http.Client{}
 
+	var postBody []byte
 	var body io.Reader = nil
 	if r.Method == "POST" {
 		b, err := ioutil.ReadAll(r.Body)
 		if err == nil {
+			postBody = b
 			body = bytes.NewReader(b)
 		}
 	}
@@ -37,10 +39,10 @@ func NewHttp(url string, r *http.Request) (*HttpResponse, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, postBody, err
 	}
 
-	return &HttpResponse{resp}, nil
+	return &HttpResponse{resp}, postBody, nil
 }
 
 func (r *HttpResponse) Close() {

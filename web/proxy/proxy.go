@@ -232,16 +232,18 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	resp, err := net.NewHttp(fullUrl, r)
+	httpStart := time.Now()
+	resp, postBody, err := net.NewHttp(fullUrl, r)
 	if err != nil {
 		http.Error(w, "Bad Gateway", 502)
 	} else {
 		defer resp.Close()
 		content, err := resp.ReadAllBytes()
+		httpEnd := time.Now()
 		if err != nil {
 			http.Error(w, "Bad Gateway", 502)
 		} else {
-			c := cache.NewUrlCache(fullUrl, r, resp, content, rangeInfo)
+			c := cache.NewUrlCache(fullUrl, r, postBody, resp, content, rangeInfo, httpStart, httpEnd)
 			c.Response(w)
 
 			if f != nil {
