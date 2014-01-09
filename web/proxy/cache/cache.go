@@ -21,6 +21,7 @@ type UrlCache struct {
 	ResponseHeader http.Header
 	ResponseCode   int
 	RangeInfo      string
+	Error          error
 }
 
 type UrlHistory struct {
@@ -29,8 +30,8 @@ type UrlHistory struct {
 	ID uint32
 }
 
-func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpResponse, content []byte, rangeInfo string, start, end time.Time) *UrlCache {
-	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, content, resp.Header(), resp.ResponseCode(), rangeInfo}
+func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpResponse, content []byte, rangeInfo string, start, end time.Time, err error) *UrlCache {
+	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, content, resp.Header(), resp.ResponseCode(), rangeInfo, err}
 }
 
 func (c *UrlCache) Response(w http.ResponseWriter) {
@@ -82,7 +83,10 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 	t += "\n"
 
 	t += "ResponseCode: " + strconv.Itoa(c.ResponseCode) + "\n"
-	t += "Content-Length: " + strconv.Itoa(len(c.Bytes)) + "\n"
+	t += "received bytes: " + strconv.Itoa(len(c.Bytes)) + "\n"
+	if c.Error != nil {
+		t += "err: " + fmt.Sprintf("%v", c.Error) + "\n"
+	}
 
 	t += "\nResponseHeaders: {{{\n"
 	for k, v := range c.ResponseHeader {

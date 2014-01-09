@@ -75,3 +75,16 @@ func (r *HttpResponse) Header() http.Header {
 func (r *HttpResponse) ResponseCode() int {
 	return r.resp.StatusCode
 }
+
+func (r *HttpResponse) ProxyReturn(w http.ResponseWriter) ([]byte, error) {
+	h := w.Header()
+	for k, v := range r.Header() {
+		h[k] = v
+	}
+
+	w.WriteHeader(r.ResponseCode())
+
+	var b bytes.Buffer
+	_, err := io.Copy(io.MultiWriter(&b, w), r.resp.Body)
+	return b.Bytes(), err
+}

@@ -226,7 +226,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 
 	if needCache && r.Method == "GET" && f != nil {
 		c := f.CheckCache(fullUrl, rangeInfo)
-		if c != nil {
+		if c != nil && c.Error == nil {
 			c.Response(w)
 			return
 		}
@@ -238,17 +238,12 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Bad Gateway", 502)
 	} else {
 		defer resp.Close()
-		content, err := resp.ReadAllBytes()
+		content, err := resp.ProxyReturn(w)
 		httpEnd := time.Now()
-		if err != nil {
-			http.Error(w, "Bad Gateway", 502)
-		} else {
-			c := cache.NewUrlCache(fullUrl, r, postBody, resp, content, rangeInfo, httpStart, httpEnd)
-			c.Response(w)
+		c := cache.NewUrlCache(fullUrl, r, postBody, resp, content, rangeInfo, httpStart, httpEnd, err)
 
-			if f != nil {
-				go p.saveContentToCache(fullUrl, f, c, needCache)
-			}
+		if f != nil {
+			go p.saveContentToCache(fullUrl, f, c, needCache)
 		}
 	}
 }
