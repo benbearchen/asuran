@@ -64,7 +64,7 @@ func (h *Http) Run() {
 func RemoteHost(addr string) string {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
-		return ""
+		return addr
 	} else {
 		return host
 	}
