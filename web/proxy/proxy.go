@@ -25,6 +25,7 @@ type Proxy struct {
 	profileOp  profile.ProfileOperator
 	domainOp   profile.DomainOperator
 	serveIP    string
+	mainHost   string
 }
 
 func NewProxy() *Proxy {
@@ -40,7 +41,14 @@ func NewProxy() *Proxy {
 		for _, ip := range ips {
 			p.serveIP = ip
 			fmt.Println("proxy on ip: " + ip)
-			fmt.Println("visit http://" + ip + "/ for more information")
+			for port, _ := range p.webServers {
+				p.mainHost = ip
+				if port != 80 {
+					p.mainHost += ":" + strconv.Itoa(port)
+				}
+
+				fmt.Println("visit http://" + p.mainHost + "/ for more information")
+			}
 		}
 	}
 
@@ -105,7 +113,7 @@ func (p *Proxy) testUrl(
 func (p *Proxy) OnRequest(
 	w http.ResponseWriter,
 	r *http.Request) {
-	targetHost := r.Host
+	targetHost := httpd.RemoteHost(r.Host)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	urlPath := r.URL.Path
 	if targetHost == "i.me" {
@@ -164,13 +172,13 @@ func (p *Proxy) OnRequest(
 		}
 
 		fmt.Fprintln(w, "")
-		fmt.Fprintln(w, "visit http://localhost/about to get info")
-		fmt.Fprintln(w, "visit http://localhost/test/localhost/about to test the proxy of http://localhost/about")
-		fmt.Fprintln(w, "visit http://localhost/to/localhost/about to purely proxy of http://localhost/about")
+		fmt.Fprintln(w, "visit http://"+p.mainHost+"/about to get info")
+		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy of http://"+p.mainHost+"/about")
+		fmt.Fprintln(w, "visit http://"+p.mainHost+"/to/"+p.mainHost+"/about to purely proxy of http://"+p.mainHost+"/about")
 		fmt.Fprintln(w, "")
-		fmt.Fprintln(w, "visit http://localhost/test/localhost/test/localhost/about to test the proxy")
-	} else if r.Host == "localhost" || r.Host == "127.0.0.1" {
-		fmt.Fprintln(w, "visit http://localhost/about to get info")
+		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy")
+	} else if targetHost == "localhost" || targetHost == "127.0.0.1" {
+		fmt.Fprintln(w, "visit http://"+r.Host+"/about to get info")
 	} else if remoteIP == r.Host {
 		// 代理本机访问……
 		http.Error(w, "Not Found", 404)

@@ -15,7 +15,8 @@ import (
 )
 
 type htmlUsage struct {
-	IP string
+	IP   string
+	Host string
 }
 
 func (p *Proxy) WriteUsage(w io.Writer) {
@@ -23,6 +24,7 @@ func (p *Proxy) WriteUsage(w io.Writer) {
 
 	u := htmlUsage{}
 	u.IP = p.serveIP
+	u.Host = p.mainHost
 
 	err = t.Execute(w, u)
 	if err != nil {
@@ -49,13 +51,14 @@ func (p *Proxy) WriteInitDevice(w io.Writer, ip string) {
 }
 
 type indexData struct {
-	Version string
-	ServeIP string
+	Version   string
+	ServeIP   string
+	ProxyHost string
 }
 
 func (p *Proxy) index(w http.ResponseWriter) {
 	t, err := template.ParseFiles("template/index.tmpl")
-	err = t.Execute(w, indexData{"0.1", p.serveIP})
+	err = t.Execute(w, indexData{"0.1", p.serveIP, p.mainHost})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
