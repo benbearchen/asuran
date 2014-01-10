@@ -5,6 +5,7 @@ import (
 
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -64,20 +65,7 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 	t += "}}}\n"
 
 	if c.Method == "POST" && c.PostBody != nil {
-		known := false
-		if h, ok := c.RequestHeader["Content-Type"]; ok {
-			for _, contentType := range h {
-				if contentType == "application/x-www-form-urlencoded" {
-					t += "POST DATA: " + string(c.PostBody) + "\n"
-					known = true
-					break
-				}
-			}
-		}
-
-		if !known {
-			t += "POST DATA len: " + strconv.Itoa(len(c.PostBody)) + "\n"
-		}
+		t += "POST DATA: " + text(c.PostBody) + "\n"
 	}
 
 	t += "\n"
@@ -98,6 +86,24 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 	t += "}}}\n"
 
 	fmt.Fprintln(w, t)
+}
+
+func isASCII(t []byte) bool {
+	for _, b := range t {
+		if b >= 127 {
+			return false
+		}
+	}
+
+	return true
+}
+
+func text(t []byte) string {
+	if isASCII(t) {
+		return string(t)
+	} else {
+		return url.QueryEscape(string(t))
+	}
 }
 
 type Cache struct {
