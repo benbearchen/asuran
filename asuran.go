@@ -85,6 +85,7 @@ func main() {
 
 	p := proxy.NewProxy()
 	ipProfiles := profile.NewIpProfiles()
+	ipProfiles.BindProxyHostOperator(p.NewProxyHostOperator())
 	p.BindUrlOperator(ipProfiles.OperatorUrl())
 	p.BindProfileOperator(ipProfiles.OperatorProfile())
 	p.BindDomainOperator(ipProfiles.OperatorDomain())

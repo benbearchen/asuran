@@ -6,6 +6,7 @@ import (
 
 type IpProfiles struct {
 	profiles map[string]*Profile
+	proxyOp  ProxyHostOperator
 
 	lock sync.RWMutex
 }
@@ -24,6 +25,13 @@ func NewIpProfiles() *IpProfiles {
 	return p
 }
 
+func (p *IpProfiles) BindProxyHostOperator(op ProxyHostOperator) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.proxyOp = op
+}
+
 func (p *IpProfiles) CreateProfile(name, ip, owner string) *Profile {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -35,6 +43,7 @@ func (p *IpProfiles) CreateProfile(name, ip, owner string) *Profile {
 	}
 
 	profile = NewProfile(name, ip, owner)
+	profile.proxyOp = p.proxyOp
 	p.profiles[ip] = profile
 	return profile
 }

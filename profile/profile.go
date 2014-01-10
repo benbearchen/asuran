@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -158,22 +159,8 @@ func (d *DomainAction) TargetString() string {
 	}
 }
 
-type HashFileAct int
-
-const (
-	HashFileActNone = iota
-	HashFileActBlock
-	HashFileActSimulate
-)
-
-type HashFileAction struct {
-	Hash    string
-	Act     HashFileAct
-	Quality int
-}
-
-type HashFileOperator interface {
-	Action(hash string) HashFileAct
+type ProxyHostOperator interface {
+	New(port int)
 }
 
 type Profile struct {
@@ -182,6 +169,8 @@ type Profile struct {
 	Owner   string
 	Urls    map[string]*urlAction
 	Domains map[string]*DomainAction
+
+	proxyOp ProxyHostOperator
 
 	lock sync.RWMutex
 }
@@ -206,6 +195,11 @@ func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) 
 	} else {
 		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, responseCode}, MakeEmptyDelay()}
 		p.Urls[urlPattern] = u
+		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
+			if port, err := strconv.Atoi(u.pattern.port); err == nil {
+				p.proxyOp.New(port)
+			}
+		}
 	}
 
 	host := getHostOfUrlPattern(urlPattern)
@@ -248,6 +242,11 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32
 	} else {
 		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, delay)}
 		p.Urls[urlPattern] = u
+		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
+			if port, err := strconv.Atoi(u.pattern.port); err == nil {
+				p.proxyOp.New(port)
+			}
+		}
 	}
 
 	host := getHostOfUrlPattern(urlPattern)
@@ -378,6 +377,7 @@ func (p *Profile) CloneNew(newName, newIp string) *Profile {
 	defer p.lock.RUnlock()
 
 	n := NewProfile(newName, newIp, p.Owner)
+	n.proxyOp = p.proxyOp
 	for u, url := range p.Urls {
 		c := *url
 		n.Urls[u] = &c
@@ -402,11 +402,11 @@ func getHostOfUrlPattern(urlPattern string) string {
 		return ""
 	}
 
-	head := urlPattern[0:p]
-	p = strings.LastIndex(head, ":")
-	if p < 0 {
-		return head
+	server := urlPattern[0:p]
+	host, _, err := net.SplitHostPort(server)
+	if err != nil {
+		return server
 	} else {
-		return head[0:p]
+		return host
 	}
 }

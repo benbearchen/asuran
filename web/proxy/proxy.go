@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,8 @@ type Proxy struct {
 	domainOp   profile.DomainOperator
 	serveIP    string
 	mainHost   string
+
+	lock sync.RWMutex
 }
 
 func NewProxy() *Proxy {
@@ -56,12 +59,29 @@ func NewProxy() *Proxy {
 }
 
 func (p *Proxy) Bind(port int) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
 	h := &httpd.Http{}
 	p.webServers[port] = h
 	serverAddress := fmt.Sprintf(":%d", port)
 	h.Init(serverAddress)
 	h.RegisterHandler(p)
 	go h.Run()
+}
+
+func (p *Proxy) TryBind(port int) {
+	exists := false
+	func() {
+		p.lock.RLock()
+		defer p.lock.RUnlock()
+
+		_, exists = p.webServers[port]
+	}()
+
+	if !exists {
+		p.Bind(port)
+	}
 }
 
 func (p *Proxy) BindUrlOperator(op profile.UrlOperator) {
@@ -468,4 +488,16 @@ func (p *Proxy) saveContentToCache(fullUrl string, f *life.Life, c *cache.UrlCac
 	}
 
 	f.Log(info)
+}
+
+type proxyHostOperator struct {
+	p *Proxy
+}
+
+func (p *proxyHostOperator) New(port int) {
+	p.p.TryBind(port)
+}
+
+func (p *Proxy) NewProxyHostOperator() profile.ProxyHostOperator {
+	return &proxyHostOperator{p}
 }

@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"net"
 	"regexp"
 	"strings"
 )
@@ -84,12 +85,14 @@ func (d *DomainPattern) Match(domain string) bool {
 type UrlPattern struct {
 	pattern string
 	domain  *DomainPattern
+	port    string
 	path    string
 	query   map[string]string
 }
 
 type UrlSection struct {
 	domain string
+	port   string
 	path   string
 	query  map[string]string
 }
@@ -103,8 +106,9 @@ func NewUrlPattern(pattern string) *UrlPattern {
 		u.domain = NewDomainPattern(s[0])
 	}
 
-	u.path = s[1]
-	u.query = parseQuery(s[2])
+	u.port = s[1]
+	u.path = s[2]
+	u.query = parseQuery(s[3])
 	return u
 }
 
@@ -113,31 +117,50 @@ func parseUrlSection(url string) *UrlSection {
 
 	u := new(UrlSection)
 	u.domain = s[0]
-	u.path = s[1]
-	u.query = parseQuery(s[2])
+	u.port = s[1]
+	u.path = s[2]
+	u.query = parseQuery(s[3])
 	return u
 }
 
 func (p *UrlPattern) Match(url *UrlSection) bool {
 	domainMatch := p.domain == nil || p.domain.Match(url.domain)
+	portMatch := p.port == url.port
 	pathMatch := matchPath(p.path, url.path)
 	queryMatch := matchQuery(p.query, url.query)
-	return domainMatch && pathMatch && queryMatch
+	return domainMatch && portMatch && pathMatch && queryMatch
 }
 
-func parseUrlAsPattern(url string) [3]string {
+func parseUrlAsPattern(url string) [4]string {
 	if strings.HasPrefix(url, "http://") {
 		url = url[len("http://"):]
 	}
 
+	head := ""
 	s := strings.Index(url, "/")
+	if s >= 0 {
+		head = url[0:s]
+	} else {
+		head = url
+	}
+
+	host, port, err := net.SplitHostPort(head)
+	if err != nil {
+		host = head
+		port = ""
+	} else {
+		if port == "80" {
+			port = ""
+		}
+	}
+
 	q := strings.Index(url, "?")
 	if s >= 0 && q > s {
-		return [3]string{url[0:s], url[s:q], url[q:]}
+		return [4]string{host, port, url[s:q], url[q:]}
 	} else if s >= 0 {
-		return [3]string{url[0:s], url[s:], ""}
+		return [4]string{host, port, url[s:], ""}
 	} else {
-		return [3]string{url, "", ""}
+		return [4]string{host, port, "/", ""}
 	}
 }
 
