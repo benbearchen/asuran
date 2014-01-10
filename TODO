@@ -18,6 +18,8 @@ Key Features:
      ** Replace url with static CONTENT
      ** Timeout url
      ** Random time generator
+  ** Super Global Profile
+     ** Pure DNS Server
 * Proxy
   ** Host non 80 port
 * Match Pattern
