@@ -47,12 +47,16 @@ func domainPattern2Regex(pattern string) string {
 		if len(p) == 0 {
 			// ".." ? just pass
 		} else if p == "*" {
-			rep := "+"
-			if len(r) == 0 {
-				rep = "*"
-			}
+			if i+1 == len(dots) {
+				r += "[^.]+"
+			} else {
+				rep := "+"
+				if len(r) == 0 {
+					rep = "*"
+				}
 
-			r += "([^.]+\\.)" + rep
+				r += "([^.]+\\.)" + rep
+			}
 		} else if strings.Index(p, "*") >= 0 {
 			suffix := "\\."
 			if i+1 == len(dots) {

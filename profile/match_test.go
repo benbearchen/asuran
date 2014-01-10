@@ -17,6 +17,7 @@ func TestDomainPatternRegex(t *testing.T) {
 	//f("*")
 	f("domain.com", "^domain\\.com$")
 	f("domain.com.", "^domain\\.com$")
+	f("domain.*", "^domain\\.[^.]+$")
 	f("*.domain.com", "^([^.]+\\.)*domain\\.com$")
 	f("cdn.*.domain.com", "^cdn\\.([^.]+\\.)+domain\\.com$")
 	f("cdn.*.*.domain.com", "^cdn\\.([^.]+\\.)+([^.]+\\.)+domain\\.com$")
@@ -43,6 +44,10 @@ func TestDomainPattern(t *testing.T) {
 	f("domain.com", "omaincom", false)
 	f("domain.com", "x-domain.com", false)
 	f("domain.com", "x.domain.com", false)
+
+	f("domain.*", "domain.com", true)
+	f("domain.*", "domain.net", true)
+	f("domain.*", "domain.net.com", false)
 
 	f("*.domain.com", "domain.com", true)
 	f("*.domain.com", "a.domain.com", true)
