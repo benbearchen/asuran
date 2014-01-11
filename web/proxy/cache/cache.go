@@ -32,7 +32,14 @@ type UrlHistory struct {
 }
 
 func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpResponse, content []byte, rangeInfo string, start, end time.Time, err error) *UrlCache {
-	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, content, resp.Header(), resp.ResponseCode(), rangeInfo, err}
+	var respHeader http.Header
+	respResponseCode := -1
+	if resp != nil {
+		respHeader = resp.Header()
+		respResponseCode = resp.ResponseCode()
+	}
+
+	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, content, respHeader, respResponseCode, rangeInfo, err}
 }
 
 func (c *UrlCache) Response(w http.ResponseWriter) {

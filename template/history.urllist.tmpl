@@ -40,11 +40,19 @@ URL: {{.Url}}
 <tr>
 <th>时间</th>
 <th>ID</th>
+<th>方法</th>
+<th>返回代码</th>
+<th>数据大小</th>
+<th>详情</th>
 </tr>
 {{range .Histories}}
 <tr{{if .Even}} class="alt"{{end}}>
 <td>{{.Time}}</td>
-<td><a href="/profile/{{.Client}}/look/{{.ID}}" target="_blank">{{.ID}}</a>, <a href="/profile/{{.Client}}/detail/{{.ID}}" target="_blank">HTTP 详情</a></td>
+<td><a href="/profile/{{.Client}}/look/{{.ID}}" target="_blank">{{.ID}}</a></td>
+<td>{{.Method}}</td>
+<td>{{.ResponseCode}}</td>
+<td>{{.RecvBytes}}</td>
+<td><a href="/profile/{{.Client}}/detail/{{.ID}}" target="_blank">HTTP 详情</a></td>
 </tr>
 {{end}}
 </table>

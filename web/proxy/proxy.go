@@ -136,6 +136,7 @@ func (p *Proxy) OnRequest(
 	targetHost := httpd.RemoteHost(r.Host)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	urlPath := r.URL.Path
+	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
 	if targetHost == "i.me" {
 		p.initDevice(w, remoteIP)
 	} else if targetHost != "localhost" && targetHost != "127.0.0.1" && targetHost != p.serveIP {
@@ -263,13 +264,17 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	httpStart := time.Now()
 	resp, postBody, err := net.NewHttp(fullUrl, r)
 	if err != nil {
+		c := cache.NewUrlCache(fullUrl, r, nil, nil, nil, rangeInfo, httpStart, time.Now(), err)
+		if f != nil {
+			go p.saveContentToCache(fullUrl, f, c, false)
+		}
+
 		http.Error(w, "Bad Gateway", 502)
 	} else {
 		defer resp.Close()
 		content, err := resp.ProxyReturn(w)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, content, rangeInfo, httpStart, httpEnd, err)
-
 		if f != nil {
 			go p.saveContentToCache(fullUrl, f, c, needCache)
 		}

@@ -83,10 +83,13 @@ func (p *Proxy) res(w http.ResponseWriter, r *http.Request, path string) {
 }
 
 type urlHistoryData struct {
-	Even   bool
-	ID     string
-	Time   string
-	Client string
+	Even         bool
+	ID           string
+	Time         string
+	Client       string
+	Method       string
+	ResponseCode string
+	RecvBytes    string
 }
 
 type urlHistoryListData struct {
@@ -100,7 +103,18 @@ func formatUrlHistoryDataList(histories []*cache.UrlHistory, client string) []ur
 	even := true
 	for _, h := range histories {
 		even = !even
-		d = append(d, urlHistoryData{even, strconv.FormatUint(uint64(h.ID), 10), h.Time.Format("2006-01-02 15:04:05"), client})
+
+		responseCode := ""
+		if h.ResponseCode >= 0 {
+			responseCode = strconv.Itoa(h.ResponseCode)
+		}
+
+		recvBytes := "出错"
+		if h.Bytes != nil {
+			recvBytes = strconv.Itoa(len(h.Bytes))
+		}
+
+		d = append(d, urlHistoryData{even, strconv.FormatUint(uint64(h.ID), 10), h.Time.Format("2006-01-02 15:04:05"), client, h.Method, responseCode, recvBytes})
 	}
 
 	return d
@@ -127,6 +141,7 @@ type historyEventData struct {
 	URL         string
 	URLID       string
 	URLBody     string
+	HttpStatus  string
 	EventString string
 	OPs         []jsopData
 	Client      string
@@ -137,7 +152,7 @@ type historyData struct {
 	Events []historyEventData
 }
 
-func formatHistoryEventDataList(events []*life.HistoryEvent, client string) []historyEventData {
+func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *life.Life) []historyEventData {
 	list := make([]historyEventData, 0, len(events))
 	even := true
 	for _, e := range events {
@@ -162,6 +177,20 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string) []hi
 			}
 
 			d.URLID = s[2]
+			if id, err := strconv.ParseInt(d.URLID, 10, 32); err == nil {
+				h := f.LookHistoryByID(uint32(id))
+				if h != nil {
+					status := h.Method
+					if h.ResponseCode >= 0 {
+						status += " " + strconv.Itoa(h.ResponseCode)
+					} else {
+						status += " 出错"
+					}
+
+					d.HttpStatus = status
+				}
+			}
+
 			if strings.HasPrefix(url, "http://") {
 				d.URLBody = url[7:]
 			} else {
@@ -181,7 +210,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string) []hi
 
 func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Life) {
 	t, err := template.ParseFiles("template/history.tmpl")
-	list := formatHistoryEventDataList(f.HistoryEvents(), profileIP)
+	list := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
 	err = t.Execute(w, historyData{profileIP, list})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
