@@ -297,18 +297,30 @@ type proxyDomainOperator struct {
 
 func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if domain == "i.me" {
-		p.p.LogDomain(ip, "init", domain)
+		p.p.LogDomain(ip, "init", domain, p.p.serveIP)
 		return profile.NewDomainAction(domain, profile.DomainActRedirect, p.p.serveIP)
 	} else if p.p.domainOp != nil {
+		act := "query"
 		a := p.p.domainOp.Action(ip, domain)
-		if a != nil && a.Act == profile.DomainActRedirect && a.IP == "" {
-			a.IP = p.p.serveIP
+		if a != nil {
+			b := *a
+			a = &b
 		}
 
-		p.p.LogDomain(ip, "query", domain)
+		if a != nil && a.Act == profile.DomainActRedirect && a.IP == "" {
+			a.IP = p.p.serveIP
+			act = "proxy"
+		}
+
+		resultIP := ""
+		if a != nil && len(a.IP) > 0 {
+			resultIP = a.IP
+		}
+
+		p.p.LogDomain(ip, act, domain, resultIP)
 		return a
 	} else {
-		p.p.LogDomain(ip, "undef", domain)
+		p.p.LogDomain(ip, "undef", domain, "")
 		return nil
 	}
 }
@@ -462,9 +474,14 @@ func (p *Proxy) lookHistory(w http.ResponseWriter, profileIP, lookUrl, op string
 	}
 }
 
-func (p *Proxy) LogDomain(ip, action, domain string) {
+func (p *Proxy) LogDomain(ip, action, domain, resultIP string) {
 	if f := p.lives.Open(ip); f != nil {
-		f.Log("domain " + action + " " + domain)
+		s := ""
+		if len(resultIP) > 0 {
+			s = " "
+		}
+
+		f.Log("domain " + action + " " + domain + s + resultIP)
 	}
 }
 

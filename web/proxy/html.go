@@ -138,6 +138,7 @@ type historyEventData struct {
 	Even        bool
 	Time        string
 	Domain      string
+	DomainIP    string
 	URL         string
 	URLID       string
 	URLBody     string
@@ -169,6 +170,9 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			domain := s[2]
 			d.Domain = "域名 " + s[1] + " " + domain
 			d.OPs = append(d.OPs, jsopData{"代理域名", template.JS("domainRedirect"), domain})
+			if len(s) >= 4 {
+				d.DomainIP = s[3]
+			}
 		} else if len(s) >= 3 && s[0] == "proxy" {
 			url := s[1]
 			d.URL = url
