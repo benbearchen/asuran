@@ -22,6 +22,7 @@ Key Features:
      ** Pure DNS Server
 * Proxy
   ** Host non 80 port
+  ** Support standard HTTP Proxy format
 * Match Pattern
   ** Domain support wildcard character *, like *.domain.com, etc
   ** URL match by 
