@@ -137,7 +137,9 @@ func (p *Proxy) OnRequest(
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	urlPath := r.URL.Path
 	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
-	if targetHost == "i.me" {
+	if strings.HasPrefix(urlPath, "http://") {
+		p.proxyUrl(urlPath, w, r)
+	} else if targetHost == "i.me" {
 		p.initDevice(w, remoteIP)
 	} else if targetHost != "localhost" && targetHost != "127.0.0.1" && targetHost != p.serveIP {
 		target := "http://" + r.Host + urlPath
