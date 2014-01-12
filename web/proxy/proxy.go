@@ -200,7 +200,7 @@ func (p *Proxy) OnRequest(
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/to/"+p.mainHost+"/about to purely proxy of http://"+p.mainHost+"/about")
 		fmt.Fprintln(w, "")
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy")
-	} else if targetHost == "localhost" || targetHost == "127.0.0.1" {
+	} else if targetHost == "localhost" || targetHost == "127.0.0.1" || targetHost == p.serveIP {
 		fmt.Fprintln(w, "visit http://"+r.Host+"/about to get info")
 	} else if remoteIP == r.Host {
 		// 代理本机访问……
