@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	gonet "net"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strconv"
 	"strings"
@@ -264,7 +265,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	httpStart := time.Now()
-	resp, postBody, err := net.NewHttp(fullUrl, r)
+	resp, postBody, err := net.NewHttp(fullUrl, r, p.parseDomainAsDial(target, remoteIP))
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
@@ -524,4 +525,47 @@ func (p *proxyHostOperator) New(port int) {
 
 func (p *Proxy) NewProxyHostOperator() profile.ProxyHostOperator {
 	return &proxyHostOperator{p}
+}
+
+func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr string) (gonet.Conn, error) {
+	if p.domainOp == nil {
+		return nil
+	}
+
+	u, err := url.Parse(target)
+	if err != nil {
+		return nil
+	}
+
+	domain, port, err := gonet.SplitHostPort(u.Host)
+	if err != nil {
+		domain = u.Host
+	}
+
+	if len(port) == 0 {
+		port = "80"
+	}
+
+	a := p.domainOp.Action(client, domain)
+	if a == nil || a.Act != profile.DomainActRedirect {
+		return nil
+	}
+
+	ip := a.IP
+	if len(ip) == 0 {
+		ip = p.serveIP
+	}
+
+	if len(ip) == 0 {
+		return nil
+	}
+
+	address := gonet.JoinHostPort(ip, port)
+	return func(network, addr string) (gonet.Conn, error) {
+		if network == "tcp" {
+			return gonet.Dial(network, address)
+		} else {
+			return gonet.Dial(network, addr)
+		}
+	}
 }

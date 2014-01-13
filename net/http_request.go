@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 )
 
@@ -21,8 +22,8 @@ func NewHttpGet(url string) (*HttpResponse, error) {
 	return &HttpResponse{resp}, nil
 }
 
-func NewHttp(url string, r *http.Request) (*HttpResponse, []byte, error) {
-	client := &http.Client{}
+func NewHttp(url string, r *http.Request, dial func(netw, addr string) (net.Conn, error)) (*HttpResponse, []byte, error) {
+	client := &http.Client{Transport: &http.Transport{Dial: dial}}
 
 	var postBody []byte
 	var body io.Reader = nil
