@@ -11,6 +11,8 @@ import (
 func CommandUsage() string {
 	return `commands:
 -------
+# 以 # 开头的行为注释
+
 delay [default] <duration> <url-pattern>
 delay drop <duration> <url-pattern>
 
@@ -25,6 +27,13 @@ domain block <domain-name>
 domain redirect <domain-name> [ip]
 
 domain delete <domain-name>
+
+
+compatible commands:
+-------
+ip <domain-name> 
+# 等价于  domain redirect <domain-name> ip
+
 
 -------
 注：

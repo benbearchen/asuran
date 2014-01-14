@@ -5,6 +5,7 @@ import (
 	"github.com/benbearchen/asuran/util/cmd"
 	"github.com/benbearchen/asuran/web/proxy/life"
 
+	"net"
 	"strings"
 )
 
@@ -31,6 +32,22 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 		case "domain":
 			f.CommandDomain(rest)
 		default:
+			if ip, domain, ok := parseIPDomain(c, rest); ok {
+				f.CommandDomain("redirect " + domain + " " + ip)
+				break
+			}
 		}
 	}
+}
+
+func parseIPDomain(c, rest string) (string, string, bool) {
+	ip := net.ParseIP(c)
+	if ip != nil {
+		d, r := cmd.TakeFirstArg(rest)
+		if len(d) > 0 && len(r) == 0 {
+			return c, d, true
+		}
+	}
+
+	return "", "", false
 }
