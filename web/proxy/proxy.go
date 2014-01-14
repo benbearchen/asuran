@@ -165,6 +165,8 @@ func (p *Proxy) OnRequest(
 		p.res(w, r, urlPath)
 	} else if urlPath == "/" {
 		p.index(w)
+	} else if urlPath == "/devices" {
+		p.devices(w)
 	} else if urlPath == "/about" {
 		scheme := r.URL.Scheme
 		if scheme == "" {

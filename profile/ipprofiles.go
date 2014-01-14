@@ -17,6 +17,7 @@ type ProfileOperator interface {
 	FindByOwner(ip string) *Profile
 	Open(ip string) *Profile
 	Owner(owner string) []*Profile
+	All() []*Profile
 }
 
 func NewIpProfiles() *IpProfiles {
@@ -98,6 +99,18 @@ func (p *IpProfiles) CloneByName(name, newName, newIp string) *Profile {
 	}
 
 	return n
+}
+
+func (p *IpProfiles) All() []*Profile {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	profiles := make([]*Profile, 0, len(p.profiles))
+	for _, profile := range p.profiles {
+		profiles = append(profiles, profile)
+	}
+
+	return profiles
 }
 
 func (p *IpProfiles) Load(path string) {

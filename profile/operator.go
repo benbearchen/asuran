@@ -61,6 +61,10 @@ func (p *profileOperator) Owner(owner string) []*Profile {
 	return p.p.FindByOwner(owner)
 }
 
+func (p *profileOperator) All() []*Profile {
+	return p.p.All()
+}
+
 func (p *IpProfiles) OperatorProfile() ProfileOperator {
 	o := profileOperator{p}
 	return &o

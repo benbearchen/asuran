@@ -50,11 +50,12 @@ type DomainState struct {
 }
 
 type Life struct {
-	IP      string
-	urls    map[string]*UrlState
-	domains map[string]*DomainState
-	cache   *cache.Cache
-	history *History
+	IP         string
+	CreateTime time.Time
+	urls       map[string]*UrlState
+	domains    map[string]*DomainState
+	cache      *cache.Cache
+	history    *History
 
 	c chan interface{}
 }
@@ -62,6 +63,7 @@ type Life struct {
 func NewLife(ip string) *Life {
 	f := Life{}
 	f.IP = ip
+	f.CreateTime = time.Now()
 	f.urls = make(map[string]*UrlState)
 	f.domains = make(map[string]*DomainState)
 	f.cache = cache.NewCache()

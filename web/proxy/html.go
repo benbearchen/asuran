@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 
@@ -216,6 +217,51 @@ func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Li
 	t, err := template.ParseFiles("template/history.tmpl")
 	list := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
 	err = t.Execute(w, historyData{profileIP, list})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type deviceData struct {
+	Even     bool
+	Name     string
+	IP       string
+	Owner    string
+	InitTime string
+}
+
+type devicesListData struct {
+	Devices []deviceData
+}
+
+func formatDevicesListData(profiles []*profile.Profile, v *life.IPLives) devicesListData {
+	devices := make([]deviceData, 0)
+	if len(profiles) > 0 {
+		even := true
+		for _, p := range profiles {
+			even = !even
+
+			t := ""
+			f := v.OpenExists(p.Ip)
+			if f != nil {
+				t = f.CreateTime.Format("2006-01-02 15:04:05")
+			}
+
+			devices = append(devices, deviceData{even, p.Name, p.Ip, p.Owner, t})
+		}
+	}
+
+	return devicesListData{devices}
+}
+
+func (p *Proxy) devices(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/devices.tmpl")
+	profiles := make([]*profile.Profile, 0)
+	if p.profileOp != nil {
+		profiles = p.profileOp.All()
+	}
+
+	err = t.Execute(w, formatDevicesListData(profiles, p.lives))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
