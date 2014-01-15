@@ -92,12 +92,18 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 
 	t += "}}}\n"
 
+	if c.Bytes != nil {
+		t += "Resp Data: {{{{{\n" + text(c.Bytes) + "\n}}}}}\n"
+	} else {
+		t += "Resp Data none\n"
+	}
+
 	fmt.Fprintln(w, t)
 }
 
 func isASCII(t []byte) bool {
 	for _, b := range t {
-		if b >= 127 {
+		if b <= 6 { // ascii 0~6
 			return false
 		}
 	}
@@ -106,10 +112,16 @@ func isASCII(t []byte) bool {
 }
 
 func text(t []byte) string {
+	suffix := ""
+	if len(t) > 1024*100 {
+		t = t[:1024*100]
+		suffix = "..."
+	}
+
 	if isASCII(t) {
-		return string(t)
+		return string(t) + suffix
 	} else {
-		return url.QueryEscape(string(t))
+		return url.QueryEscape(string(t)) + suffix
 	}
 }
 
