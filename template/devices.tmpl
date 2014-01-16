@@ -46,7 +46,7 @@
 {{range .Devices}}
 <tr{{if .Even}} class="alt"{{end}}>
 <td>{{.Name}}</td>
-<td>{{.IP}}</td>
+<td><a href="/profile/{{.IP}}" target="_blank">{{.IP}}</a></td>
 <td>{{.Owner}}</td>
 <td>{{.InitTime}}</td>
 </tr>
