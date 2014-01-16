@@ -13,20 +13,15 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-delay [default] <duration> <url-pattern>
-delay drop <duration> <url-pattern>
+url [(delay|drop|timeout) <duration>] (status <responseCode>|(map|redirect) <resource-url>|rewritten <url-encoded-content>|restore <save-id>) [cache] (<url-pattern>|all)
 
-proxy [default] <url-pattern>
-proxy cache <url-pattern>
-proxy drop <responseCode> <url-pattern>
+url delete (<url-pattern>|all)
 
-delete <url-pattern>
+domain [default] (<domain-name>|all)
+domain block (<domain-name>|all)
+domain redirect (<domain-name>|all) [ip]
 
-domain [default] <domain-name>
-domain block <domain-name>
-domain redirect <domain-name> [ip]
-
-domain delete <domain-name>
+domain delete (<domain-name>|all)
 
 
 compatible commands:
@@ -39,37 +34,67 @@ ip <domain-name>
 注：
 * <> 尖括号表示参数一定要有，否则出错
 * [] 中括号表示参数可有可无
+* (a|b|...) 表示 a 或 b 等等多选一
 * 下面注释以“**”开始的行，表示未实现功能
 -------
 
-delay mode:   只能处于一下模式之一种
-    [default] 所有请求延时 duration；
+url command:
+        url 命令表示按 url-pattern 匹配、操作 HTTP 请求。
+        下面为参数说明：
+
+              下面时间模式只能多选一：
+    delay <duration>
+              所有请求延时 duration 才开始返回；
               duration == 0 表示不延时，立即返回。
-    drop      从 URL 第一次至 duration 时间内的请求一律丢弃，
+    drop <duration>
+              从 URL 第一次至 duration 时间内的请求一律丢弃，
               直到 duration 以后的请求正常返回。
               duration == 0 表示只丢弃第一次请求。
+              被 drop 将无法响应 cache、status 等其它请求。
               ** “丢弃”的效果可能无法很好实现 **
+    timeout <duration>
+              所有请求等待 duration 时间后，丢弃请求。
 
-proxy mode:   只能处于一下模式之一种
-    [default] 每次重新代理请求。
+              下面几种内容模式只能多选一：
+    status <responseCode>
+              对请求直接以 responseCode 回应。
+              responseCode 可以是 404、502 等，
+              但不应该是 200、302 等。
+    map <resource-url>
+              代理将请求 resource-url 的内容并返回。
+    redirect <resource-url>
+              返回 302 以让客户端自己跳转至 resource-url。
+    rewritten <url-encoded-content>
+              以 url-encoded-content 的原始内容返回。
+    restore <save-id>
+              以预先保存的名字为 save-id 的内容返回。
+              save-id 内容可以上传，也可以从请求历史修改。
+
     cache     缓存请求结果，下次请求起从缓存返回。
-    drop <responseCode>
-              丢弃请求，以 responseCode 回应。
-              responseCode 可以是 404、502 等。
 
-duration:
+    delete    删除对 url-pattern 的配置。
+
+    duration
               时长，可选单位：ms, s, m, h。默认为 s
               例：90s 或 1.5m
-
-url-pattern:
-    [domain[:port]]/[path][?key=value]
+    responseCode
+              HTTP 返回状态码，如 200/206、302/304、404 等。
+    resource-url
+              外部资源的 URL 地址（http:// 啥的）。
+    url-encoded-content
+              以 url-encoded 方式编码的文本或者二进制内容。
+              直接返回给客户端。
+    save-id   上传内容或者修改请求历史内容，得到内容的 id。
+              id 对应内容可方便修改。
+    url-pattern
+              [domain[:port]]/[path][?key=value]
               分域名[端口]、根路径与查询参数三种匹配。
               域名忽略则匹配所有域名。
               根路径可以匹配到目录或文件。
               查询参数匹配时忽略顺序，但列出参数必须全有。
               域名支持通配符“*”，如 *.com, *play.org
     all
-              特殊地，all 可以操作所有已经配置的 URL。
+              特殊地，all 可以操作所有已经配置的 url-pattern。
 
 domain mode:
     [default] 域名默认为正常通行，返回正常结果。
@@ -88,13 +113,13 @@ ip:           IP 地址，比如 192.168.1.3。
 -------
 examples:
 
-delay 5s g.cn/search
+url delay 5s g.cn/search
 
-proxy default github.com/?cmd=1
+url github.com/?cmd=1
 
-proxy cache golang.org/doc/code.html
+url cache golang.org/doc/code.html
 
-proxy drop 404 baidu.com/
+url status 404 baidu.com/
 
 domain g.cn
 
