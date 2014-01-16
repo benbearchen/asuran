@@ -224,6 +224,8 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		fullUrl += "?" + r.URL.RawQuery
 	}
 
+	p.profileOp.Open(remoteIP)
+
 	rangeInfo := cache.CheckRange(r)
 	f := p.lives.Open(remoteIP)
 	var u *life.UrlState
