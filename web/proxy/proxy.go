@@ -551,20 +551,11 @@ func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr stri
 	}
 
 	a := p.domainOp.Action(client, domain)
-	if a == nil || a.Act != profile.DomainActRedirect {
+	if a == nil || a.Act != profile.DomainActRedirect || len(a.IP) == 0 || a.IP == p.serveIP {
 		return nil
 	}
 
-	ip := a.IP
-	if len(ip) == 0 {
-		ip = p.serveIP
-	}
-
-	if len(ip) == 0 {
-		return nil
-	}
-
-	address := gonet.JoinHostPort(ip, port)
+	address := gonet.JoinHostPort(a.IP, port)
 	return func(network, addr string) (gonet.Conn, error) {
 		if network == "tcp" {
 			return gonet.Dial(network, address)

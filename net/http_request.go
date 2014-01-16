@@ -78,6 +78,7 @@ func (r *HttpResponse) ResponseCode() int {
 }
 
 func (r *HttpResponse) ProxyReturn(w http.ResponseWriter) ([]byte, error) {
+	defer r.resp.Body.Close()
 	h := w.Header()
 	for k, v := range r.Header() {
 		h[k] = v
