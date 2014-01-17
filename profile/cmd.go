@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(delay|drop|timeout) <duration>] (status <responseCode>|(map|redirect) <resource-url>|rewritten <url-encoded-content>|restore <save-id>) [cache] (<url-pattern>|all)
+url [(delay|drop|timeout) <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewritten <url-encoded-content>|restore <save-id>) (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -56,6 +56,7 @@ url command:
               所有请求等待 duration 时间后，丢弃请求。
 
               下面几种内容模式只能多选一：
+    cache     缓存源 URL 请求结果，下次请求起从缓存返回。
     status <responseCode>
               对请求直接以 responseCode 回应。
               responseCode 可以是 404、502 等，
@@ -69,8 +70,6 @@ url command:
     restore <save-id>
               以预先保存的名字为 save-id 的内容返回。
               save-id 内容可以上传，也可以从请求历史修改。
-
-    cache     缓存请求结果，下次请求起从缓存返回。
 
     delete    删除对 url-pattern 的配置。
 
@@ -156,6 +155,8 @@ func (p *Profile) Command(command string) {
 			p.CommandDelete(rest)
 		case "domain":
 			p.CommandDomain(rest)
+		case "url":
+			p.CommandUrl(rest)
 		default:
 		}
 	}
@@ -180,7 +181,7 @@ func (p *Profile) CommandProxy(content string) {
 		commandProxyMode(p, c, rest)
 	case "cache":
 		commandProxyMode(p, c, rest)
-	case "drop":
+	case "status":
 		commandProxyMode(p, c, rest)
 	default:
 		commandProxyMode(p, "default", content)
@@ -212,6 +213,65 @@ func (p *Profile) CommandDomain(content string) {
 		commandDomainDelete(p, rest)
 	default:
 		commandDomainMode(p, "default", content)
+	}
+}
+
+func (p *Profile) CommandUrl(content string) {
+	c, rest := "", content
+	ok := false
+
+	var delayAction *DelayAction
+	var proxyAction *UrlProxyAction
+
+	for {
+		c, rest = cmd.TakeFirstArg(rest)
+		switch c {
+		case "delay":
+			fallthrough
+		case "drop":
+			fallthrough
+		case "timeout":
+			delayAction, rest, ok = parseDelayAction(c, rest)
+			if !ok {
+				return
+			}
+		case "cache":
+			fallthrough
+		case "status":
+			fallthrough
+		case "map":
+			fallthrough
+		case "redirect":
+			fallthrough
+		case "rewritten":
+			fallthrough
+		case "restore":
+			proxyAction, rest, ok = parseUrlProxyAction(c, rest)
+			if !ok {
+				return
+			}
+		case "delete":
+			p.CommandDelete(rest)
+			return
+		default:
+			if len(c) > 0 && len(rest) == 0 {
+				commandUrl(p, delayAction, proxyAction, c)
+			}
+
+			return
+		}
+	}
+
+}
+
+func commandUrl(p *Profile, delayAction *DelayAction, proxyAction *UrlProxyAction, c string) {
+	if c == "all" {
+		p.SetAllUrl(delayAction, proxyAction)
+	} else {
+		urlPattern := restToPattern(c)
+		if len(urlPattern) > 0 {
+			p.SetUrl(urlPattern, delayAction, proxyAction)
+		}
 	}
 }
 
@@ -268,9 +328,65 @@ func delayTimeAndPattern(content string) (float32, string, bool) {
 	return duration, pattern, ok
 }
 
+func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
+	var act DelayActType = DelayActNone
+	switch c {
+	case "delay":
+		act = DelayActDelayEach
+	case "drop":
+		act = DelayActDropUntil
+	case "timeout":
+		act = DelayActTimeout
+	default:
+		return nil, "", false
+	}
+
+	d, r, ok := takeDuration(rest)
+	if !ok {
+		return nil, "", false
+	}
+
+	t := MakeDelay(act, d)
+	return &t, r, true
+}
+
+func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
+	var act UrlAct = UrlActNone
+	value := ""
+	if c == "cache" {
+		act = UrlActCache
+	} else {
+		switch c {
+		case "status":
+			act = UrlActStatus
+		case "map":
+			act = UrlActMap
+		case "redirect":
+			act = UrlActRedirect
+		case "rewritten":
+			act = UrlActRewritten
+		case "restore":
+			act = UrlActRestore
+		default:
+			return nil, "", false
+		}
+
+		value, rest = cmd.TakeFirstArg(rest)
+	}
+
+	return &UrlProxyAction{act, value}, rest, true
+}
+
+func takeDuration(content string) (float32, string, bool) {
+	d, p := cmd.TakeFirstArg(content)
+	duration := parseDuration(d)
+	return duration, p, duration >= 0
+}
+
 func parseDuration(d string) float32 {
 	var times float64 = 1
 	if strings.HasSuffix(d, "ms") {
+		d = d[:len(d)-2]
 		times = 0.001
 	} else if strings.HasSuffix(d, "h") {
 		d = d[:len(d)-1]
@@ -295,11 +411,11 @@ func commandProxyMode(p *Profile, mode, args string) {
 	if mode == "cache" {
 		act = UrlActCache
 	} else if mode == "drop" {
-		act = UrlActDrop
+		act = UrlActStatus
 	}
 
 	dropResponseCode := 0
-	if act == UrlActDrop {
+	if act == UrlActStatus {
 		r, rest := cmd.TakeFirstArg(args)
 		responseCode, err := strconv.Atoi(r)
 		if err != nil {
@@ -321,11 +437,13 @@ func commandProxyMode(p *Profile, mode, args string) {
 func (d *DelayAction) EditCommand() string {
 	switch d.Act {
 	case DelayActNone:
-		return "delay " + d.DurationCommand()
+		return ""
 	case DelayActDelayEach:
 		return "delay " + d.DurationCommand()
 	case DelayActDropUntil:
-		return "delay drop " + d.DurationCommand()
+		return "drop " + d.DurationCommand()
+	case DelayActTimeout:
+		return "timeout " + d.DurationCommand()
 	default:
 		return ""
 	}
@@ -334,27 +452,35 @@ func (d *DelayAction) EditCommand() string {
 func (u *UrlProxyAction) EditCommand() string {
 	switch u.Act {
 	case UrlActNone:
-		return "proxy"
+		return ""
 	case UrlActCache:
-		return "proxy cache"
-	case UrlActDrop:
-		return "proxy drop " + strconv.Itoa(u.DropResponseCode)
+		return "cache"
+	case UrlActStatus:
+		return "status " + u.ContentValue
+	case UrlActMap:
+		return "map " + u.ContentValue
+	case UrlActRedirect:
+		return "redirect " + u.ContentValue
+	case UrlActRewritten:
+		return "rewritten " + u.ContentValue
+	case UrlActRestore:
+		return "restore " + u.ContentValue
 	default:
 		return ""
 	}
 }
 
 func (u *urlAction) EditCommand() string {
-	c := ""
-	if e := u.Act.EditCommand(); len(e) > 0 {
-		c += e + " " + u.UrlPattern + "\n"
-	}
-
+	c := "url"
 	if e := u.Delay.EditCommand(); len(e) > 0 {
-		c += e + " " + u.UrlPattern + "\n"
+		c += " " + e
 	}
 
-	return c
+	if e := u.Act.EditCommand(); len(e) > 0 {
+		c += " " + e
+	}
+
+	return c + " " + u.UrlPattern + "\n"
 }
 
 func (u *urlAction) DeleteCommand() string {

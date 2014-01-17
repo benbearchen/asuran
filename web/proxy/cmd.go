@@ -31,6 +31,8 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 			f.CommandDelete(rest)
 		case "domain":
 			f.CommandDomain(rest)
+		case "url":
+			f.CommandUrl(rest)
 		default:
 			if ip, domain, ok := parseIPDomain(c, rest); ok {
 				f.CommandDomain("redirect " + domain + " " + ip)

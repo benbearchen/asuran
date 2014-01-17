@@ -236,8 +236,21 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	if p.urlOp != nil {
 		act := p.urlOp.Action(remoteIP, fullUrl)
 		//fmt.Println("url act: " + act.String())
-		if act.Act == profile.UrlActCache {
+		switch act.Act {
+		case profile.UrlActCache:
 			needCache = true
+		case profile.UrlActStatus:
+			if c, err := strconv.Atoi(act.ContentValue); err == nil {
+				w.WriteHeader(c)
+			} else {
+				w.WriteHeader(502)
+			}
+			return
+		case profile.UrlActMap:
+		case profile.UrlActRedirect:
+		case profile.UrlActRewritten:
+		case profile.UrlActRestore:
+			// TODO:
 		}
 
 		delay := p.urlOp.Delay(remoteIP, fullUrl)
@@ -250,11 +263,16 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 			}
 			break
 		case profile.DelayActDropUntil:
-			if u != nil {
-				if u.DropUntil(delay.Duration()) {
-					// TODO: more safe method, maybe net.http.Hijacker
-					panic("")
-				}
+			if u != nil && u.DropUntil(delay.Duration()) {
+				// TODO: more safe method, maybe net.http.Hijacker
+				panic("")
+			}
+			break
+		case profile.DelayActTimeout:
+			if delay.Time > 0 {
+				// TODO: more safe method, maybe net.http.Hijacker
+				time.Sleep(delay.Duration())
+				panic("")
 			}
 			break
 		}

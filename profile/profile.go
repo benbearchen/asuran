@@ -14,6 +14,7 @@ const (
 	DelayActNone      = iota
 	DelayActDelayEach // delay each request in Time seconds
 	DelayActDropUntil // drop all request in Time seconds from the first request
+	DelayActTimeout
 )
 
 type DelayAction struct {
@@ -49,6 +50,8 @@ func (d *DelayAction) String() string {
 		} else {
 			return "丢弃前 " + d.DurationCommand() + " 内请求"
 		}
+	case DelayActTimeout:
+		return "等 " + d.DurationCommand() + " 后丢弃请求"
 	default:
 		return "delayAct:" + strconv.Itoa(int(d.Act))
 	}
@@ -66,6 +69,8 @@ func MakeDelay(act DelayActType, delay float32) DelayAction {
 		return DelayAction{act, delay}
 	case DelayActDropUntil:
 		return DelayAction{act, delay}
+	case DelayActTimeout:
+		return DelayAction{act, delay}
 	}
 
 	return DelayAction{DelayActNone, 0}
@@ -76,12 +81,16 @@ type UrlAct int
 const (
 	UrlActNone = iota
 	UrlActCache
-	UrlActDrop
+	UrlActStatus
+	UrlActMap
+	UrlActRedirect
+	UrlActRewritten
+	UrlActRestore
 )
 
 type UrlProxyAction struct {
-	Act              UrlAct
-	DropResponseCode int
+	Act          UrlAct
+	ContentValue string
 }
 
 func (action *UrlProxyAction) String() string {
@@ -90,15 +99,23 @@ func (action *UrlProxyAction) String() string {
 		return "透明代理"
 	case UrlActCache:
 		return "缓存"
-	case UrlActDrop:
-		return "以 " + strconv.Itoa(action.DropResponseCode) + " 丢弃"
+	case UrlActStatus:
+		return "以 HTTP 返回状态码 " + action.ContentValue + " 返回"
+	case UrlActMap:
+		return "映射代理至 " + action.ContentValue
+	case UrlActRedirect:
+		return "302 跳转至 " + action.ContentValue
+	case UrlActRewritten:
+		return "以 url-encoded 的内容返回"
+	case UrlActRestore:
+		return "以 id 为 " + action.ContentValue + " 的预存内容返回"
 	default:
 		return "act:" + strconv.Itoa(int(action.Act))
 	}
 }
 
 func MakeEmptyUrlProxyAction() UrlProxyAction {
-	return UrlProxyAction{UrlActNone, 0}
+	return UrlProxyAction{UrlActNone, ""}
 }
 
 type urlAction struct {
@@ -185,15 +202,61 @@ func NewProfile(name, ip, owner string) *Profile {
 	return p
 }
 
+func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyAction *UrlProxyAction) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if u, ok := p.Urls[urlPattern]; ok {
+		if delayAction != nil {
+			u.Delay = *delayAction
+		}
+
+		if proxyAction != nil {
+			u.Act = *proxyAction
+		}
+	} else {
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay()}
+		if delayAction != nil {
+			u.Delay = *delayAction
+		}
+
+		if proxyAction != nil {
+			u.Act = *proxyAction
+		}
+
+		p.Urls[urlPattern] = u
+		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
+			if port, err := strconv.Atoi(u.pattern.port); err == nil {
+				p.proxyOp.New(port)
+			}
+		}
+	}
+}
+
+func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyAction) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for _, u := range p.Urls {
+		if delayAction != nil {
+			u.Delay = *delayAction
+		}
+
+		if proxyAction != nil {
+			u.Act = *proxyAction
+		}
+	}
+}
+
 func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	u, ok := p.Urls[urlPattern]
 	if ok {
-		u.Act = UrlProxyAction{act, responseCode}
+		u.Act = UrlProxyAction{act, strconv.Itoa(responseCode)}
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, responseCode}, MakeEmptyDelay()}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, strconv.Itoa(responseCode)}, MakeEmptyDelay()}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
@@ -212,7 +275,7 @@ func (p *Profile) SetAllUrlAction(act UrlAct, responseCode int) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	a := UrlProxyAction{act, responseCode}
+	a := UrlProxyAction{act, strconv.Itoa(responseCode)}
 	for _, u := range p.Urls {
 		u.Act = a
 	}
