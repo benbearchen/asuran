@@ -57,7 +57,7 @@ function proxyCmd(act) {
     return;
   }
 
-  appendCmd('proxy ' + act + ' ' + u.value);
+  appendCmd('url ' + act + ' ' + u.value);
 }
 
 function delayCmd(act) {
@@ -73,7 +73,7 @@ function delayCmd(act) {
     return;
   }
 
-  appendCmd('delay ' + act + ' ' + d.value + ' ' + u.value);
+  appendCmd('url ' + act + ' ' + d.value + ' ' + u.value);
 }
 
 function deleteCmd() {
@@ -83,7 +83,7 @@ function deleteCmd() {
     return;
   }
 
-  appendCmd('delete ' + u.value);
+  appendCmd('url delete ' + u.value);
 }
 
 function redirectOpt() {
@@ -178,19 +178,23 @@ function domainCmd(act, opt) {
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
 <table border="1">
 <tr>
-<td rowspan="3">proxy</td><td colspan="2"><button type="button" onclick="proxyCmd('default');">[default]</button>: 使用代理</td><td rowspan="6">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>特殊地，all 可以操作所有已配置 URL<br/>TODO: 支持非 80 端口</td>
+<td rowspan="7">url</td>
+<td rowspan="3">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('');">[default]</button>: 使用代理</td><td rowspan="7">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>特殊地，all 可以操作所有已配置 URL</td>
 </tr>
 <tr>
 <td colspan="2"><button type="button" onclick="proxyCmd('cache');">cache</button>: 代理并缓存</td>
 </tr>
 <tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('drop '+selectOpt('DropOption'));">drop</button> <select id="DropOption"><option value="404">404</option><option value="502">502</option></select>: 代理但以状态码出错</td>
+<td colspan="2"><button type="button" onclick="proxyCmd('status '+selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
 </tr>
 <tr>
-<td rowspan="2">delay</td><td><button type="button" onclick="delayCmd('default');">[default]</button>: 每次请求延时</td><td rowspan="2">时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
+<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
 </tr>
 <tr>
 <td><button type="button" onclick="delayCmd('drop');">drop</button>: <br/>前“时长”时间内都掉线</td>
+</tr>
+<tr>
+<td><button type="button" onclick="delayCmd('timeout');">timeout</button>: <br/>等待“时长”后掉线</td>
 </tr>
 <tr>
 <td colspan="3"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>
