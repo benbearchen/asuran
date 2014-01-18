@@ -484,7 +484,7 @@ func (u *urlAction) EditCommand() string {
 }
 
 func (u *urlAction) DeleteCommand() string {
-	return "delete " + u.UrlPattern + "\n"
+	return "url delete " + u.UrlPattern + "\n"
 }
 
 func commandDomainMode(p *Profile, mode, content string) {
