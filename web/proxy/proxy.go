@@ -234,25 +234,6 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if p.urlOp != nil {
-		act := p.urlOp.Action(remoteIP, fullUrl)
-		//fmt.Println("url act: " + act.String())
-		switch act.Act {
-		case profile.UrlActCache:
-			needCache = true
-		case profile.UrlActStatus:
-			if c, err := strconv.Atoi(act.ContentValue); err == nil {
-				w.WriteHeader(c)
-			} else {
-				w.WriteHeader(502)
-			}
-			return
-		case profile.UrlActMap:
-		case profile.UrlActRedirect:
-		case profile.UrlActRewritten:
-		case profile.UrlActRestore:
-			// TODO:
-		}
-
 		delay := p.urlOp.Delay(remoteIP, fullUrl)
 		//fmt.Println("url delay: " + delay.String())
 		switch delay.Act {
@@ -275,6 +256,27 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 				panic("")
 			}
 			break
+		}
+
+		act := p.urlOp.Action(remoteIP, fullUrl)
+		//fmt.Println("url act: " + act.String())
+		switch act.Act {
+		case profile.UrlActCache:
+			needCache = true
+		case profile.UrlActStatus:
+			if c, err := strconv.Atoi(act.ContentValue); err == nil {
+				w.WriteHeader(c)
+			} else {
+				w.WriteHeader(502)
+			}
+			return
+		case profile.UrlActMap:
+		case profile.UrlActRedirect:
+			http.Redirect(w, r, act.ContentValue, 302)
+			return
+		case profile.UrlActRewritten:
+		case profile.UrlActRestore:
+			// TODO:
 		}
 	}
 
