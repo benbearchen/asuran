@@ -224,6 +224,10 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		fullUrl += "?" + r.URL.RawQuery
 	}
 
+	requestUrl := fullUrl
+	requestR := r
+	contentSource := ""
+
 	p.profileOp.Open(remoteIP)
 
 	rangeInfo := cache.CheckRange(r)
@@ -271,6 +275,9 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 			}
 			return
 		case profile.UrlActMap:
+			requestUrl = act.ContentValue
+			requestR = nil
+			contentSource = "map " + act.ContentValue
 		case profile.UrlActRedirect:
 			http.Redirect(w, r, act.ContentValue, 302)
 			return
@@ -289,9 +296,9 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	httpStart := time.Now()
-	resp, postBody, err := net.NewHttp(fullUrl, r, p.parseDomainAsDial(target, remoteIP))
+	resp, postBody, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP))
 	if err != nil {
-		c := cache.NewUrlCache(fullUrl, r, nil, nil, nil, rangeInfo, httpStart, time.Now(), err)
+		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
 			go p.saveContentToCache(fullUrl, f, c, false)
 		}
@@ -301,7 +308,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		defer resp.Close()
 		content, err := resp.ProxyReturn(w)
 		httpEnd := time.Now()
-		c := cache.NewUrlCache(fullUrl, r, postBody, resp, content, rangeInfo, httpStart, httpEnd, err)
+		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
 		if f != nil {
 			go p.saveContentToCache(fullUrl, f, c, needCache)
 		}

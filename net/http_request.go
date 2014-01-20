@@ -27,7 +27,7 @@ func NewHttp(url string, r *http.Request, dial func(netw, addr string) (net.Conn
 
 	var postBody []byte
 	var body io.Reader = nil
-	if r.Method == "POST" {
+	if r != nil && r.Method == "POST" {
 		b, err := ioutil.ReadAll(r.Body)
 		if err == nil {
 			postBody = b
@@ -35,8 +35,15 @@ func NewHttp(url string, r *http.Request, dial func(netw, addr string) (net.Conn
 		}
 	}
 
-	req, err := http.NewRequest(r.Method, url, body)
-	req.Header = r.Header
+	method := "GET"
+	if r != nil {
+		method = r.Method
+	}
+
+	req, err := http.NewRequest(method, url, body)
+	if r != nil {
+		req.Header = r.Header
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {

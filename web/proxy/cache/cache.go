@@ -18,6 +18,7 @@ type UrlCache struct {
 	Method         string
 	RequestHeader  http.Header
 	PostBody       []byte
+	ContentSource  string
 	Bytes          []byte
 	ResponseHeader http.Header
 	ResponseCode   int
@@ -31,7 +32,7 @@ type UrlHistory struct {
 	ID uint32
 }
 
-func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpResponse, content []byte, rangeInfo string, start, end time.Time, err error) *UrlCache {
+func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpResponse, contentSource string, content []byte, rangeInfo string, start, end time.Time, err error) *UrlCache {
 	var respHeader http.Header
 	respResponseCode := -1
 	if resp != nil {
@@ -39,7 +40,7 @@ func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpRes
 		respResponseCode = resp.ResponseCode()
 	}
 
-	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, content, respHeader, respResponseCode, rangeInfo, err}
+	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, contentSource, content, respHeader, respResponseCode, rangeInfo, err}
 }
 
 func (c *UrlCache) Response(w http.ResponseWriter) {
@@ -73,6 +74,10 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 
 	if c.Method == "POST" && c.PostBody != nil {
 		t += "POST DATA: " + text(c.PostBody) + "\n"
+	}
+
+	if len(c.ContentSource) > 0 {
+		t += "\nResource: " + c.ContentSource + "\n"
 	}
 
 	t += "\n"
