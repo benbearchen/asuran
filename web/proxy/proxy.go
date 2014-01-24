@@ -203,6 +203,8 @@ func (p *Proxy) OnRequest(
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/to/"+p.mainHost+"/about to purely proxy of http://"+p.mainHost+"/about")
 		fmt.Fprintln(w, "")
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy")
+	} else if urlPath == "/urlencoded" {
+		p.urlEncoded(w)
 	} else if targetHost == "localhost" || targetHost == "127.0.0.1" || targetHost == p.serveIP {
 		fmt.Fprintln(w, "visit http://"+r.Host+"/about to get info")
 	} else if remoteIP == r.Host {
@@ -282,8 +284,11 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 			http.Redirect(w, r, act.ContentValue, 302)
 			return
 		case profile.UrlActRewritten:
+			fallthrough
 		case profile.UrlActRestore:
-			// TODO:
+			if p.rewriteUrl(fullUrl, w, r, rangeInfo, f, act) {
+				return
+			}
 		}
 	}
 
@@ -313,6 +318,35 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 			go p.saveContentToCache(fullUrl, f, c, needCache)
 		}
 	}
+}
+
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, f *life.Life, act profile.UrlProxyAction) bool {
+	var content []byte = nil
+	contentSource := ""
+	switch act.Act {
+	case profile.UrlActRewritten:
+		u, err := url.QueryUnescape(act.ContentValue)
+		if err != nil {
+			return false
+		}
+
+		content = []byte(u)
+		contentSource = "rewrite"
+	case profile.UrlActRestore:
+		return false
+	default:
+		return false
+	}
+
+	start := time.Now()
+	w.Write(content)
+	c := cache.NewUrlCache(target, r, nil, nil, contentSource, content, rangeInfo, start, time.Now(), nil)
+	c.ResponseCode = 200
+	if f != nil {
+		p.saveContentToCache(target, f, c, false)
+	}
+
+	return true
 }
 
 func (p *Proxy) initDevice(w io.Writer, ip string) {

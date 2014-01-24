@@ -50,11 +50,34 @@ function selectOpt(id) {
   return s.value;
 }
 
-function proxyCmd(act) {
+function readInput(id) {
+  var i = document.getElementById(id);
+  if (i.value == "") {
+    alert('按钮右边的参数不能为空');
+    return;
+  }
+
+  if (i.value.indexOf(" ") >= 0) {
+    alert('按钮右边的参数不能有空格');
+    return;
+  }
+
+  return i.value;
+}
+
+function proxyCmd(act, opt) {
+  if (opt === undefined) {
+    return;
+  }
+
   var u = document.getElementById('ProxyUrl');
   if (u.value == "") {
     alert('proxy 操作的 URL 不能为空');
     return;
+  }
+
+  if (opt != "") {
+    act = act + " " + opt
   }
 
   appendCmd('url ' + act + ' ' + u.value);
@@ -178,14 +201,26 @@ function domainCmd(act, opt) {
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
 <table border="1">
 <tr>
-<td rowspan="7">url</td>
-<td rowspan="3">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('');">[default]</button>: 使用代理</td><td rowspan="7">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>特殊地，all 可以操作所有已配置 URL</td>
+<td rowspan="11">url</td>
+<td rowspan="7">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('', '');">[default]</button>: 使用代理</td><td rowspan="11">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>特殊地，all 可以操作所有已配置 URL</td>
 </tr>
 <tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('cache');">cache</button>: 代理并缓存</td>
+<td colspan="2"><button type="button" onclick="proxyCmd('cache', '');">cache</button>: 代理并缓存</td>
 </tr>
 <tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('status '+selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
+<td colspan="2"><button type="button" onclick="proxyCmd('status', selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
+</tr>
+<tr>
+<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl'));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL"/></td>
+</tr>
+<tr>
+<td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl'));">redirect</button>: 302 跳转至第三方链接</td>
+</tr>
+<tr>
+<td colspan="2"><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent'));">rewrite</button>: 返回指定内容: <input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
+</tr>
+<tr>
+<td colspan="2"><button type="button" onclick="proxyCmd('restore', readInput('SaveId'));">restore</button>: 以预定义内容 ID 返回内容: <input type="text" id="SaveId" placeholder="save-id"/></td>
 </tr>
 <tr>
 <td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>

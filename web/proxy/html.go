@@ -266,3 +266,11 @@ func (p *Proxy) devices(w http.ResponseWriter) {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
 }
+
+func (p *Proxy) urlEncoded(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/urlencoded.tmpl")
+	err = t.Execute(w, nil)
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}

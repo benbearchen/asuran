@@ -1,0 +1,24 @@
+<html>
+<head>
+<title>URL-Encoded Convert</title>
+<script type="text/javascript">
+
+function convertContent() {
+  var source = document.getElementById('Source');
+  var encoded = document.getElementById('Encoded');
+  encoded.value = encodeURIComponent(source.value)
+}
+
+</script>
+</head>
+
+<body>
+
+原始文本：<br/>
+<textarea rows="10" cols="80" id="Source" name="cmd"></textarea>
+<button type="button" onclick="convertContent();">转换</button><br/>
+URL-Encoded 后：<br/>
+<textarea rows="10" cols="80" id="Encoded" name="cmd" readonly></textarea>
+
+</body>
+</html>

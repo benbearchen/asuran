@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(delay|drop|timeout) <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewritten <url-encoded-content>|restore <save-id>) (<url-pattern>|all)
+url [(delay|drop|timeout) <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <save-id>) (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -65,7 +65,7 @@ url command:
               代理将请求 resource-url 的内容并返回。
     redirect <resource-url>
               返回 302 以让客户端自己跳转至 resource-url。
-    rewritten <url-encoded-content>
+    rewrite <url-encoded-content>
               以 url-encoded-content 的原始内容返回。
     restore <save-id>
               以预先保存的名字为 save-id 的内容返回。
@@ -243,7 +243,7 @@ func (p *Profile) CommandUrl(content string) {
 			fallthrough
 		case "redirect":
 			fallthrough
-		case "rewritten":
+		case "rewrite":
 			fallthrough
 		case "restore":
 			proxyAction, rest, ok = parseUrlProxyAction(c, rest)
@@ -363,7 +363,7 @@ func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
 			act = UrlActMap
 		case "redirect":
 			act = UrlActRedirect
-		case "rewritten":
+		case "rewrite":
 			act = UrlActRewritten
 		case "restore":
 			act = UrlActRestore
@@ -462,7 +462,7 @@ func (u *UrlProxyAction) EditCommand() string {
 	case UrlActRedirect:
 		return "redirect " + u.ContentValue
 	case UrlActRewritten:
-		return "rewritten " + u.ContentValue
+		return "rewrite " + u.ContentValue
 	case UrlActRestore:
 		return "restore " + u.ContentValue
 	default:
