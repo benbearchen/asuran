@@ -129,10 +129,11 @@ func (p *Proxy) writeUrlHistoryList(w http.ResponseWriter, profileIP, url string
 	}
 }
 
-type jsopData struct {
-	OPName string
-	JsOP   template.JS
-	JsArg  string
+type opData struct {
+	Name   string
+	Act    string
+	Arg    string
+	Client string
 }
 
 type historyEventData struct {
@@ -145,7 +146,7 @@ type historyEventData struct {
 	URLBody     string
 	HttpStatus  string
 	EventString string
-	OPs         []jsopData
+	OPs         []opData
 	Client      string
 }
 
@@ -159,7 +160,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 	even := true
 	for _, e := range events {
 		d := historyEventData{}
-		d.OPs = make([]jsopData, 0)
+		d.OPs = make([]opData, 0)
 		d.Client = client
 
 		even = !even
@@ -170,7 +171,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 		if len(s) >= 3 && s[0] == "domain" {
 			domain := s[2]
 			d.Domain = "域名 " + s[1] + " " + domain
-			d.OPs = append(d.OPs, jsopData{"代理域名", template.JS("domainRedirect"), domain})
+			d.OPs = append(d.OPs, opData{"代理域名", "domain/redirect", domain, client})
 			if len(s) >= 4 {
 				d.DomainIP = s[3]
 			}
@@ -202,7 +203,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 				d.URLBody = url
 			}
 
-			d.OPs = append(d.OPs, jsopData{"缓存", template.JS("proxyCache"), url})
+			d.OPs = append(d.OPs, opData{"缓存", "url/store", d.URLID, client})
 		} else {
 			d.EventString = e.String
 		}

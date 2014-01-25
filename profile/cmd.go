@@ -289,6 +289,10 @@ func restToPattern(content string) string {
 		return url
 	}
 
+	return UrlToPattern(url)
+}
+
+func UrlToPattern(url string) string {
 	if strings.HasPrefix(url, "http://") {
 		url = url[len("http://"):]
 	}

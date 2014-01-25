@@ -55,7 +55,7 @@ function proxyCache(url) {
 </tr>
 {{range .Events}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td>{{range .OPs}}<input type="button" value="{{.OPName}}" onclick="{{.JsOP}}('{{.JsArg}}');"/>{{end}}</td>
+<td>{{range .OPs}}<a href="/profile/{{.Client}}/{{.Act}}/{{.Arg}}" target="_blank">{{.Name}}<a/>{{end}}</td>
 <td>{{.Time}}</td>
 <td>{{.DomainIP}}{{.HttpStatus}}</td>
 <td>{{if .Domain}}{{.Domain}}{{end}}{{if .URL}}<a href="/profile/{{.Client}}/look/{{.URLID}}" target="_blank">{{.URL}}</a> <a href="/profile/{{.Client}}/detail/{{.URLID}}" target="_blank">HTTP 详情</a>  <a href="/profile/{{.Client}}/list/{{.URLBody}}" target="_blank">所有历史</a>{{end}}{{if .EventString}}{{.EventString}}{{end}}</td>

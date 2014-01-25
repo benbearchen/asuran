@@ -337,7 +337,10 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		content = []byte(u)
 		contentSource = "rewrite"
 	case profile.UrlActRestore:
-		return false
+		content = f.Restore(act.ContentValue)
+		if content == nil {
+			return false
+		}
 	default:
 		return false
 	}
@@ -468,7 +471,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		return
 	} else if op == "look" || op == "list" || op == "detail" {
 		if len(pages) >= 4 {
-			id, err := strconv.ParseInt(pages[3], 10, 32)
+			id, err := strconv.ParseUint(pages[3], 10, 32)
 			if err == nil {
 				p.lookHistoryByID(w, profileIP, uint32(id), op)
 				return
@@ -485,6 +488,41 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 
 		p.lookHistory(w, profileIP, lookUrl, op)
+		return
+	} else if op == "domain" {
+		if len(pages) >= 4 {
+			switch pages[3] {
+			case "redirect":
+				if len(pages) >= 5 {
+					domain := pages[4]
+					f.SetUrl(profile.UrlToPattern(domain), nil, nil)
+					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
+					return
+				}
+			}
+		}
+
+		fmt.Fprintf(w, "<html><body>无效请求。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+		return
+	} else if op == "url" {
+		if len(pages) >= 4 {
+			switch pages[3] {
+			case "store":
+				if len(pages) >= 5 {
+					id := pages[4]
+					if u, sid := p.storeHistory(profileIP, id); len(sid) > 0 {
+						f.SetUrl(profile.UrlToPattern(u), nil, &profile.UrlProxyAction{profile.UrlActRestore, sid})
+						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 %s 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, id, u, profileIP)
+					}
+					return
+				}
+			}
+		}
+
+		fmt.Fprintf(w, "<html><body>无效请求。返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+		return
+	} else if op != "" {
+		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
 	}
 
@@ -628,4 +666,25 @@ func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr stri
 			return gonet.Dial(network, addr)
 		}
 	}
+}
+
+func (p *Proxy) storeHistory(profileIP, id string) (string, string) {
+	f := p.lives.OpenExists(profileIP)
+	if f == nil {
+		return "", ""
+	}
+
+	hID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return "", ""
+	}
+
+	h := f.LookHistoryByID(uint32(hID))
+	if h.Error == nil && len(h.Bytes) > 0 {
+		saveID := "his" + id
+		f.Store(saveID, h.Bytes)
+		return h.Url, saveID
+	}
+
+	return "", ""
 }

@@ -49,11 +49,17 @@ type DomainState struct {
 	Events     []DomainEvent
 }
 
+type Store struct {
+	ID      string
+	Content []byte
+}
+
 type Life struct {
 	IP         string
 	CreateTime time.Time
 	urls       map[string]*UrlState
 	domains    map[string]*DomainState
+	stores     map[string]*Store
 	cache      *cache.Cache
 	history    *History
 
@@ -66,6 +72,7 @@ func NewLife(ip string) *Life {
 	f.CreateTime = time.Now()
 	f.urls = make(map[string]*UrlState)
 	f.domains = make(map[string]*DomainState)
+	f.stores = make(map[string]*Store)
 	f.cache = cache.NewCache()
 	f.history = NewHistory()
 
@@ -266,6 +273,38 @@ func (f *Life) historyEvents() []*HistoryEvent {
 	return f.history.Events()
 }
 
+type cStore struct {
+	id      string
+	content []byte
+}
+
+func (f *Life) Store(id string, content []byte) {
+	f.c <- cStore{id, content}
+}
+
+func (f *Life) store(id string, content []byte) {
+	f.stores[id] = &Store{id, content}
+}
+
+type cRestore struct {
+	id string
+	c  chan []byte
+}
+
+func (f *Life) Restore(id string) []byte {
+	c := make(chan []byte)
+	f.c <- cRestore{id, c}
+	return <-c
+}
+
+func (f *Life) restore(id string) []byte {
+	if b, ok := f.stores[id]; ok {
+		return b.Content
+	} else {
+		return nil
+	}
+}
+
 func (f *Life) work() {
 	for {
 		e, ok := <-f.c
@@ -296,6 +335,10 @@ func (f *Life) work() {
 			e.c <- f.formatHistory()
 		case cHistoryEvents:
 			e.c <- f.historyEvents()
+		case cStore:
+			f.store(e.id, e.content)
+		case cRestore:
+			e.c <- f.restore(e.id)
 		}
 	}
 }
