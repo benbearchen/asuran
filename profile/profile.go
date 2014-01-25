@@ -249,6 +249,11 @@ func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyActio
 			}
 		}
 	}
+
+	host := getHostOfUrlPattern(urlPattern)
+	if len(host) != 0 {
+		p.proxyDomainIfNotExists(host)
+	}
 }
 
 func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyAction) {
