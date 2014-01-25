@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	gonet "net"
 	"net/http"
 	"net/url"
@@ -30,12 +31,15 @@ type Proxy struct {
 	mainHost   string
 
 	lock sync.RWMutex
+	r    *rand.Rand
 }
 
 func NewProxy() *Proxy {
 	p := new(Proxy)
 	p.webServers = make(map[int]*httpd.Http)
 	p.lives = life.NewIPLives()
+	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
+
 	p.Bind(80)
 
 	ips := net.LocalIPs()
@@ -246,11 +250,11 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.DelayActDelayEach:
 			if delay.Time > 0 {
 				// TODO: create request before sleep, more effective
-				time.Sleep(delay.Duration())
+				time.Sleep(delay.RandDuration(p.r))
 			}
 			break
 		case profile.DelayActDropUntil:
-			if u != nil && u.DropUntil(delay.Duration()) {
+			if u != nil && u.DropUntil(delay.RandDuration(p.r)) {
 				// TODO: more safe method, maybe net.http.Hijacker
 				panic("")
 			}
@@ -258,7 +262,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.DelayActTimeout:
 			if delay.Time > 0 {
 				// TODO: more safe method, maybe net.http.Hijacker
-				time.Sleep(delay.Duration())
+				time.Sleep(delay.RandDuration(p.r))
 				panic("")
 			}
 			break

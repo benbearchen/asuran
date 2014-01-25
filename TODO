@@ -5,30 +5,35 @@ Key Features:
   ** Intime refresh
   ** Convert url as profile command
   ** Save and look each request/response's content and details
+
 * HTTP
   ** Post
   ** Range
   ** Other Headers
   ** ResponseCode 304
+
 * Profile
   ** Save and Upload
   ** Policy Pack
   ** Profile Command
-     ** PIPE url with other url
-     ** Replace url with static CONTENT
-     ** Timeout url
-     ** Random time generator
+     ** `map'/`redirect' url with other url
+     ** `rewrite' url with static CONTENT or saved content
+     ** `timeout' url
+     ** `rand' time generator
   ** Super Global Profile
      ** Pure DNS Server
+
 * Proxy
   ** Host non 80 port
   ** Support standard HTTP Proxy format
+
 * Match Pattern
   ** Domain support wildcard character *, like *.domain.com, etc
   ** URL match by 
      ** domain, support wildcard
      ** path, will support wildcard
      ** query, matching all pattern's key=value, also key or value will support wildcard
+
 * Manual
 
 Implements:

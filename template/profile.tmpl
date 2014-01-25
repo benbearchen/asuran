@@ -96,6 +96,11 @@ function delayCmd(act) {
     return;
   }
 
+  r = selectOpt('RandOption')
+  if (r != "") {
+    act = act + " " + r
+  }
+
   appendCmd('url ' + act + ' ' + d.value + ' ' + u.value);
 }
 
@@ -223,7 +228,7 @@ function domainCmd(act, opt) {
 <td colspan="2"><button type="button" onclick="proxyCmd('restore', readInput('SaveId'));">restore</button>: 以预定义内容 ID 返回内容: <input type="text" id="SaveId" placeholder="save-id"/></td>
 </tr>
 <tr>
-<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
+<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
 </tr>
 <tr>
 <td><button type="button" onclick="delayCmd('drop');">drop</button>: <br/>前“时长”时间内都掉线</td>

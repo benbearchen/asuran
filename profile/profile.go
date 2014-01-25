@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -19,6 +20,7 @@ const (
 
 type DelayAction struct {
 	Act  DelayActType
+	Rand bool
 	Time float32 // in seconds
 }
 
@@ -26,16 +28,32 @@ func (d *DelayAction) Duration() time.Duration {
 	return (time.Duration)(d.Time * 1000000000)
 }
 
-func (d *DelayAction) DurationCommand() string {
-	if d.Time >= 60*60 {
-		return strconv.FormatFloat(float64(d.Time/60/60), 'f', -1, 32) + "h"
-	} else if d.Time >= 60 {
-		return strconv.FormatFloat(float64(d.Time/60), 'f', -1, 32) + "m"
-	} else if d.Time >= 1 {
-		return strconv.FormatFloat(float64(d.Time), 'f', -1, 32) + "s"
-	} else {
-		return strconv.FormatFloat(float64(d.Time*1000), 'f', -1, 32) + "ms"
+func (d *DelayAction) RandDuration(r *rand.Rand) time.Duration {
+	t := d.Time
+	if d.Rand {
+		t *= r.Float32()
 	}
+
+	return (time.Duration)(t * 1000000000)
+}
+
+func (d *DelayAction) DurationCommand() string {
+	t := ""
+	if d.Time >= 60*60 {
+		t = strconv.FormatFloat(float64(d.Time/60/60), 'f', -1, 32) + "h"
+	} else if d.Time >= 60 {
+		t = strconv.FormatFloat(float64(d.Time/60), 'f', -1, 32) + "m"
+	} else if d.Time >= 1 {
+		t = strconv.FormatFloat(float64(d.Time), 'f', -1, 32) + "s"
+	} else {
+		t = strconv.FormatFloat(float64(d.Time*1000), 'f', -1, 32) + "ms"
+	}
+
+	if d.Rand {
+		t = "rand " + t
+	}
+
+	return t
 }
 
 func (d *DelayAction) String() string {
@@ -58,22 +76,22 @@ func (d *DelayAction) String() string {
 }
 
 func MakeEmptyDelay() DelayAction {
-	return DelayAction{DelayActNone, 0}
+	return DelayAction{DelayActNone, false, 0}
 }
 
-func MakeDelay(act DelayActType, delay float32) DelayAction {
+func MakeDelay(act DelayActType, rand bool, delay float32) DelayAction {
 	switch act {
 	case DelayActNone:
-		return DelayAction{act, 0}
+		return DelayAction{act, rand, 0}
 	case DelayActDelayEach:
-		return DelayAction{act, delay}
+		return DelayAction{act, rand, delay}
 	case DelayActDropUntil:
-		return DelayAction{act, delay}
+		return DelayAction{act, rand, delay}
 	case DelayActTimeout:
-		return DelayAction{act, delay}
+		return DelayAction{act, rand, delay}
 	}
 
-	return DelayAction{DelayActNone, 0}
+	return DelayAction{DelayActNone, rand, 0}
 }
 
 type UrlAct int
@@ -295,15 +313,15 @@ func (p *Profile) UrlAction(url string) UrlProxyAction {
 	return MakeEmptyUrlProxyAction()
 }
 
-func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32) {
+func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, rand bool, delay float32) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	u, ok := p.Urls[urlPattern]
 	if ok {
-		u.Delay = MakeDelay(act, delay)
+		u.Delay = MakeDelay(act, rand, delay)
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, delay)}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, rand, delay)}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
@@ -318,11 +336,11 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, delay float32
 	}
 }
 
-func (p *Profile) SetAllUrlDelay(act DelayActType, delay float32) {
+func (p *Profile) SetAllUrlDelay(act DelayActType, rand bool, delay float32) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	d := MakeDelay(act, delay)
+	d := MakeDelay(act, rand, delay)
 	for _, u := range p.Urls {
 		u.Delay = d
 	}

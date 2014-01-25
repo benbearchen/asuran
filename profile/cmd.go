@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(delay|drop|timeout) <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <save-id>) (<url-pattern>|all)
+url [(delay|drop|timeout) [rand] <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <save-id>) (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -54,6 +54,10 @@ url command:
               ** “丢弃”的效果可能无法很好实现 **
     timeout <duration>
               所有请求等待 duration 时间后，丢弃请求。
+
+              时间可选参数：
+    rand      不使用固定时长，而是随机生成 [0, 1) * duration。
+
 
               下面几种内容模式只能多选一：
     cache     缓存源 URL 请求结果，下次请求起从缓存返回。
@@ -313,9 +317,9 @@ func commandDelayMode(p *Profile, mode, args string) {
 		}
 
 		if pattern == "all" {
-			p.SetAllUrlDelay(act, duration)
+			p.SetAllUrlDelay(act, false, duration)
 		} else {
-			p.SetUrlDelay(pattern, act, duration)
+			p.SetUrlDelay(pattern, act, false, duration)
 		}
 	}
 }
@@ -341,12 +345,12 @@ func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
 		return nil, "", false
 	}
 
-	d, r, ok := takeDuration(rest)
+	rand, d, r, ok := takeDuration(rest)
 	if !ok {
 		return nil, "", false
 	}
 
-	t := MakeDelay(act, d)
+	t := MakeDelay(act, rand, d)
 	return &t, r, true
 }
 
@@ -377,10 +381,16 @@ func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
 	return &UrlProxyAction{act, value}, rest, true
 }
 
-func takeDuration(content string) (float32, string, bool) {
+func takeDuration(content string) (bool, float32, string, bool) {
+	rand := false
 	d, p := cmd.TakeFirstArg(content)
+	if d == "rand" {
+		rand = true
+		d, p = cmd.TakeFirstArg(p)
+	}
+
 	duration := parseDuration(d)
-	return duration, p, duration >= 0
+	return rand, duration, p, duration >= 0
 }
 
 func parseDuration(d string) float32 {
