@@ -9,6 +9,12 @@ function convertContent() {
   encoded.value = encodeURIComponent(source.value)
 }
 
+function decodeContent() {
+  var source = document.getElementById('Source');
+  var encoded = document.getElementById('Encoded');
+  source.value = decodeURIComponent(encoded.value)
+}
+
 </script>
 </head>
 
@@ -19,6 +25,7 @@ function convertContent() {
 <button type="button" onclick="convertContent();">转换</button><br/>
 URL-Encoded 后：<br/>
 <textarea rows="10" cols="80" id="Encoded" name="cmd" readonly></textarea>
+<button type="button" onclick="decodeContent();">还原</button><br/>
 
 </body>
 </html>
