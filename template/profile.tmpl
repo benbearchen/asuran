@@ -65,6 +65,26 @@ function readInput(id) {
   return i.value;
 }
 
+function readOptionInput(optid, id) {
+  var opt = document.getElementById(optid);
+  if (opt.value != "") {
+    return opt.value;
+  }
+
+  var i = document.getElementById(id);
+  if (i.value == "") {
+    alert('按钮右边的参数不能为空');
+    return;
+  }
+
+  if (i.value.indexOf(" ") >= 0) {
+    alert('按钮右边的参数不能有空格');
+    return;
+  }
+
+  return i.value;
+}
+
 function proxyCmd(act, opt) {
   if (opt === undefined) {
     return;
@@ -77,7 +97,7 @@ function proxyCmd(act, opt) {
   }
 
   if (opt != "") {
-    act = act + " " + opt
+    act = act + " " + opt;
   }
 
   appendCmd('url ' + act + ' ' + u.value);
@@ -96,9 +116,9 @@ function delayCmd(act) {
     return;
   }
 
-  r = selectOpt('RandOption')
+  r = selectOpt('RandOption');
   if (r != "") {
-    act = act + " " + r
+    act = act + " " + r;
   }
 
   appendCmd('url ' + act + ' ' + d.value + ' ' + u.value);
@@ -222,19 +242,19 @@ function domainCmd(act, opt) {
 <td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl'));">redirect</button>: 302 跳转至第三方链接</td>
 </tr>
 <tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent'));">rewrite</button>: 返回指定内容: <input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
+<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent'));">rewrite</button>: 返回指定内容</td><td><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
 </tr>
 <tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('restore', readInput('SaveId'));">restore</button>: 以预定义内容 ID 返回内容: <input type="text" id="SaveId" placeholder="save-id"/></td>
+<td><button type="button" onclick="proxyCmd('restore', readOptionInput('SavedOption', 'SaveID'));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="SavedOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Saved}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="SaveID" placeholder="save-id"/></td>
 </tr>
 <tr>
 <td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
 </tr>
 <tr>
-<td><button type="button" onclick="delayCmd('drop');">drop</button>: <br/>前“时长”时间内都掉线</td>
+<td><button type="button" onclick="delayCmd('drop');">drop</button>: 前“时长”时间内都掉线</td>
 </tr>
 <tr>
-<td><button type="button" onclick="delayCmd('timeout');">timeout</button>: <br/>等待“时长”后掉线</td>
+<td><button type="button" onclick="delayCmd('timeout');">timeout</button>: 等待“时长”后掉线</td>
 </tr>
 <tr>
 <td colspan="3"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>

@@ -550,7 +550,14 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 	}
 
-	f.WriteHtml(w)
+	savedIDs := make([]string, 0)
+	if len(profileIP) > 0 {
+		if f := p.lives.OpenExists(profileIP); f != nil {
+			savedIDs = f.ListStoreIDs()
+		}
+	}
+
+	f.WriteHtml(w, savedIDs)
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
