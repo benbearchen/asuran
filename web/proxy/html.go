@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -271,6 +272,38 @@ func (p *Proxy) devices(w http.ResponseWriter) {
 func (p *Proxy) urlEncoded(w http.ResponseWriter) {
 	t, err := template.ParseFiles("template/urlencoded.tmpl")
 	err = t.Execute(w, nil)
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type savedContentData struct {
+	Even           bool
+	Client         string
+	ID             string
+	EncodedContent string
+}
+
+type savedContentListData struct {
+	Client   string
+	Contents []savedContentData
+}
+
+func formatSavedContentListData(saved []*life.Store, profileIP string) []savedContentData {
+	s := make([]savedContentData, 0, len(saved))
+	even := true
+	for _, v := range saved {
+		even = !even
+		s = append(s, savedContentData{even, profileIP, v.ID, url.QueryEscape(string(v.Content))})
+	}
+
+	return s
+}
+
+func (p *Proxy) writeSavedContent(w http.ResponseWriter, profileIP string, f *life.Life) {
+	t, err := template.ParseFiles("template/saved.tmpl")
+	list := formatSavedContentListData(f.ListStored(), profileIP)
+	err = t.Execute(w, savedContentListData{profileIP, list})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

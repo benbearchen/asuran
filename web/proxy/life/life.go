@@ -305,6 +305,44 @@ func (f *Life) restore(id string) []byte {
 	}
 }
 
+type cListStored struct {
+	c chan []*Store
+}
+
+func (f *Life) ListStored() []*Store {
+	c := make(chan []*Store)
+	f.c <- cListStored{c}
+	return <-c
+}
+
+func (f *Life) listStored() []*Store {
+	s := make([]*Store, 0, len(f.stores))
+	for _, v := range f.stores {
+		s = append(s, v)
+	}
+
+	return s
+}
+
+type cListStoreIDs struct {
+	c chan []string
+}
+
+func (f *Life) ListStoreIDs() []string {
+	c := make(chan []string)
+	f.c <- cListStoreIDs{c}
+	return <-c
+}
+
+func (f *Life) listStoreIDs() []string {
+	s := make([]string, 0, len(f.stores))
+	for _, v := range f.stores {
+		s = append(s, v.ID)
+	}
+
+	return s
+}
+
 func (f *Life) work() {
 	for {
 		e, ok := <-f.c
@@ -339,6 +377,10 @@ func (f *Life) work() {
 			f.store(e.id, e.content)
 		case cRestore:
 			e.c <- f.restore(e.id)
+		case cListStored:
+			e.c <- f.listStored()
+		case cListStoreIDs:
+			e.c <- f.listStoreIDs()
 		}
 	}
 }
