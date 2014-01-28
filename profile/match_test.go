@@ -128,3 +128,36 @@ func TestDomainPattern(t *testing.T) {
 	f("*.cdn.*.domain.com", "c.b.cdn.domain.com", false)
 	f("*.cdn.*.domain.com", "c.b.x-cdn.d.domain.com", false)
 }
+
+func TestPathPatternRegex(t *testing.T) {
+	f := func(p, r string) {
+		x := pathPattern2Regex(p)
+		if r != x {
+			t.Errorf("%s -> %s != %s", p, x, r)
+		}
+	}
+
+	f("", "^/$")
+	f("/", "^/$")
+
+	f("a", "^/a$")
+	f("/a", "^/a$")
+	f("a/", "^/a/$")
+	f("/a/", "^/a/$")
+	f("a/b", "^/a/b$")
+	f("/a/b", "^/a/b$")
+
+	f("*", "^/([^/]+/)*[^/]*$")
+	f("/*", "^/([^/]+/)*[^/]*$")
+	f("/*/", "^(/[^/]+)+/$")
+
+	f("/*a", "^/[^/]*a$")
+	f("/a*", "^/a[^/]*$")
+	f("/*a*", "^/[^/]*a[^/]*$")
+	f("/*a*", "^/[^/]*a[^/]*$")
+
+	f("/*a/", "^/[^/]*a/$")
+	f("/a*/", "^/a[^/]*/$")
+	f("/*a*/", "^/[^/]*a[^/]*/$")
+	f("/*a*/", "^/[^/]*a[^/]*/$")
+}

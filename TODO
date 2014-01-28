@@ -31,7 +31,7 @@ Key Features:
   ** Domain support wildcard character *, like *.domain.com, etc
   ** URL match by 
      ** domain, support wildcard
-     ** path, will support wildcard
+     ** path, support wildcard
      ** query, matching all pattern's key=value, also key or value will support wildcard
 
 * Manual

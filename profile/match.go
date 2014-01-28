@@ -86,11 +86,91 @@ func (d *DomainPattern) Match(domain string) bool {
 	}
 }
 
+func PathPatternUsage() string {
+	return `path pattern support '*'
+
+/([^/*]+)     match /\1
+/*([^/*]+)*   match /[^/]*\1[^/]*
+/*            match (/[^/]+)+ or /([^/]+/)*[^/]*
+`
+}
+
+type PathPattern struct {
+	pattern string
+	regex   *regexp.Regexp
+}
+
+func NewPathPattern(pattern string) *PathPattern {
+	p := new(PathPattern)
+	p.pattern = pattern
+	if strings.Index(pattern, "*") >= 0 {
+		regex := pathPattern2Regex(pattern)
+		r, err := regexp.Compile(regex)
+		if err == nil {
+			p.regex = r
+		}
+	}
+
+	return p
+}
+
+func uniqueTrim(s string, u rune) string {
+	r := make([]rune, 0, len(s))
+	var last rune = 0
+	for _, c := range s {
+		if c != u || c != last {
+			r = append(r, c)
+		}
+
+		last = c
+	}
+
+	return string(r)
+}
+
+func pathPattern2Regex(pattern string) string {
+	pattern = uniqueTrim(strings.TrimSpace(pattern), '/')
+
+	r := ""
+	nodes := strings.Split(pattern, "/")
+	for i, p := range nodes {
+		p = strings.TrimSpace(p)
+		if len(p) == 0 {
+			// pass
+			if i+1 == len(nodes) {
+				r += "/"
+			}
+		} else if p == "*" {
+			if i+1 == len(nodes) {
+				// end with `/*'
+				r += "/([^/]+/)*[^/]*"
+			} else {
+				r += "(/[^/]+)+"
+			}
+		} else if strings.Index(p, "*") >= 0 {
+			r += "/" + strings.Replace(p, "*", "[^/]*", -1)
+		} else {
+			r += "/" + p
+		}
+	}
+
+	r = "^" + r + "$"
+	return r
+}
+
+func (p *PathPattern) Match(path string) bool {
+	if p.regex != nil {
+		return p.regex.MatchString(path)
+	} else {
+		return p.pattern == path
+	}
+}
+
 type UrlPattern struct {
 	pattern string
 	domain  *DomainPattern
 	port    string
-	path    string
+	path    *PathPattern
 	query   map[string]string
 }
 
@@ -111,7 +191,7 @@ func NewUrlPattern(pattern string) *UrlPattern {
 	}
 
 	u.port = s[1]
-	u.path = s[2]
+	u.path = NewPathPattern(s[2])
 	u.query = parseQuery(s[3])
 	return u
 }
@@ -193,13 +273,8 @@ func parseQuery(query string) map[string]string {
 	return m
 }
 
-func matchPath(pattern, path string) bool {
-	if strings.HasPrefix(path, pattern) {
-		return true
-	}
-
-	// TODO: more pattern
-	return false
+func matchPath(pattern *PathPattern, path string) bool {
+	return pattern.Match(path)
 }
 
 func matchQuery(pattern, query map[string]string) bool {
