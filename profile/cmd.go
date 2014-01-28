@@ -581,11 +581,16 @@ func (p *Profile) ExportCommand() string {
 		export += u.EditCommand()
 	}
 
-	export += "\n# 以下为域名命令定义 #\n"
+	export += p.ExportDNSCommand()
+
+	export += "\n# end # \n"
+	return export
+}
+
+func (p *Profile) ExportDNSCommand() string {
+	export := "\n# 以下为域名命令定义 #\n"
 	for _, d := range p.Domains {
 		export += d.EditCommand()
 	}
-
-	export += "\n# end # \n"
 	return export
 }

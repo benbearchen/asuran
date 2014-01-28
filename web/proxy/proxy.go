@@ -95,6 +95,7 @@ func (p *Proxy) BindUrlOperator(op profile.UrlOperator) {
 
 func (p *Proxy) BindProfileOperator(op profile.ProfileOperator) {
 	p.profileOp = op
+	p.profileOp.Open("localhost").Name = "DNS 服务"
 }
 
 func (p *Proxy) BindDomainOperator(op profile.DomainOperator) {
@@ -165,6 +166,8 @@ func (p *Proxy) OnRequest(
 		p.WriteUsage(w)
 	} else if page, m := httpd.MatchPath(urlPath, "/profile"); m {
 		p.ownProfile(remoteIP, page, w, r)
+	} else if page, m := httpd.MatchPath(urlPath, "/dns"); m {
+		p.dns(page, w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
 	} else if urlPath == "/" {
@@ -374,7 +377,21 @@ func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if domain == "i.me" {
 		p.p.LogDomain(ip, "init", domain, p.p.serveIP)
 		return profile.NewDomainAction(domain, profile.DomainActRedirect, p.p.serveIP)
-	} else if p.p.domainOp != nil {
+	}
+
+	if p.p.profileOp != nil {
+		if p.p.profileOp.FindByIp(ip) == nil {
+			a := p.p.domainOp.Action("localhost", domain)
+			if a != nil {
+				b := *a
+				a = &b
+			}
+
+			return a
+		}
+	}
+
+	if p.p.domainOp != nil {
 		act := "query"
 		a := p.p.domainOp.Action(ip, domain)
 		if a != nil {
@@ -709,4 +726,29 @@ func (p *Proxy) storeHistory(profileIP, id string) (string, string) {
 	}
 
 	return "", ""
+}
+
+func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
+	f := p.profileOp.Open("localhost")
+	if f == nil {
+		fmt.Fprintln(w, "无效")
+		return
+	}
+
+	r.ParseForm()
+	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
+		for _, cmd := range v {
+			p.Command(cmd, f, nil)
+		}
+	}
+
+	if len(page) == 0 {
+		f.WriteDNS(w)
+	} else if page == "/export" {
+		export := "# 此为 DNS 独立服务的配置导出，可复制所有内容至“命令”输入窗口重新加载此配置 #\n\n"
+		export += "# Name: DNS 独立服务\n"
+		export += f.ExportDNSCommand()
+		export += "\n# end #\n"
+		fmt.Fprintln(w, export)
+	}
 }

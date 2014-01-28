@@ -20,7 +20,9 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 		c, rest := cmd.TakeFirstArg(line)
 		switch c {
 		case "restart":
-			v.Restart()
+			if v != nil {
+				v.Restart()
+			}
 		case "clear":
 			f.Clear()
 		case "delay":
