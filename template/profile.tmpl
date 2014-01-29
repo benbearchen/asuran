@@ -50,39 +50,28 @@ function selectOpt(id) {
   return s.value;
 }
 
-function readInput(id) {
+function readInput(id, argName) {
   var i = document.getElementById(id);
   if (i.value == "") {
-    alert('按钮右边的参数不能为空');
+    alert(argName + '不能为空');
     return;
   }
 
   if (i.value.indexOf(" ") >= 0) {
-    alert('按钮右边的参数不能有空格');
+    alert(argName + '不能有空格');
     return;
   }
 
   return i.value;
 }
 
-function readOptionInput(optid, id) {
+function readOptionInput(optid, id, argName) {
   var opt = document.getElementById(optid);
   if (opt.value != "") {
     return opt.value;
   }
 
-  var i = document.getElementById(id);
-  if (i.value == "") {
-    alert('按钮右边的参数不能为空');
-    return;
-  }
-
-  if (i.value.indexOf(" ") >= 0) {
-    alert('按钮右边的参数不能有空格');
-    return;
-  }
-
-  return i.value;
+  return readInput(id, argName);
 }
 
 function proxyCmd(act, opt) {
@@ -238,16 +227,16 @@ function domainCmd(act, opt) {
 <td colspan="2"><button type="button" onclick="proxyCmd('status', selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl'));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL"/></td>
+<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl', 'map 的第三方 URL '));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL"/></td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl'));">redirect</button>: 302 跳转至第三方链接</td>
+<td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl', 'redirect 的第三方 URL '));">redirect</button>: 302 跳转至第三方链接</td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent'));">rewrite</button>: 返回指定内容</td><td><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
+<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID'));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id"/></td>
+<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID', 'restore 的内容 store-id '));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id"/></td>
 </tr>
 <tr>
 <td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
