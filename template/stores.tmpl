@@ -38,11 +38,13 @@
 <table id="profile">
 <tr>
 <th>ID</th>
+<th>编辑</th>
 <th>内容</th>
 </tr>
 {{range .Contents}}
 <tr{{if .Even}} class="alt"{{end}}>
 <td><a href="/profile/{{.Client}}/stores/{{.ID}}" target="_blank">{{.ID}}</a></td>
+<td><a href="/profile/{{.Client}}/stores/edit/{{.ID}}" target="_blank">编辑</a></td>
 <td>{{.EncodedContent}}</td>
 </tr>
 {{end}}

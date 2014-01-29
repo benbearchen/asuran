@@ -1,0 +1,43 @@
+<html>
+<head>
+<title>{{.Client}} Edit store content {{.ID}}</title>
+<script type="text/javascript">
+
+function convertContent() {
+  var source = document.getElementById('Source');
+  var encoded = document.getElementById('EncodedContent');
+  encoded.value = encodeURIComponent(source.value)
+}
+
+function decodeContent() {
+  var source = document.getElementById('Source');
+  var encoded = document.getElementById('EncodedContent');
+  source.value = decodeURIComponent(encoded.value)
+}
+
+</script>
+</head>
+
+<body>
+
+<form method="POST">
+需要保存内容的 ID（英文数字、不含空格的字符串）：<br/>
+<input type="text" value="{{.ID}}" {{if .ID}}readonly{{end}} name="id" onkeyup="value=value.replace(/[\W]/g,'')" onbeforepaste="clipboardData.setData('text',clipboardData.getData('text').replace(/[^\d]/g,''))"/>
+<!-- http://blog.csdn.net/daizhen256/article/details/8452623 -->
+<hr/>
+需保存的 url-encoded 后内容：<br/>
+<textarea rows="10" cols="80" id="EncodedContent" name="content">{{.EncodedContent}}</textarea>
+<button type="button" onclick="decodeContent();">decode</button><br/>
+
+<input type="submit" value="提交上方内容"/>
+</form>
+
+<hr/>
+
+原始内容临时编辑框<br/>
+（修改原始内容后，请 url-encode 到上方）<br/>
+<textarea rows="10" cols="80" id="Source" name="cmd"></textarea>
+<button type="button" onclick="convertContent();">url-encode</button><br/>
+
+</body>
+</html>

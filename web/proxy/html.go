@@ -308,3 +308,29 @@ func (p *Proxy) writeStores(w http.ResponseWriter, profileIP string, prof *profi
 		fmt.Fprintln(w, "内部错误：", err)
 	}
 }
+
+type editStoreData struct {
+	Client         string
+	ID             string
+	EncodedContent string
+}
+
+func formatEditStoreData(profileIP string, prof *profile.Profile, id string) editStoreData {
+	encodedContent := ""
+	if len(id) > 0 {
+		c := prof.Restore(id)
+		if len(c) > 0 {
+			encodedContent = url.QueryEscape(string(c))
+		}
+	}
+
+	return editStoreData{profileIP, id, encodedContent}
+}
+
+func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string) {
+	t, err := template.ParseFiles("template/store-edit.tmpl")
+	err = t.Execute(w, formatEditStoreData(profileIP, prof, id))
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
