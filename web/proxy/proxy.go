@@ -237,7 +237,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	requestR := r
 	contentSource := ""
 
-	p.profileOp.Open(remoteIP)
+	prof := p.profileOp.Open(remoteIP)
 
 	rangeInfo := cache.CheckRange(r)
 	f := p.lives.Open(remoteIP)
@@ -293,7 +293,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.UrlActRewritten:
 			fallthrough
 		case profile.UrlActRestore:
-			if p.rewriteUrl(fullUrl, w, r, rangeInfo, f, act) {
+			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act) {
 				return
 			}
 		}
@@ -327,7 +327,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, f *life.Life, act profile.UrlProxyAction) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction) bool {
 	var content []byte = nil
 	contentSource := ""
 	switch act.Act {
@@ -340,7 +340,7 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		content = []byte(u)
 		contentSource = "rewrite"
 	case profile.UrlActRestore:
-		content = f.Restore(act.ContentValue)
+		content = prof.Restore(act.ContentValue)
 		if content == nil {
 			return false
 		}
@@ -527,9 +527,9 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "store":
 				if len(pages) >= 5 {
 					id := pages[4]
-					if u, sid := p.storeHistory(profileIP, id); len(sid) > 0 {
+					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
 						f.SetUrl(profile.UrlToPattern(u), nil, &profile.UrlProxyAction{profile.UrlActRestore, sid})
-						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 <a href=\"/profile/%s/saved/%s\">%s</a> 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, profileIP, sid, id, u, profileIP)
+						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 <a href=\"/profile/%s/stores/%s\">%s</a> 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, profileIP, sid, id, u, profileIP)
 					}
 					return
 				}
@@ -538,21 +538,19 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 		fmt.Fprintf(w, "<html><body>无效请求。返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
 		return
-	} else if op == "saved" {
-		if f := p.lives.OpenExists(profileIP); f != nil {
-			if len(pages) >= 4 {
-				c := f.Restore(pages[3])
-				if len(c) > 0 {
-					w.Write(c)
-				} else {
-					w.WriteHeader(404)
-				}
-				return
+	} else if op == "stores" {
+		if len(pages) >= 4 {
+			c := f.Restore(pages[3])
+			if len(c) > 0 {
+				w.Write(c)
 			} else {
-				p.writeSavedContent(w, profileIP, f)
+				w.WriteHeader(404)
 			}
 			return
+		} else {
+			p.writeStores(w, profileIP, f)
 		}
+		return
 	} else if op != "" {
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
@@ -567,13 +565,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 	}
 
-	savedIDs := make([]string, 0)
-	if len(profileIP) > 0 {
-		if f := p.lives.OpenExists(profileIP); f != nil {
-			savedIDs = f.ListStoreIDs()
-		}
-	}
-
+	savedIDs := f.ListStoreIDs()
 	f.WriteHtml(w, savedIDs)
 }
 
@@ -707,7 +699,7 @@ func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr stri
 	}
 }
 
-func (p *Proxy) storeHistory(profileIP, id string) (string, string) {
+func (p *Proxy) storeHistory(profileIP, id string, prof *profile.Profile) (string, string) {
 	f := p.lives.OpenExists(profileIP)
 	if f == nil {
 		return "", ""
@@ -720,8 +712,7 @@ func (p *Proxy) storeHistory(profileIP, id string) (string, string) {
 
 	h := f.LookHistoryByID(uint32(hID))
 	if h.Error == nil && len(h.Bytes) > 0 {
-		saveID := "his" + id
-		f.Store(saveID, h.Bytes)
+		saveID := prof.StoreID(h.Bytes)
 		return h.Url, saveID
 	}
 

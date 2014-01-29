@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(delay|drop|timeout) [rand] <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <save-id>) (<url-pattern>|all)
+url [(delay|drop|timeout) [rand] <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>) (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -71,9 +71,9 @@ url command:
               返回 302 以让客户端自己跳转至 resource-url。
     rewrite <url-encoded-content>
               以 url-encoded-content 的原始内容返回。
-    restore <save-id>
-              以预先保存的名字为 save-id 的内容返回。
-              save-id 内容可以上传，也可以从请求历史修改。
+    restore <store-id>
+              以预先保存的名字为 store-id 的内容返回。
+              store-id 内容可以上传，也可以从请求历史修改。
 
     delete    删除对 url-pattern 的配置。
 
@@ -87,7 +87,7 @@ url command:
     url-encoded-content
               以 url-encoded 方式编码的文本或者二进制内容。
               直接返回给客户端。
-    save-id   上传内容或者修改请求历史内容，得到内容的 id。
+    store-id  上传内容或者修改请求历史内容，得到内容的 id。
               id 对应内容可方便修改。
     url-pattern
               [domain[:port]]/[path][?key=value]

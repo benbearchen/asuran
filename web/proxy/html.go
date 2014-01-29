@@ -277,33 +277,33 @@ func (p *Proxy) urlEncoded(w http.ResponseWriter) {
 	}
 }
 
-type savedContentData struct {
+type storeData struct {
 	Even           bool
 	Client         string
 	ID             string
 	EncodedContent string
 }
 
-type savedContentListData struct {
+type storeListData struct {
 	Client   string
-	Contents []savedContentData
+	Contents []storeData
 }
 
-func formatSavedContentListData(saved []*life.Store, profileIP string) []savedContentData {
-	s := make([]savedContentData, 0, len(saved))
+func formatStoreListData(saved []*profile.Store, profileIP string) []storeData {
+	s := make([]storeData, 0, len(saved))
 	even := true
 	for _, v := range saved {
 		even = !even
-		s = append(s, savedContentData{even, profileIP, v.ID, url.QueryEscape(string(v.Content))})
+		s = append(s, storeData{even, profileIP, v.ID, url.QueryEscape(string(v.Content))})
 	}
 
 	return s
 }
 
-func (p *Proxy) writeSavedContent(w http.ResponseWriter, profileIP string, f *life.Life) {
-	t, err := template.ParseFiles("template/saved.tmpl")
-	list := formatSavedContentListData(f.ListStored(), profileIP)
-	err = t.Execute(w, savedContentListData{profileIP, list})
+func (p *Proxy) writeStores(w http.ResponseWriter, profileIP string, prof *profile.Profile) {
+	t, err := template.ParseFiles("template/stores.tmpl")
+	list := formatStoreListData(prof.ListStored(), profileIP)
+	err = t.Execute(w, storeListData{profileIP, list})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

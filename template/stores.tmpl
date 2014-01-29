@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>{{.Client}}'s url saved contents</title>
+<title>{{.Client}}'s url stored contents</title>
 <style type="text/css">
 /* copy from http://www.w3school.com.cn/tiy/t.asp?f=csse_table_fancy */
 #profile
@@ -42,7 +42,7 @@
 </tr>
 {{range .Contents}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><a href="/profile/{{.Client}}/saved/{{.ID}}" target="_blank">{{.ID}}</a></td>
+<td><a href="/profile/{{.Client}}/stores/{{.ID}}" target="_blank">{{.ID}}</a></td>
 <td>{{.EncodedContent}}</td>
 </tr>
 {{end}}

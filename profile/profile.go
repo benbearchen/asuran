@@ -194,6 +194,11 @@ func (d *DomainAction) TargetString() string {
 	}
 }
 
+type Store struct {
+	ID      string
+	Content []byte
+}
+
 type ProxyHostOperator interface {
 	New(port int)
 }
@@ -204,6 +209,8 @@ type Profile struct {
 	Owner   string
 	Urls    map[string]*urlAction
 	Domains map[string]*DomainAction
+	storeID int
+	stores  map[string]*Store
 
 	proxyOp ProxyHostOperator
 
@@ -217,6 +224,8 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Owner = owner
 	p.Urls = make(map[string]*urlAction)
 	p.Domains = make(map[string]*DomainAction)
+	p.storeID = 1
+	p.stores = make(map[string]*Store)
 	return p
 }
 
@@ -458,6 +467,73 @@ func (p *Profile) Delete(urlPattern string) {
 	delete(p.Urls, urlPattern)
 }
 
+func (p *Profile) Store(id string, content []byte) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.stores[id] = &Store{id, content}
+}
+
+func (p *Profile) StoreID(content []byte) string {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for {
+		id := "s" + strconv.Itoa(p.storeID)
+		p.storeID++
+		if _, ok := p.stores[id]; ok {
+			continue
+		}
+
+		p.stores[id] = &Store{id, content}
+		return id
+	}
+}
+
+func (p *Profile) Restore(id string) []byte {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if b, ok := p.stores[id]; ok {
+		return b.Content
+	} else {
+		return nil
+	}
+}
+
+func (p *Profile) DeleteAllStore() {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	for id, _ := range p.stores {
+		delete(p.stores, id)
+	}
+}
+
+func (p *Profile) ListStoreIDs() []string {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	s := make([]string, 0, len(p.stores))
+	for _, v := range p.stores {
+		s = append(s, v.ID)
+	}
+
+	return s
+}
+
+func (p *Profile) ListStored() []*Store {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	s := make([]*Store, 0, len(p.stores))
+	for _, v := range p.stores {
+		s = append(s, v)
+	}
+
+	return s
+}
+
 func (p *Profile) CloneNew(newName, newIp string) *Profile {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -474,12 +550,19 @@ func (p *Profile) CloneNew(newName, newIp string) *Profile {
 		n.Domains[d] = &c
 	}
 
+	for s, store := range p.stores {
+		c := *store
+		n.stores[s] = &c
+	}
+
 	return n
 }
 
 func (p *Profile) Clear() {
 	p.DeleteAllUrl()
 	p.DeleteAllDomain()
+	p.storeID = 1
+	p.DeleteAllStore()
 }
 
 func getHostOfUrlPattern(urlPattern string) string {

@@ -31,7 +31,7 @@ type profileData struct {
 	Path    string
 	Urls    []urlActionData
 	Domains []domainData
-	Saved   []string
+	Stores  []string
 }
 
 func (p *Profile) formatViewData(savedIDs []string) profileData {

@@ -175,6 +175,8 @@ function domainCmd(act, opt) {
 <a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">重启客户端状态</a>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 <a href="/profile/{{.IP}}/history" target="_blank" title="查看域名查询、HTTP 访问等日志">查看日志</a>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="/profile/{{.IP}}/stores" target="_blank" title="">查看当前保存的内容列表</a>
 <hr/>
 <table id="profile">
 <tr>
@@ -245,7 +247,7 @@ function domainCmd(act, opt) {
 <td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent'));">rewrite</button>: 返回指定内容</td><td><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('restore', readOptionInput('SavedOption', 'SaveID'));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="SavedOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Saved}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="SaveID" placeholder="save-id"/></td>
+<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID'));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id"/></td>
 </tr>
 <tr>
 <td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
