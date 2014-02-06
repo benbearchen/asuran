@@ -17,7 +17,7 @@ Key Features:
   ** Policy Pack
   ** Profile Command
      ** `map'/`redirect' url with other url
-     ** `rewrite' url with static CONTENT or saved content
+     ** `rewrite' url with static or stored content
      ** `timeout' url
      ** `rand' time generator
   ** Super Global Profile
