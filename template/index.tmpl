@@ -10,31 +10,31 @@ asuran {{.Version}} 当前支持：
 <li>支持按域名、URL 路径、查询参数匹配 URL，并对 URL 实现以下操作：
 <ul>
 <li>延时、或按时阻止 URL
-<li>缓存 URL
+<li>缓存 URL 内容，可原样或修改后给以后的请求返回
 </ul>
 <li>HTTP 特性：<ul>
   <li>支持代理 GET，且可缓存
   <li>支持代理 POST，但不可缓存
   <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求
   <li>代理对一般 HTTP Header 原样返回（Transfer-Encoding/chunked 可能就不行了）
+  <li>支持 302 跳转
 </ul>
 <li>客户端行为历史记录<ul>
   <li>记录域名查询
-  <li>记录使用代理的 URL，且可以查看（某一）URL 最后一次请求的内容
+  <li>记录 HTTP 请求，可查看每一次请求的详情，如请求时间，HTTP Headers，POST 内容和返回内容等
 </ul>
 </ul>
 当前不支持：
 <ul>
 <li>HTTPS
-<li>不能代理使用 IP 而不是域名的 URL
 </ul>
 <hr/>
-使用手册：<a href="/usage">http://{{.ProxyHost}}/usage</a>
+使用手册：<a href="/usage" target="_blank">http://{{.ProxyHost}}/usage</a>
 <hr/>
-您的设备列表：<a href="/profile">http://{{.ProxyHost}}/profile</a>
+您的设备列表：<a href="/profile" target="_blank">http://{{.ProxyHost}}/profile</a>
 <hr/>
-当前活跃设备：<a href="/devices">http://{{.ProxyHost}}/devices</a>
+当前活跃设备：<a href="/devices" target="_blank">http://{{.ProxyHost}}/devices</a>
 <hr/>
-DNS 独立域名解析服务：<a href="/dns">http://{{.ProxyHost}}/dns</a>
+DNS 独立域名解析服务：<a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a>
 </body>
 </html>
