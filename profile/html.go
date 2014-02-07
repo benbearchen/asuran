@@ -89,6 +89,10 @@ func formatOwnerData(ownerIP string, profiles []*Profile) ownerData {
 	if profiles != nil && len(profiles) > 0 {
 		even := true
 		for _, p := range profiles {
+			if p.Ip == "localhost" {
+				continue
+			}
+
 			even = !even
 			ips = append(ips, ownerIPData{even, p.Name, p.Ip})
 		}

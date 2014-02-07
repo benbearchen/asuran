@@ -241,13 +241,15 @@ func formatDevicesListData(profiles []*profile.Profile, v *life.IPLives) devices
 	if len(profiles) > 0 {
 		even := true
 		for _, p := range profiles {
-			even = !even
-
 			t := ""
 			f := v.OpenExists(p.Ip)
 			if f != nil {
 				t = f.CreateTime.Format("2006-01-02 15:04:05")
+			} else if p.Ip == "localhost" {
+				continue
 			}
+
+			even = !even
 
 			devices = append(devices, deviceData{even, p.Name, p.Ip, p.Owner, t})
 		}

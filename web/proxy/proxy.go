@@ -441,6 +441,11 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	op := ""
 	pages := strings.Split(page, "/")
 	if len(pages) >= 2 {
+		if pages[1] == "localhost" || pages[1] == "127.0.0.1" {
+			fmt.Fprintln(w, "can't profile localhost or 127.0.0.1")
+			return
+		}
+
 		if ip := gonet.ParseIP(pages[1]); ip != nil {
 			profileIP = ip.String()
 		}
