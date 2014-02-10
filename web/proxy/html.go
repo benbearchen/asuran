@@ -322,7 +322,7 @@ func formatEditStoreData(profileIP string, prof *profile.Profile, id string) edi
 	if len(id) > 0 {
 		c := prof.Restore(id)
 		if len(c) > 0 {
-			encodedContent = url.QueryEscape(string(c))
+			encodedContent = strings.Replace(url.QueryEscape(string(c)), "+", "%20", -1)
 		}
 	}
 

@@ -2,6 +2,8 @@
 *.exe
 *.bak
 *.txt
+*.zip
+*.7z
 
 
 # golang
