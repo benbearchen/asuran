@@ -52,6 +52,7 @@ type DomainState struct {
 type Life struct {
 	IP         string
 	CreateTime time.Time
+	VisitTime  time.Time
 	urls       map[string]*UrlState
 	domains    map[string]*DomainState
 	cache      *cache.Cache
@@ -64,6 +65,7 @@ func NewLife(ip string) *Life {
 	f := Life{}
 	f.IP = ip
 	f.CreateTime = time.Now()
+	f.VisitTime = f.CreateTime
 	f.urls = make(map[string]*UrlState)
 	f.domains = make(map[string]*DomainState)
 	f.cache = cache.NewCache()
@@ -147,6 +149,7 @@ func (f *Life) restart() {
 
 	f.cache.Clear()
 	f.history.Clear()
+	f.VisitTime = time.Time{}
 }
 
 type cCheckCache struct {
@@ -298,4 +301,16 @@ func (f *Life) work() {
 			e.c <- f.historyEvents()
 		}
 	}
+}
+
+func (f *Life) visit() {
+	f.VisitTime = time.Now()
+}
+
+func (f *Life) isIdle(d time.Duration) bool {
+	if f.VisitTime.IsZero() {
+		return false
+	}
+
+	return time.Now().Sub(f.VisitTime) > d
 }

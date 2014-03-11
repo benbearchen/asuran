@@ -2,6 +2,7 @@ package life
 
 import (
 	"sync"
+	"time"
 )
 
 type IPLives struct {
@@ -13,6 +14,7 @@ type IPLives struct {
 func NewIPLives() *IPLives {
 	lives := IPLives{}
 	lives.lives = make(map[string]*Life)
+	go lives.run()
 	return &lives
 }
 
@@ -47,6 +49,26 @@ func (v *IPLives) OpenExists(ip string) *Life {
 	if !ok {
 		return nil
 	} else {
+		f.visit()
 		return f
+	}
+}
+
+func (v *IPLives) run() {
+	for {
+		select {
+		case <-time.NewTimer(time.Second * 15).C:
+			v.checkIdle()
+		}
+	}
+}
+
+func (v *IPLives) checkIdle() {
+	v.lock.RLock()
+	defer v.lock.RUnlock()
+	for _, f := range v.lives {
+		if f.isIdle(time.Minute * 30) {
+			f.Restart()
+		}
 	}
 }
