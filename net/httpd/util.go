@@ -9,8 +9,13 @@ func MatchPath(path, match string) (string, bool) {
 		return "", true
 	}
 
-	if strings.HasPrefix(path, match+"/") {
-		return path[len(match):], true
+	m := match
+	if !strings.HasSuffix(m, "/") {
+		m += "/"
+	}
+
+	if strings.HasPrefix(path, m) {
+		return path[len(m):], true
 	} else {
 		return "", false
 	}
