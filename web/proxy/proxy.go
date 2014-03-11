@@ -147,7 +147,7 @@ func (p *Proxy) OnRequest(
 		p.proxyUrl(urlPath, w, r)
 	} else if targetHost == "i.me" {
 		p.initDevice(w, remoteIP)
-	} else if targetHost != "localhost" && targetHost != "127.0.0.1" && targetHost != p.serveIP {
+	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) {
 		target := "http://" + r.Host + urlPath
 		p.proxyUrl(target, w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/post"); m {
@@ -212,14 +212,8 @@ func (p *Proxy) OnRequest(
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy")
 	} else if urlPath == "/urlencoded" {
 		p.urlEncoded(w)
-	} else if targetHost == "localhost" || targetHost == "127.0.0.1" || targetHost == p.serveIP {
-		fmt.Fprintln(w, "visit http://"+r.Host+"/about to get info")
-	} else if remoteIP == r.Host {
-		// 代理本机访问……
-		http.Error(w, "Not Found", 404)
 	} else {
-		target := "http://" + r.Host + urlPath
-		p.proxyUrl(target, w, r)
+		fmt.Fprintln(w, "visit http://"+r.Host+"/about to get info")
 	}
 }
 
@@ -237,7 +231,10 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	requestR := r
 	contentSource := ""
 
-	prof := p.profileOp.Open(remoteIP)
+	var prof *profile.Profile
+	if !p.isSelfAddr(remoteIP) {
+		prof = p.profileOp.Open(remoteIP)
+	}
 
 	rangeInfo := cache.CheckRange(r)
 	f := p.lives.Open(remoteIP)
@@ -441,7 +438,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	op := ""
 	pages := strings.Split(page, "/")
 	if len(pages) >= 2 {
-		if pages[1] == "localhost" || pages[1] == "127.0.0.1" {
+		if p.isLoopback(pages[1]) {
 			fmt.Fprintln(w, "can't profile localhost or 127.0.0.1")
 			return
 		}
@@ -771,4 +768,23 @@ func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
 		export += "\n# end #\n"
 		fmt.Fprintln(w, export)
 	}
+}
+
+func (p *Proxy) isLoopback(addr string) bool {
+	ip := gonet.ParseIP(addr)
+	if ip != nil && ip.IsLoopback() {
+		return true
+	}
+
+	return strings.EqualFold(addr, "localhost")
+}
+
+func (p *Proxy) isSelfAddr(addr string) bool {
+	if p.isLoopback(addr) {
+		return true
+	} else if addr == p.serveIP {
+		return true
+	}
+
+	return false
 }
