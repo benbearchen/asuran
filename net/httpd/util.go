@@ -15,7 +15,7 @@ func MatchPath(path, match string) (string, bool) {
 	}
 
 	if strings.HasPrefix(path, m) {
-		return path[len(m):], true
+		return path[len(m)-1:], true
 	} else {
 		return "", false
 	}
