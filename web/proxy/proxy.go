@@ -250,19 +250,25 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.DelayActDelayEach:
 			if delay.Time > 0 {
 				// TODO: create request before sleep, more effective
-				time.Sleep(delay.RandDuration(p.r))
+				d := delay.RandDuration(p.r)
+				time.Sleep(d)
+				f.Log("proxy " + fullUrl + " delay " + d.String())
 			}
 			break
 		case profile.DelayActDropUntil:
-			if u != nil && u.DropUntil(delay.RandDuration(p.r)) {
+			d := delay.RandDuration(p.r)
+			if u != nil && u.DropUntil(d) {
 				// TODO: more safe method, maybe net.http.Hijacker
+				f.Log("proxy " + fullUrl + " drop " + d.String())
 				panic("")
 			}
 			break
 		case profile.DelayActTimeout:
 			if delay.Time > 0 {
 				// TODO: more safe method, maybe net.http.Hijacker
-				time.Sleep(delay.RandDuration(p.r))
+				d := delay.RandDuration(p.r)
+				time.Sleep(d)
+				f.Log("proxy " + fullUrl + " timeout " + d.String())
 				panic("")
 			}
 			break
@@ -274,11 +280,13 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.UrlActCache:
 			needCache = true
 		case profile.UrlActStatus:
+			status := 502
 			if c, err := strconv.Atoi(act.ContentValue); err == nil {
-				w.WriteHeader(c)
-			} else {
-				w.WriteHeader(502)
+				status = c
 			}
+
+			w.WriteHeader(status)
+			f.Log("proxy " + fullUrl + " status " + strconv.Itoa(status))
 			return
 		case profile.UrlActMap:
 			requestUrl = act.ContentValue
@@ -286,6 +294,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 			contentSource = "map " + act.ContentValue
 		case profile.UrlActRedirect:
 			http.Redirect(w, r, act.ContentValue, 302)
+			f.Log("proxy " + fullUrl + " redirect " + act.ContentValue)
 			return
 		case profile.UrlActRewritten:
 			fallthrough

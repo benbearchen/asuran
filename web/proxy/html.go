@@ -179,12 +179,10 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 		} else if len(s) >= 3 && s[0] == "proxy" {
 			url := s[1]
 			d.URL = url
-			if len(s) >= 4 {
-				d.URL += " " + s[3]
-			}
 
-			d.URLID = s[2]
-			if id, err := strconv.ParseInt(d.URLID, 10, 32); err == nil {
+			var opName, opPath string
+			if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
+				d.URLID = s[2]
 				h := f.LookHistoryByID(uint32(id))
 				if h != nil {
 					status := h.Method
@@ -196,6 +194,18 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 
 					d.HttpStatus = status
 				}
+
+				if len(s) >= 4 {
+					d.URL += " " + s[3]
+				}
+
+				opName = "缓存"
+				opPath = "url/store"
+			} else {
+				d.HttpStatus = s[2]
+				if len(s) >= 4 {
+					d.HttpStatus += " " + s[3]
+				}
 			}
 
 			if strings.HasPrefix(url, "http://") {
@@ -204,7 +214,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 				d.URLBody = url
 			}
 
-			d.OPs = append(d.OPs, opData{"缓存", "url/store", d.URLID, client})
+			d.OPs = append(d.OPs, opData{opName, opPath, d.URLID, client})
 		} else {
 			d.EventString = e.String
 		}
