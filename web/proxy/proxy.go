@@ -584,7 +584,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 	r.ParseForm()
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
-		if f.Owner == "" || f.Owner == ownerIP {
+		if f.Owner == ownerIP || profileIP == ownerIP {
 			for _, cmd := range v {
 				p.Command(cmd, f, p.lives.Open(profileIP))
 			}
