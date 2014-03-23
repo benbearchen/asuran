@@ -382,7 +382,7 @@ type proxyDomainOperator struct {
 func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if domain == "i.me" {
 		p.p.LogDomain(ip, "init", domain, p.p.serveIP)
-		return profile.NewDomainAction(domain, profile.DomainActRedirect, p.p.serveIP)
+		return profile.NewDomainAction(domain, profile.DomainActNone, p.p.serveIP)
 	}
 
 	if p.p.profileOp != nil {
@@ -405,9 +405,13 @@ func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 			a = &b
 		}
 
-		if a != nil && a.Act == profile.DomainActRedirect && a.IP == "" {
-			a.IP = p.p.serveIP
-			act = "proxy"
+		if a != nil {
+			if a.Act == profile.DomainActProxy {
+				a.IP = p.p.serveIP
+				act = "proxy"
+			} else if a.Act == profile.DomainActBlock {
+				act = "block"
+			}
 		}
 
 		resultIP := ""
@@ -720,7 +724,7 @@ func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr stri
 	}
 
 	a := p.domainOp.Action(client, domain)
-	if a == nil || a.Act != profile.DomainActRedirect || len(a.IP) == 0 || a.IP == p.serveIP {
+	if a == nil || len(a.IP) == 0 {
 		return nil
 	}
 

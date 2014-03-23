@@ -13,26 +13,25 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(delay|drop|timeout) [rand] <duration>] (cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>) (<url-pattern>|all)
+url [(delay|drop|timeout) [rand] <duration>] (proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>) (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
-domain [default] (<domain-name>|all)
-domain block (<domain-name>|all)
-domain redirect (<domain-name>|all) [ip]
+domain ([default]|block|proxy) (<domain-name>|all) [<ip>]
 
 domain delete (<domain-name>|all)
 
 
 compatible commands:
 -------
-ip <domain-name> 
-# 等价于  domain redirect <domain-name> ip
+<ip> <domain-name>
+host <ip> <domain-name>
+# 等价于  domain <domain-name> <ip>
 
 
 -------
 注：
-* <> 尖括号表示参数一定要有，否则出错
+* <> 尖括号表示参数一定要替换成实际值，否则出错
 * [] 中括号表示参数可有可无
 * (a|b|...) 表示 a 或 b 等等多选一
 * 下面注释以“**”开始的行，表示未实现功能
@@ -60,6 +59,7 @@ url command:
 
 
               下面几种内容模式只能多选一：
+    proxy     代理 URL 请求结果。
     cache     缓存源 URL 请求结果，下次请求起从缓存返回。
     status <responseCode>
               对请求直接以 responseCode 回应。
@@ -100,10 +100,11 @@ url command:
               特殊地，all 可以操作所有已经配置的 url-pattern。
 
 domain mode:
-    [default] 域名默认为正常通行，返回正常结果。
-    block     屏蔽域名，不返回结果。
-    redirect  把域名重定向到制定 IP。
-              如果 IP 为空则重定向到代理服务器。
+              以下域名模式只能多选一：
+    [default] 域名默认为正常通行，返回自定义或正常结果。
+              返回自定义 <ip> 如果有设置；否则实时查询后返回。
+    block     屏蔽域名，不返回任何结果。
+    proxy     返回 asuran IP，以代理设备 HTTP 请求。
 
 domain-name:
     ([^.]+.)+[^.]+
@@ -111,7 +112,9 @@ domain-name:
     all
               特殊地，all 可以操作所有已经配置的域名。
 
-ip:           IP 地址，比如 192.168.1.3。
+<ip>:         自定义域名的 IP 地址，比如 192.168.1.3。
+              不设置则在需要返回 IP 时由 asuran 查询实际 IP。
+
 
 -------
 examples:
@@ -128,68 +131,10 @@ domain g.cn
 
 domain block baidu.com
 
-domain redirect g.cn
+domain proxy g.cn
 
 domain delete g.cn
 `
-}
-
-func (p *IpProfiles) Command(ip, command string) {
-	profile := p.FindByIp(ip)
-	if profile != nil {
-		profile.Command(command)
-	}
-}
-
-func (p *Profile) Command(command string) {
-	commandLines := strings.Split(command, "\n")
-	for _, line := range commandLines {
-		line = strings.TrimSpace(line)
-		if len(line) <= 0 || line[0] == '#' {
-			continue
-		}
-
-		c, rest := cmd.TakeFirstArg(line)
-		switch c {
-		case "delay":
-			p.CommandDelay(rest)
-		case "proxy":
-			p.CommandProxy(rest)
-		case "delete":
-			p.CommandDelete(rest)
-		case "domain":
-			p.CommandDomain(rest)
-		case "url":
-			p.CommandUrl(rest)
-		default:
-		}
-	}
-}
-
-func (p *Profile) CommandDelay(content string) {
-	c, rest := cmd.TakeFirstArg(content)
-	switch c {
-	case "default":
-		commandDelayMode(p, c, rest)
-	case "drop":
-		commandDelayMode(p, c, rest)
-	default:
-		commandDelayMode(p, "default", content)
-	}
-}
-
-func (p *Profile) CommandProxy(content string) {
-	c, rest := cmd.TakeFirstArg(content)
-	switch c {
-	case "default":
-		commandProxyMode(p, c, rest)
-	case "cache":
-		commandProxyMode(p, c, rest)
-	case "status":
-		commandProxyMode(p, c, rest)
-	default:
-		commandProxyMode(p, "default", content)
-	}
 }
 
 func (p *Profile) CommandDelete(content string) {
@@ -211,12 +156,12 @@ func (p *Profile) CommandDomain(content string) {
 		commandDomainMode(p, c, rest)
 	case "block":
 		commandDomainMode(p, c, rest)
-	case "redirect":
+	case "proxy":
 		commandDomainMode(p, c, rest)
 	case "delete":
 		commandDomainDelete(p, rest)
 	default:
-		commandDomainMode(p, "default", content)
+		commandDomainMode(p, "", content)
 	}
 }
 
@@ -239,6 +184,8 @@ func (p *Profile) CommandUrl(content string) {
 			if !ok {
 				return
 			}
+		case "proxy":
+			fallthrough
 		case "cache":
 			fallthrough
 		case "status":
@@ -361,7 +308,9 @@ func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
 func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
 	var act UrlAct = UrlActNone
 	value := ""
-	if c == "cache" {
+	if c == "proxy" {
+		act = UrlActNone
+	} else if c == "cache" {
 		act = UrlActCache
 	} else {
 		switch c {
@@ -466,7 +415,7 @@ func (d *DelayAction) EditCommand() string {
 func (u *UrlProxyAction) EditCommand() string {
 	switch u.Act {
 	case UrlActNone:
-		return ""
+		return "proxy"
 	case UrlActCache:
 		return "cache"
 	case UrlActStatus:
@@ -507,31 +456,31 @@ func commandDomainMode(p *Profile, mode, content string) {
 		return
 	}
 
-	act := DomainActNone
-	if mode != "redirect" && rest != "" {
-		return
+	ip := ""
+	if rest != "" {
+		addr := net.ParseIP(rest)
+		if addr == nil {
+			return
+		} else {
+			ip = addr.String()
+		}
 	}
 
-	ip := ""
-	if mode == "block" {
-		act = DomainActBlock
+	act := new(DomainAct)
+	if mode == "" {
+		act = nil
+	} else if mode == "default" {
+		*act = DomainActNone
+	} else if mode == "block" {
+		*act = DomainActBlock
 	} else if mode == "redirect" {
-		if rest != "" {
-			addr := net.ParseIP(rest)
-			if addr == nil {
-				return
-			} else {
-				ip = addr.String()
-			}
-		}
-
-		act = DomainActRedirect
+		*act = DomainActProxy
 	}
 
 	if c == "all" {
-		p.SetAllDomainAction(DomainAct(act), ip)
+		p.SetAllDomainAction(act, ip)
 	} else {
-		p.SetDomainAction(c, DomainAct(act), ip)
+		p.SetDomainAction(c, act, ip)
 	}
 }
 
@@ -549,18 +498,18 @@ func commandDomainDelete(p *Profile, content string) {
 }
 
 func (d *DomainAction) EditCommand() string {
+	ip := ""
+	if d.IP != "" {
+		ip = " " + d.IP
+	}
+
 	switch d.Act {
 	case DomainActNone:
-		return "domain " + d.Domain + "\n"
+		return "domain default " + d.Domain + ip + "\n"
 	case DomainActBlock:
-		return "domain block " + d.Domain + "\n"
-	case DomainActRedirect:
-		sep := ""
-		if d.IP != "" {
-			sep = " "
-		}
-
-		return "domain redirect " + d.Domain + sep + d.IP + "\n"
+		return "domain block " + d.Domain + ip + "\n"
+	case DomainActProxy:
+		return "domain proxy " + d.Domain + ip + "\n"
 	default:
 		return ""
 	}

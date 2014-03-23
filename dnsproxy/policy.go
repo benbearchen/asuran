@@ -26,27 +26,31 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 
 	a := p.op.Action(clientIP, pureDomain)
 	if a == nil {
-		return passDomain(domain)
+		return passDomain(domain, "")
 	}
 
 	//fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
 	switch a.Act {
 	case profile.DomainActNone:
-		return passDomain(domain)
+		return passDomain(domain, a.IP)
 	case profile.DomainActBlock:
 		return domain, nil
-	case profile.DomainActRedirect:
-		return domain, []net.IP{net.ParseIP(a.IP)}
+	case profile.DomainActProxy:
+		return passDomain(domain, a.IP)
 	default:
-		return passDomain(domain)
+		return passDomain(domain, a.IP)
 	}
 }
 
-func passDomain(domain string) (string, []net.IP) {
-	ips, err := querySystemDns(domain)
-	if err != nil {
-		return domain, nil
+func passDomain(domain, ip string) (string, []net.IP) {
+	if len(ip) > 0 {
+		return domain, []net.IP{net.ParseIP(ip)}
 	} else {
+		ips, err := querySystemDns(domain)
+		if err != nil {
+			return domain, nil
+		}
+
 		return domain, ips
 	}
 }

@@ -153,7 +153,7 @@ type DomainAct int
 const (
 	DomainActNone = iota
 	DomainActBlock
-	DomainActRedirect
+	DomainActProxy
 )
 
 type DomainAction struct {
@@ -177,18 +177,16 @@ func (a DomainAct) String() string {
 		return "正常通行"
 	case DomainActBlock:
 		return "丢弃不返回"
-	case DomainActRedirect:
-		return "重定向到"
+	case DomainActProxy:
+		return "代理域名"
 	default:
 		return ""
 	}
 }
 
 func (d *DomainAction) TargetString() string {
-	if d.Act != DomainActRedirect {
-		return ""
-	} else if d.IP == "" {
-		return "代理服务器"
+	if d.IP == "" {
+		return "真实地址"
 	} else {
 		return d.IP
 	}
@@ -383,25 +381,36 @@ func (p *Profile) DeleteAllUrl() {
 	}
 }
 
-func (p *Profile) SetDomainAction(domain string, act DomainAct, targetIP string) {
+func (p *Profile) SetDomainAction(domain string, act *DomainAct, targetIP string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	d, ok := p.Domains[domain]
 	if ok {
-		d.Act = act
+		if act != nil {
+			d.Act = *act
+		}
+
 		d.IP = targetIP
 	} else {
-		p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), act, targetIP}
+		var a DomainAct = DomainActNone
+		if act != nil {
+			a = *act
+		}
+
+		p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), a, targetIP}
 	}
 }
 
-func (p *Profile) SetAllDomainAction(act DomainAct, targetIP string) {
+func (p *Profile) SetAllDomainAction(act *DomainAct, targetIP string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	for _, d := range p.Domains {
-		d.Act = act
+		if act != nil {
+			d.Act = *act
+		}
+
 		d.IP = targetIP
 	}
 }
@@ -436,12 +445,15 @@ func (p *Profile) proxyDomainIfNotExists(domain string) {
 		return
 	}
 
-	_, ok := p.Domains[domain]
+	d, ok := p.Domains[domain]
 	if ok {
+		if d.Act == DomainActNone {
+			d.Act = DomainActProxy
+		}
 		return
 	}
 
-	p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), DomainActRedirect, ""}
+	p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), DomainActProxy, ""}
 }
 
 func (p *Profile) DeleteDomain(domain string) {

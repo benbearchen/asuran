@@ -25,20 +25,18 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 			}
 		case "clear":
 			f.Clear()
-		case "delay":
-			f.CommandDelay(rest)
-		case "proxy":
-			f.CommandProxy(rest)
-		case "delete":
-			f.CommandDelete(rest)
 		case "domain":
 			f.CommandDomain(rest)
 		case "url":
 			f.CommandUrl(rest)
+		case "host":
+			c, rest = cmd.TakeFirstArg(rest)
+			if ip, domain, ok := parseIPDomain(c, rest); ok {
+				f.CommandDomain(domain + " " + ip)
+			}
 		default:
 			if ip, domain, ok := parseIPDomain(c, rest); ok {
-				f.CommandDomain("redirect " + domain + " " + ip)
-				break
+				f.CommandDomain(domain + " " + ip)
 			}
 		}
 	}
