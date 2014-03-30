@@ -13,12 +13,26 @@ func LocalIPs() []string {
 
 	ips := make([]string, 0)
 	for _, a := range addrs {
-		ip := a.String()
-		if strings.HasPrefix(ip, "169.254.") || strings.HasPrefix(ip, "127.0.") || ip == "0.0.0.0" {
+		var ip IP
+		switch addr := a.(type) {
+		case *IPNet:
+			ip = addr.IP
+		case *IPAddr:
+			ip = addr.IP
+		default:
 			continue
 		}
 
-		ips = append(ips, ip)
+		if ip.IsLoopback() || ip.To4() == nil {
+			continue
+		}
+
+		ipv4 := ip.String()
+		if strings.HasPrefix(ipv4, "169.254.") || strings.HasPrefix(ipv4, "127.0.") || ipv4 == "0.0.0.0" {
+			continue
+		}
+
+		ips = append(ips, ipv4)
 	}
 
 	if len(ips) > 0 {
