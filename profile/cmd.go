@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(delay|drop|timeout) [rand] <duration>] (proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>) (<url-pattern>|all)
+url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)] (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -41,7 +41,15 @@ url command:
         url 命令表示按 url-pattern 匹配、操作 HTTP 请求。
         下面为参数说明：
 
+
+              下面设置模式只能二选一：
+              [默认] update
+    set       命令中出现的时间或内容模式会设置，未出现的模式设置成默认值。
+    update    仅设置命令中出现的时间或内容模式；未出现的模式不变。
+
+
               下面时间模式只能多选一：
+	      [默认] delay 0
     delay <duration>
               所有请求延时 duration 才开始返回；
               duration == 0 表示不延时，立即返回。
@@ -59,6 +67,7 @@ url command:
 
 
               下面几种内容模式只能多选一：
+	      [默认] proxy
     proxy     代理 URL 请求结果。
     cache     缓存源 URL 请求结果，下次请求起从缓存返回。
     status <responseCode>
@@ -204,6 +213,15 @@ func (p *Profile) CommandUrl(content string) {
 		case "delete":
 			p.CommandDelete(rest)
 			return
+		case "set":
+			if delayAction == nil {
+				delayAction = new(DelayAction)
+			}
+
+			if proxyAction == nil {
+				proxyAction = new(UrlProxyAction)
+			}
+		case "update":
 		default:
 			if len(c) > 0 && len(rest) == 0 {
 				commandUrl(p, delayAction, proxyAction, c)
