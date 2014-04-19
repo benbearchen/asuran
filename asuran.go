@@ -15,14 +15,11 @@ import (
 func usage() {
 	fmt.Println(`web transparent proxy
 
-proxy type:
-  /
-  /about
-        visit http://localhost/about for proxy information
-  /test/target.domain:port/path
+proxy test:
+  http://localhost/test/target.domain:port/path
         return content of 'http://target.domain:port/path' & runtime info
-  /<any other path>
-        purely proxy <any other path>
+  http://localhost/to/target.domain:port/path
+        proxy 'http://target.domain:port/path', fetch & return content
 
 cmd:
   bench [target.domain:port/path]
@@ -76,7 +73,7 @@ func benchN(target string) {
 }
 
 func version() {
-	fmt.Println(`asuran 0.1, a web proxy with dns
+	fmt.Println(`asuran 0.2, a web proxy with dns
 `)
 }
 
