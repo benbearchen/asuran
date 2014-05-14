@@ -315,11 +315,9 @@ func (p *Profile) UrlAction(url string) UrlProxyAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	us := parseUrlSection(url)
-	for _, u := range p.Urls {
-		if u.pattern.Match(us) {
-			return u.Act
-		}
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Act
 	}
 
 	return MakeEmptyUrlProxyAction()
@@ -362,14 +360,26 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	us := parseUrlSection(url)
-	for _, u := range p.Urls {
-		if u.pattern.Match(us) {
-			return u.Delay
-		}
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Delay
 	}
 
 	return MakeEmptyDelay()
+}
+
+func (p *Profile) MatchUrl(url string) *urlAction {
+	us := parseUrlSection(url)
+	var high uint32 = 0
+	var highUrl *urlAction = nil
+	for _, u := range p.Urls {
+		score := u.pattern.MatchScore(us)
+		if score > high {
+			highUrl = u
+		}
+	}
+
+	return highUrl
 }
 
 func (p *Profile) DeleteAllUrl() {

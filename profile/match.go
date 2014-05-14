@@ -86,6 +86,18 @@ func (d *DomainPattern) Match(domain string) bool {
 	}
 }
 
+func (d *DomainPattern) MatchScore(domain string) uint8 {
+	if d.regex != nil {
+		if d.regex.MatchString(domain) {
+			return 1
+		}
+	} else if d.pattern == domain {
+		return 2
+	}
+
+	return 0
+}
+
 func PathPatternUsage() string {
 	return `path pattern support '*'
 
@@ -166,6 +178,18 @@ func (p *PathPattern) Match(path string) bool {
 	}
 }
 
+func (p *PathPattern) MatchScore(path string) uint8 {
+	if p.regex != nil {
+		if p.regex.MatchString(path) {
+			return 1
+		}
+	} else if p.pattern == path {
+		return 2
+	}
+
+	return 0
+}
+
 type UrlPattern struct {
 	pattern string
 	domain  *DomainPattern
@@ -210,9 +234,39 @@ func parseUrlSection(url string) *UrlSection {
 func (p *UrlPattern) Match(url *UrlSection) bool {
 	domainMatch := p.domain == nil || p.domain.Match(url.domain)
 	portMatch := p.port == url.port
-	pathMatch := matchPath(p.path, url.path)
+	pathMatch := p.path.Match(url.path)
 	queryMatch := matchQuery(p.query, url.query)
 	return domainMatch && portMatch && pathMatch && queryMatch
+}
+
+func (p *UrlPattern) MatchScore(url *UrlSection) uint32 {
+	var domainScore uint8 = 0
+	if p.domain != nil {
+		domainScore = p.domain.MatchScore(url.domain)
+		if domainScore == 0 {
+			return 0
+		} else {
+			domainScore++
+		}
+	} else {
+		domainScore = 1
+	}
+
+	if p.port != url.port {
+		return 0
+	}
+
+	pathScore := p.path.MatchScore(url.path)
+	if pathScore == 0 {
+		return 0
+	}
+
+	queryScore := matchQueryScore(p.query, url.query)
+	if queryScore == 0 {
+		return 0
+	}
+
+	return (uint32(domainScore) << 16) + (uint32(pathScore) << 8) + uint32(queryScore)
 }
 
 func parseUrlAsPattern(url string) [4]string {
@@ -273,10 +327,6 @@ func parseQuery(query string) map[string]string {
 	return m
 }
 
-func matchPath(pattern *PathPattern, path string) bool {
-	return pattern.Match(path)
-}
-
 func matchQuery(pattern, query map[string]string) bool {
 	if len(pattern) == 0 {
 		return true
@@ -290,4 +340,23 @@ func matchQuery(pattern, query map[string]string) bool {
 	}
 
 	return true
+}
+
+func matchQueryScore(pattern, query map[string]string) uint8 {
+	if len(pattern) == 0 {
+		return 1
+	}
+
+	for k, v := range pattern {
+		value, ok := query[k]
+		if !ok || v != value {
+			return 0
+		}
+	}
+
+	if len(pattern) > 255 {
+		return 255
+	} else {
+		return uint8(len(pattern))
+	}
 }
