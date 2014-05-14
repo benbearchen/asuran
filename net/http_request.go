@@ -23,7 +23,7 @@ func NewHttpGet(url string) (*HttpResponse, error) {
 }
 
 func NewHttp(url string, r *http.Request, dial func(netw, addr string) (net.Conn, error)) (*HttpResponse, []byte, error) {
-	client := &http.Client{Transport: &http.Transport{Dial: dial}}
+	client := &http.Client{Transport: &http.Transport{Dial: dial}, CheckRedirect: checkRedirect}
 
 	var postBody []byte
 	var body io.Reader = nil
@@ -96,4 +96,9 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter) ([]byte, error) {
 	var b bytes.Buffer
 	_, err := io.Copy(io.MultiWriter(&b, w), r.resp.Body)
 	return b.Bytes(), err
+}
+
+func checkRedirect(req *http.Request, via []*http.Request) error {
+	//fmt.Println("redirect:", req)
+	return nil
 }
