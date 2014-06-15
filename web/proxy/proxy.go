@@ -72,7 +72,15 @@ func (p *Proxy) Bind(port int) {
 	serverAddress := fmt.Sprintf(":%d", port)
 	h.Init(serverAddress)
 	h.RegisterHandler(p)
-	go h.Run()
+	go h.Run(func(err error) { p.overHttpd(port, err) })
+}
+
+func (p *Proxy) overHttpd(port int, err error) {
+	if err == nil {
+		fmt.Println("bind on port", port, "quit")
+	} else {
+		fmt.Println("bind on port", port, "failed with:", err)
+	}
 }
 
 func (p *Proxy) TryBind(port int) {

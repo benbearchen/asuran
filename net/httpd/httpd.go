@@ -57,8 +57,11 @@ func (h *Http) ServeHTTP(
 	}
 }
 
-func (h *Http) Run() {
-	http.ListenAndServe(h.serverAddress, h)
+func (h *Http) Run(e func(err error)) {
+	var err error = nil
+	defer func() { e(err) }()
+
+	err = http.ListenAndServe(h.serverAddress, h)
 }
 
 func RemoteHost(addr string) string {
