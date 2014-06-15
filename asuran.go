@@ -8,6 +8,7 @@ import (
 	"github.com/benbearchen/asuran/web/proxy"
 
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -94,24 +95,45 @@ func main() {
 	for {
 		fmt.Print("\n$ ")
 		command := c.Read()
-		if command == "exit" {
+		cmd, rest := cmd.TakeFirstArg(command)
+		switch cmd {
+		case "exit":
 			return
-		} else if command == "help" {
+		case "usage":
+			fallthrough
+		case "help":
 			usage()
-		} else if command == "version" {
+		case "version":
 			version()
-		} else if rest, ok := cmd.CheckCommand(command, "bench"); ok {
-			url := "http://"
-			if strings.HasPrefix(rest, url) {
-				url = rest
+		case "bench":
+			if len(rest) == 0 {
+				fmt.Println("usage: bench <url>")
 			} else {
-				url += rest
-			}
+				url := "http://"
+				if strings.HasPrefix(rest, url) {
+					url = rest
+				} else {
+					url += rest
+				}
 
-			benchN(url)
-		} else if command != "" {
+				benchN(url)
+			}
+		case "bind":
+			port, err := strconv.Atoi(rest)
+			if err != nil {
+				fmt.Println("usage: bind <port>\nport: in 1~65535")
+			} else {
+				fmt.Println("")
+				bindNew := p.Bind(port)
+				if bindNew {
+					fmt.Println("port", port, "binds ok")
+				} else {
+					fmt.Println("port had already bound")
+				}
+			}
+		default:
 			usage()
-			fmt.Println("UNKNOWN command: " + command)
+			fmt.Println("UNKNOWN command: `" + cmd + "' " + rest)
 		}
 	}
 }

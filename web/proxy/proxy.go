@@ -63,9 +63,13 @@ func NewProxy() *Proxy {
 	return p
 }
 
-func (p *Proxy) Bind(port int) {
+func (p *Proxy) Bind(port int) bool {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+
+	if _, exists := p.webServers[port]; exists {
+		return false
+	}
 
 	h := &httpd.Http{}
 	p.webServers[port] = h
@@ -73,6 +77,7 @@ func (p *Proxy) Bind(port int) {
 	h.Init(serverAddress)
 	h.RegisterHandler(p)
 	go h.Run(func(err error) { p.overHttpd(port, err) })
+	return true
 }
 
 func (p *Proxy) overHttpd(port int, err error) {
@@ -81,20 +86,15 @@ func (p *Proxy) overHttpd(port int, err error) {
 	} else {
 		fmt.Println("bind on port", port, "failed with:", err)
 	}
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	delete(p.webServers, port)
 }
 
 func (p *Proxy) TryBind(port int) {
-	exists := false
-	func() {
-		p.lock.RLock()
-		defer p.lock.RUnlock()
-
-		_, exists = p.webServers[port]
-	}()
-
-	if !exists {
-		p.Bind(port)
-	}
+	p.Bind(port)
 }
 
 func (p *Proxy) BindUrlOperator(op profile.UrlOperator) {
