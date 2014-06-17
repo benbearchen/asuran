@@ -97,6 +97,7 @@ func main() {
 		command := c.Read()
 		cmd, rest := cmd.TakeFirstArg(command)
 		switch cmd {
+		case "":
 		case "exit":
 			return
 		case "usage":
