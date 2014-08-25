@@ -141,11 +141,13 @@ type urlAction struct {
 	pattern    *UrlPattern
 	Act        UrlProxyAction
 	Delay      DelayAction
+	Speed      SpeedAction
 }
 
 type UrlOperator interface {
 	Action(ip, url string) UrlProxyAction
 	Delay(ip, url string) DelayAction
+	Speed(ip, url string) SpeedAction
 }
 
 type DomainAct int
@@ -227,7 +229,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	return p
 }
 
-func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyAction *UrlProxyAction) {
+func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -239,14 +241,22 @@ func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyActio
 		if proxyAction != nil {
 			u.Act = *proxyAction
 		}
+
+		if speedAction != nil {
+			u.Speed = *speedAction
+		}
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay()}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeEmptySpeed()}
 		if delayAction != nil {
 			u.Delay = *delayAction
 		}
 
 		if proxyAction != nil {
 			u.Act = *proxyAction
+		}
+
+		if speedAction != nil {
+			u.Speed = *speedAction
 		}
 
 		p.Urls[urlPattern] = u
@@ -263,7 +273,7 @@ func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyActio
 	}
 }
 
-func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyAction) {
+func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -274,6 +284,10 @@ func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyActio
 
 		if proxyAction != nil {
 			u.Act = *proxyAction
+		}
+
+		if speedAction != nil {
+			u.Speed = *speedAction
 		}
 	}
 }
@@ -286,7 +300,7 @@ func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) 
 	if ok {
 		u.Act = UrlProxyAction{act, strconv.Itoa(responseCode)}
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, strconv.Itoa(responseCode)}, MakeEmptyDelay()}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, strconv.Itoa(responseCode)}, MakeEmptyDelay(), MakeEmptySpeed()}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
@@ -331,7 +345,7 @@ func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, rand bool, de
 	if ok {
 		u.Delay = MakeDelay(act, rand, delay)
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, rand, delay)}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, rand, delay), MakeEmptySpeed()}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
@@ -366,6 +380,41 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 	}
 
 	return MakeEmptyDelay()
+}
+
+func (p *Profile) SetUrlSpeed(urlPattern string, act SpeedActType, speed float32) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	u, ok := p.Urls[urlPattern]
+	if ok {
+		u.Speed = MakeSpeed(act, speed)
+	} else {
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeSpeed(act, speed)}
+		p.Urls[urlPattern] = u
+		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
+			if port, err := strconv.Atoi(u.pattern.port); err == nil {
+				p.proxyOp.New(port)
+			}
+		}
+	}
+
+	host := getHostOfUrlPattern(urlPattern)
+	if len(host) != 0 {
+		p.proxyDomainIfNotExists(host)
+	}
+}
+
+func (p *Profile) UrlSpeed(url string) SpeedAction {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Speed
+	}
+
+	return MakeEmptySpeed()
 }
 
 func (p *Profile) MatchUrl(url string) *urlAction {

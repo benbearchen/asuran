@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)] (<url-pattern>|all)
+url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)] [speed <speeds>] (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -83,6 +83,13 @@ url command:
     restore <store-id>
               以预先保存的名字为 store-id 的内容返回。
               store-id 内容可以上传，也可以从请求历史修改。
+
+
+    speed <speeds>
+              限制回复带宽最高为 speeds，默认单位为 B/s，
+              即字节每秒。支持 GB, MB, KB 等量纲。
+              如 100, 99KB, 0.5MB/s 均可。
+
 
     delete    删除对 url-pattern 的配置。
 
@@ -180,6 +187,7 @@ func (p *Profile) CommandUrl(content string) {
 
 	var delayAction *DelayAction
 	var proxyAction *UrlProxyAction
+	var speedAction *SpeedAction
 
 	for {
 		c, rest = cmd.TakeFirstArg(rest)
@@ -210,6 +218,11 @@ func (p *Profile) CommandUrl(content string) {
 			if !ok {
 				return
 			}
+		case "speed":
+			speedAction, rest, ok = parseSpeedAction(c, rest)
+			if !ok {
+				return
+			}
 		case "delete":
 			p.CommandDelete(rest)
 			return
@@ -221,10 +234,14 @@ func (p *Profile) CommandUrl(content string) {
 			if proxyAction == nil {
 				proxyAction = new(UrlProxyAction)
 			}
+
+			if speedAction == nil {
+				speedAction = new(SpeedAction)
+			}
 		case "update":
 		default:
 			if len(c) > 0 && len(rest) == 0 {
-				commandUrl(p, delayAction, proxyAction, c)
+				commandUrl(p, delayAction, proxyAction, speedAction, c)
 			}
 
 			return
@@ -233,13 +250,13 @@ func (p *Profile) CommandUrl(content string) {
 
 }
 
-func commandUrl(p *Profile, delayAction *DelayAction, proxyAction *UrlProxyAction, c string) {
+func commandUrl(p *Profile, delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, c string) {
 	if c == "all" {
-		p.SetAllUrl(delayAction, proxyAction)
+		p.SetAllUrl(delayAction, proxyAction, speedAction)
 	} else {
 		urlPattern := restToPattern(c)
 		if len(urlPattern) > 0 {
-			p.SetUrl(urlPattern, delayAction, proxyAction)
+			p.SetUrl(urlPattern, delayAction, proxyAction, speedAction)
 		}
 	}
 }
@@ -352,6 +369,22 @@ func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
 	return &UrlProxyAction{act, value}, rest, true
 }
 
+func parseSpeedAction(c, rest string) (*SpeedAction, string, bool) {
+	var act SpeedActType = SpeedActConstant
+	var speed float32 = 0
+
+	value := ""
+	value, rest = cmd.TakeFirstArg(rest)
+	s, ok := parseSpeed(value)
+	if ok {
+		speed = s
+	} else {
+		return nil, rest, false
+	}
+
+	return &SpeedAction{act, speed}, rest, true
+}
+
 func takeDuration(content string) (bool, float32, string, bool) {
 	rand := false
 	d, p := cmd.TakeFirstArg(content)
@@ -384,6 +417,32 @@ func parseDuration(d string) float32 {
 		return -1
 	} else {
 		return float32(f * float64(times))
+	}
+}
+
+func parseSpeed(s string) (float32, bool) {
+	var times float64 = 1
+	s = strings.ToLower(s)
+	if strings.HasSuffix(s, "/s") {
+		s = s[:len(s)-2]
+	}
+
+	if strings.HasSuffix(s, "gb") {
+		s = s[:len(s)-2]
+		times = 1024 * 1024 * 1024
+	} else if strings.HasSuffix(s, "mb") {
+		s = s[:len(s)-2]
+		times = 1024 * 1024
+	} else if strings.HasSuffix(s, "kb") {
+		s = s[:len(s)-2]
+		times = 1024
+	}
+
+	f, err := strconv.ParseFloat(s, 32)
+	if err != nil {
+		return -1, false
+	} else {
+		return float32(f * times), true
 	}
 }
 
@@ -451,6 +510,15 @@ func (u *UrlProxyAction) EditCommand() string {
 	}
 }
 
+func (s *SpeedAction) EditCommand() string {
+	switch s.Act {
+	case SpeedActConstant:
+		return "speed " + s.SpeedCommand()
+	default:
+		return ""
+	}
+}
+
 func (u *urlAction) EditCommand() string {
 	c := "url"
 	if e := u.Delay.EditCommand(); len(e) > 0 {
@@ -458,6 +526,10 @@ func (u *urlAction) EditCommand() string {
 	}
 
 	if e := u.Act.EditCommand(); len(e) > 0 {
+		c += " " + e
+	}
+
+	if e := u.Speed.EditCommand(); len(e) > 0 {
 		c += " " + e
 	}
 
