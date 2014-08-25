@@ -427,14 +427,18 @@ func parseSpeed(s string) (float32, bool) {
 		s = s[:len(s)-2]
 	}
 
-	if strings.HasSuffix(s, "gb") {
-		s = s[:len(s)-2]
+	if strings.HasSuffix(s, "b") {
+		s = s[:len(s)-1]
+	}
+
+	if strings.HasSuffix(s, "g") {
+		s = s[:len(s)-1]
 		times = 1024 * 1024 * 1024
-	} else if strings.HasSuffix(s, "mb") {
-		s = s[:len(s)-2]
+	} else if strings.HasSuffix(s, "m") {
+		s = s[:len(s)-1]
 		times = 1024 * 1024
-	} else if strings.HasSuffix(s, "kb") {
-		s = s[:len(s)-2]
+	} else if strings.HasSuffix(s, "k") {
+		s = s[:len(s)-1]
 		times = 1024
 	}
 

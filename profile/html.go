@@ -45,7 +45,12 @@ func (p *Profile) formatViewData(savedIDs []string) profileData {
 	even := true
 	for _, u := range p.Urls {
 		even = !even
-		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String(), u.EditCommand(), u.DeleteCommand(), even})
+		extra := u.Speed.String()
+		if len(extra) > 0 {
+			extra = ", " + extra
+		}
+
+		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.EditCommand(), u.DeleteCommand(), even})
 	}
 
 	even = true

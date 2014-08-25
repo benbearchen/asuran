@@ -251,6 +251,8 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		u = f.OpenUrl(fullUrl)
 	}
 
+	var writeWrap io.Writer = nil
+
 	if p.urlOp != nil {
 		delay := p.urlOp.Delay(remoteIP, fullUrl)
 		//fmt.Println("url delay: " + delay.String())
@@ -311,12 +313,18 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 				return
 			}
 		}
+
+		speed := p.urlOp.Speed(remoteIP, fullUrl)
+		switch speed.Act {
+		case profile.SpeedActConstant:
+			writeWrap = newSpeedWriter(speed, w)
+		}
 	}
 
 	if needCache && r.Method == "GET" && f != nil {
 		c := f.CheckCache(fullUrl, rangeInfo)
 		if c != nil && c.Error == nil {
-			c.Response(w)
+			c.Response(w, writeWrap)
 			return
 		}
 	}
@@ -332,7 +340,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Bad Gateway", 502)
 	} else {
 		defer resp.Close()
-		content, err := resp.ProxyReturn(w)
+		content, err := resp.ProxyReturn(w, writeWrap)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
 		if f != nil {
@@ -627,7 +635,7 @@ func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint
 	if h != nil {
 		switch op {
 		case "look":
-			h.Response(w)
+			h.Response(w, nil)
 		case "detail":
 			h.Detail(w)
 		}
@@ -646,7 +654,7 @@ func (p *Proxy) lookHistory(w http.ResponseWriter, profileIP, lookUrl, op string
 	switch op {
 	case "look":
 		if c := f.LookCache(lookUrl); c != nil {
-			c.Response(w)
+			c.Response(w, nil)
 		} else {
 			fmt.Fprintln(w, "can't look up "+lookUrl)
 		}

@@ -84,7 +84,7 @@ func (r *HttpResponse) ResponseCode() int {
 	return r.resp.StatusCode
 }
 
-func (r *HttpResponse) ProxyReturn(w http.ResponseWriter) ([]byte, error) {
+func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer) ([]byte, error) {
 	defer r.resp.Body.Close()
 	h := w.Header()
 	for k, v := range r.Header() {
@@ -93,8 +93,12 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter) ([]byte, error) {
 
 	w.WriteHeader(r.ResponseCode())
 
+	if wrap == nil {
+		wrap = w
+	}
+
 	var b bytes.Buffer
-	_, err := io.Copy(io.MultiWriter(&b, w), r.resp.Body)
+	_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
 	return b.Bytes(), err
 }
 

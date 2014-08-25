@@ -4,6 +4,7 @@ import (
 	"github.com/benbearchen/asuran/net"
 
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -43,14 +44,18 @@ func NewUrlCache(url string, r *http.Request, postBody []byte, resp *net.HttpRes
 	return &UrlCache{start, end.Sub(start), url, r.Method, r.Header, postBody, contentSource, content, respHeader, respResponseCode, rangeInfo, err}
 }
 
-func (c *UrlCache) Response(w http.ResponseWriter) {
+func (c *UrlCache) Response(w http.ResponseWriter, wrap io.Writer) {
 	h := w.Header()
 	for k, v := range c.ResponseHeader {
 		h[k] = v
 	}
 
 	w.WriteHeader(c.ResponseCode)
-	w.Write(c.Bytes)
+	if wrap == nil {
+		wrap = w
+	}
+
+	wrap.Write(c.Bytes)
 }
 
 func (c *UrlCache) Detail(w http.ResponseWriter) {
