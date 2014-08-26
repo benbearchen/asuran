@@ -5,6 +5,7 @@ import (
 
 	_ "fmt"
 	"io"
+	"net/http"
 	"time"
 )
 
@@ -32,6 +33,10 @@ func (t *speedWriter) Write(p []byte) (n int, err error) {
 			n, err = t.w.Write(p[:once])
 			if err != nil {
 				return
+			}
+
+			if f, ok := t.w.(http.Flusher); ok {
+				f.Flush()
 			}
 
 			t.wrote(n)

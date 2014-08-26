@@ -28,10 +28,10 @@ func TestSpeedWriter(t *testing.T) {
 		t.Errorf("first next(100000) return %d vs <=%d", n, 10240)
 	}
 
-    w.wrote(5000)
-    if n, w := w.next(5000); n > 5000 || w > 0 {
+	w.wrote(5000)
+	if n, w := w.next(5000); n > 5000 || w > 0 {
 		t.Errorf("w5000 next(5000) return n(%d vs <=%d), w(%d vs %d", n, 5000, w, 0)
-    }
+	}
 
-    // time effect tests, OMG...
+	// time effect tests, OMG...
 }
