@@ -567,7 +567,7 @@ func commandDomainMode(p *Profile, mode, content string) {
 		*act = DomainActNone
 	} else if mode == "block" {
 		*act = DomainActBlock
-	} else if mode == "redirect" {
+	} else if mode == "proxy" {
 		*act = DomainActProxy
 	}
 
