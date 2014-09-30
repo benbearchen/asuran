@@ -103,6 +103,9 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer) ([]byt
 }
 
 func checkRedirect(req *http.Request, via []*http.Request) error {
-	//fmt.Println("redirect:", req)
+	if len(via) > 0 {
+		req.Header = via[0].Header
+	}
+
 	return nil
 }
