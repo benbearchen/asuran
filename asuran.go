@@ -74,7 +74,7 @@ func benchN(target string) {
 }
 
 func version() {
-	fmt.Println(`asuran 0.2.1, a web proxy with dns
+	fmt.Println(`asuran 0.2.2, a web proxy with dns
 `)
 }
 
