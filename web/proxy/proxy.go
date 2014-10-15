@@ -280,7 +280,10 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 				time.Sleep(d)
 				f.Log("proxy " + fullUrl + " timeout " + d.String())
 				panic("")
-			}
+			} else {
+				f.Log("proxy " + fullUrl + " timeout")
+				panic("")
+            }
 			break
 		}
 
