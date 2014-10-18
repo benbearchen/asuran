@@ -268,22 +268,21 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.DelayActDropUntil:
 			d := delay.RandDuration(p.r)
 			if u != nil && u.DropUntil(d) {
-				// TODO: more safe method, maybe net.http.Hijacker
 				f.Log("proxy " + fullUrl + " drop " + d.String())
-				panic("")
+				net.ResetResponse(w)
+				return
 			}
 			break
 		case profile.DelayActTimeout:
 			if delay.Time > 0 {
-				// TODO: more safe method, maybe net.http.Hijacker
 				d := delay.RandDuration(p.r)
 				time.Sleep(d)
 				f.Log("proxy " + fullUrl + " timeout " + d.String())
-				panic("")
 			} else {
 				f.Log("proxy " + fullUrl + " timeout")
-				panic("")
-            }
+			}
+			net.ResetResponse(w)
+			return
 			break
 		}
 
