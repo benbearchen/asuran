@@ -311,6 +311,8 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.UrlActRewritten:
 			fallthrough
 		case profile.UrlActRestore:
+			fallthrough
+		case profile.UrlActTcpWritten:
 			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act) {
 				return
 			}
@@ -356,13 +358,19 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	contentSource := ""
 	switch act.Act {
 	case profile.UrlActRewritten:
+		fallthrough
+	case profile.UrlActTcpWritten:
 		u, err := url.QueryUnescape(act.ContentValue)
 		if err != nil {
 			return false
 		}
 
 		content = []byte(u)
-		contentSource = "rewrite"
+		if act.Act == profile.UrlActRewritten {
+			contentSource = "rewrite"
+		} else if act.Act == profile.UrlActTcpWritten {
+			contentSource = "tcpwrite"
+		}
 	case profile.UrlActRestore:
 		content = prof.Restore(act.ContentValue)
 		if content == nil {
@@ -373,9 +381,18 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	start := time.Now()
-	w.Write(content)
+	if act.Act == profile.UrlActTcpWritten {
+		net.TcpWriteHttp(w, content)
+	} else {
+		w.Write(content)
+	}
+
 	c := cache.NewUrlCache(target, r, nil, nil, contentSource, content, rangeInfo, start, time.Now(), nil)
-	c.ResponseCode = 200
+	if act.Act == profile.UrlActTcpWritten {
+		c.ResponseCode = 599
+	} else {
+		c.ResponseCode = 200
+	}
 	if f != nil {
 		p.saveContentToCache(target, f, c, false)
 	}

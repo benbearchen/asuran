@@ -24,3 +24,15 @@ func ResetResponse(w http.ResponseWriter) {
 		conn.Close()
 	}
 }
+
+func TcpWriteHttp(w http.ResponseWriter, content []byte) bool {
+	conn, writer, err := hijack(w)
+	if err != nil {
+		return false
+	}
+
+	defer conn.Close()
+	writer.Write(content)
+	writer.Flush()
+	return true
+}

@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)] [speed <speeds>] (<url-pattern>|all)
+url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)|tcpwrite <url-encoded-content>] [speed <speeds>] (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -83,6 +83,8 @@ url command:
     restore <store-id>
               以预先保存的名字为 store-id 的内容返回。
               store-id 内容可以上传，也可以从请求历史修改。
+    tcpwrite <url-encoded-content>
+              直接以 TCP 而不是 HTTP 格式返回内容
 
 
     speed <speeds>
@@ -214,6 +216,8 @@ func (p *Profile) CommandUrl(content string) {
 		case "rewrite":
 			fallthrough
 		case "restore":
+			fallthrough
+		case "tcpwrite":
 			proxyAction, rest, ok = parseUrlProxyAction(c, rest)
 			if !ok {
 				return
@@ -359,6 +363,8 @@ func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
 			act = UrlActRewritten
 		case "restore":
 			act = UrlActRestore
+		case "tcpwrite":
+			act = UrlActTcpWritten
 		default:
 			return nil, "", false
 		}
@@ -509,6 +515,8 @@ func (u *UrlProxyAction) EditCommand() string {
 		return "rewrite " + u.ContentValue
 	case UrlActRestore:
 		return "restore " + u.ContentValue
+	case UrlActTcpWritten:
+		return "tcpwrite " + u.ContentValue
 	default:
 		return ""
 	}

@@ -104,6 +104,7 @@ const (
 	UrlActRedirect
 	UrlActRewritten
 	UrlActRestore
+	UrlActTcpWritten
 )
 
 type UrlProxyAction struct {
@@ -127,6 +128,8 @@ func (action *UrlProxyAction) String() string {
 		return "以 url-encoded 的内容返回"
 	case UrlActRestore:
 		return "以 id 为 " + action.ContentValue + " 的预存内容返回"
+	case UrlActTcpWritten:
+		return "以 url-encoded 的内容直接写 TCP"
 	default:
 		return "act:" + strconv.Itoa(int(action.Act))
 	}
