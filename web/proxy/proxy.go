@@ -22,6 +22,7 @@ import (
 )
 
 type Proxy struct {
+	ver        string
 	webServers map[int]*httpd.Http
 	lives      *life.IPLives
 	urlOp      profile.UrlOperator
@@ -34,8 +35,9 @@ type Proxy struct {
 	r    *rand.Rand
 }
 
-func NewProxy() *Proxy {
+func NewProxy(ver string) *Proxy {
 	p := new(Proxy)
+	p.ver = ver
 	p.webServers = make(map[int]*httpd.Http)
 	p.lives = life.NewIPLives()
 	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -179,7 +181,7 @@ func (p *Proxy) OnRequest(
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
 	} else if urlPath == "/" {
-		p.index(w)
+		p.index(w, p.ver)
 	} else if urlPath == "/devices" {
 		p.devices(w)
 	} else if urlPath == "/about" {

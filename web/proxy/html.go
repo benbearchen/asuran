@@ -58,9 +58,9 @@ type indexData struct {
 	ProxyHost string
 }
 
-func (p *Proxy) index(w http.ResponseWriter) {
+func (p *Proxy) index(w http.ResponseWriter, ver string) {
 	t, err := template.ParseFiles("template/index.tmpl")
-	err = t.Execute(w, indexData{"0.1", p.serveIP, p.mainHost})
+	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

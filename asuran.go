@@ -73,15 +73,17 @@ func benchN(target string) {
 	}
 }
 
+const VersionCode = "0.2.3"
+
 func version() {
-	fmt.Println(`asuran 0.2.2, a web proxy with dns
+	fmt.Println(`asuran ` + VersionCode + `, a web proxy with dns
 `)
 }
 
 func main() {
 	version()
 
-	p := proxy.NewProxy()
+	p := proxy.NewProxy(VersionCode)
 	ipProfiles := profile.NewIpProfiles()
 	ipProfiles.BindProxyHostOperator(p.NewProxyHostOperator())
 	p.BindUrlOperator(ipProfiles.OperatorUrl())
