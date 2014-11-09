@@ -79,6 +79,7 @@ function domainCmd(act, opt) {
 <body>
 <h1>DNS 独立服务管理</h1>
 <p>无 Profile 的客户端，均使用此 DNS 服务。</p>
+<p>DNS 服务器地址：<b>{{.Host}}</b></p>
 <table id="profile">
 <tr>
 <th>编辑命令</th>
@@ -102,7 +103,7 @@ function domainCmd(act, opt) {
 <td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/dns/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
-<textarea rows="10" cols="80" id="CommandBoxId" name="cmd"></textarea>
+<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" placeholder="#支持 hosts 格式哟，直接粘贴 IP 域名 再点执行"></textarea>
 </form>
 
 <table border="1">

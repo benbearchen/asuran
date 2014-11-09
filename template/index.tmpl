@@ -1,15 +1,26 @@
 <html>
 <head><title>asuran</title></head>
 <body>
-<b>asuran</b> 是一个通过 DNS 实现透明代理的服务。
+<b><a href="https://github.com/benbearchen/asuran">asuran</a></b> {{.Version}} 是一个通过 DNS 实现透明代理的服务。
+
 <hr/>
-asuran {{.Version}} 当前支持：
+
+<table>
+<tr><td>使用手册：</td><td><a href="/usage" target="_blank">http://{{.ProxyHost}}/usage</a></td><td>&lt;== 想知道怎么使用戳这里</td></tr>
+<tr><td>您可管理设备列表：</td><td><a href="/profile" target="_blank">http://{{.ProxyHost}}/profile</a></td></tr>
+<tr><td>当前活跃设备：</td><td><a href="/devices" target="_blank">http://{{.ProxyHost}}/devices</a></td></tr>
+<tr><td>DNS 独立域名解析服务：</td><td><a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a></td></tr>
+</table>
+
+<hr/>
+asuran {{.Version}} 当前支持特性：
 <ul>
 <li>每个客户端一个配置，可独立定义过滤、代理的域名、URL
 <li>支持拦截域名解析或者将域名重定向到 asuran 以实现代理服务
 <li>支持按域名、URL 路径、查询参数匹配 URL，并对 URL 实现以下操作：
 <ul>
 <li>延时、或按时阻止 URL
+<li>指定 HTTP 内容返回的速度
 <li>缓存 URL 内容，可原样或修改后给以后的请求返回
 </ul>
 <li>HTTP 特性：<ul>
@@ -17,7 +28,8 @@ asuran {{.Version}} 当前支持：
   <li>支持代理 POST，但不可缓存
   <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求
   <li>代理对一般 HTTP Header 原样返回（Transfer-Encoding/chunked 可能就不行了）
-  <li>支持 302 跳转
+  <li>代理 302 跳转，暂时不支持 302 透回客户端
+  <li>强制返回指定 TCP 内容而不是 HTTP 协议内容
 </ul>
 <li>客户端行为历史记录<ul>
   <li>记录域名查询
@@ -27,14 +39,9 @@ asuran {{.Version}} 当前支持：
 当前不支持：
 <ul>
 <li>HTTPS
+<li>DNS 查询返回空结果以及延时
 </ul>
 <hr/>
-使用手册：<a href="/usage" target="_blank">http://{{.ProxyHost}}/usage</a>
-<hr/>
-您的设备列表：<a href="/profile" target="_blank">http://{{.ProxyHost}}/profile</a>
-<hr/>
-当前活跃设备：<a href="/devices" target="_blank">http://{{.ProxyHost}}/devices</a>
-<hr/>
-DNS 独立域名解析服务：<a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a>
+
 </body>
 </html>

@@ -1,33 +1,79 @@
 <html>
+<style type="text/css">
+li{line-height:125%}
+</style>
 <head>
-<title>使用指南</title>
+<title>使用指南 -- asuran</title>
 </head>
 <body>
-使用模式：
+asuran 使用模式：
 <ul>
-<li><b>DNS</b> 模式：设置 DNS 服务器为 {{.IP}}，然后通过管理页面管理 DNS 解析和 HTTP 代理行为
-  <ul><li>管理域名的解析行为，比如指向测试服务器，或者指向 asuran 本身（asuran 会自动代理请求）
-      <li>管理 URL 的代理行为，查看代理请求历史等等
+<li><b>DNS 服务器</b>：
+  <ul><li>将测试设备的 DNS 服务器设置为 {{.IP}}
+      <li>支持控制 域名解析 行为（指定或拦截 host 等），不再纠结怎么放 hosts
   </ul>
-<li><b>HTTP</b> 代理模式：为设备的应用或系统设置代理服务器（代理服务器地址：{{.IP}}，端口 80）
-  <ul><li>此模式会代理所有的网络请求（DNS 模式可以只代理必须的服务器），对端口兼容性好
-      <li>域名管理和 URL 管理依然有效，与 DNS 模式基本一致
+<li><b>标准 HTTP 代理</b>：
+  <ul><li>为设备的应用或系统设置代理服务器（代理服务器地址：{{.IP}}，端口 80）
+      <li>此模式会代理所有的网络请求，对直接 IP 和非 80 端口访问兼容性好
+      <li>支持 域名解析 行为管理和 HTTP 行为管理
+      <li>支持查看代理历史
   </ul>
-<li><b>WiFi</b> 模式：连接测试专用 WiFi，由代理直接分配 DNS，其他同 DNS 模式
+<li><b>透明 HTTP 代理</b>：
+  <ul><li>将测试设备的 DNS 服务器设置为 {{.IP}}，然后通过管理页面管理 DNS 解析和 HTTP 代理行为
+      <li>通过 HTTP 匹配模式来代理并控制 HTTP 行为，通过 DNS 来控制需要代理的域名
+      <li>只能整个域名都代理或都不代理。不支持代理直接 IP 的请求
+      <li>支持查看代理历史
+  </ul>
 </ul>
 
-操作步骤：
+<hr/>
+<h3>检查 asuran 服务的网络连通性</h3>
+在设备上访问 <u>http://{{.Host}}/usage</u>，如果能看到这个页面，则表示到 asuran 的网络是通的。<br/>否则，请检查网络，再使用 asuran。
+
+<hr/>
+<h3>作为 DNS 服务器使用</h3>
 <ol>
-<li>准备
-  <ul><li>一款可联网的待测试设备，手机、平板或者台式机、笔记本均可
-      <li>[可选]一台 PC 用来管理这台测试设备的代理设置（以下 PC 均指此管理设备）
-  </ul>
-<li><b>设置测试设备</b>
+  <li>修改设备的 DNS 服务器地址为 {{.IP}}
+  <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;</u> 来管理仅针对你的设备的 DNS 解析行为。<br/>
+      最简单的办法是粘贴 hosts 文件并点执行，这样 hosts 的设定就针对你的设备生效了。<br/>
+      通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
+  <li>如果你没有使用过上述 profile，则 DNS 解析行为遵循 <a href="http://{{.Host}}/dns">http://{{.Host}}/dns</a> 的设置
+  <li>除了指定 hosts，你还可以拦截（domain 一栏的 block 按钮）域名的解析
+</ol>
+
+<hr/>
+<h3>作为标准 HTTP 代理使用</h3>
+<ol>
+  <li>给设备设置 HTTP 代理为 {{.IP}}:80
+  <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;</u> 可以管理你的设备的 HTTP 代理行为。<br/>
+      当然 profile 也是包括 DNS 解析行为管理的
+  <li>如果你不知道你的设备 IP，可以在设备上访问 <u>http://i.me/</u> ，然后就有 profile 的访问链接。<br/>
+      如下图：<br/>
+      <img src="/res/i.me.png" border="1"/>
+  <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
+</ol>
+
+<hr/>
+<h3>作为透明 HTTP 代理使用</h3>
+<ol>
+  <li>修改设备的 DNS 服务器地址为 {{.IP}}
+  <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;</u> 可以管理你的设备的 HTTP 代理行为。<br/>
+      当然 profile 也是包括 DNS 解析行为管理的
+  <li>如果你不知道你的设备 IP，可以在设备上访问 <u>http://i.me/</u>，如前
+  <li>通过<a href="http://{{.Host}}/profile/commands">命令</a>来控制 HTTP 解析行为与 DNS 解析行为，见 <a href="http://{{.Host}}/profile/commands">http://{{.Host}}/profile/commands</a>
+  <li>例如命令 proxy http://*.google.com/* 可以代理都有 *.google.com 下所有页面的请求，然后你可以在历史看到
+  <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
+</ol>
+
+<hr/>
+<h4>通用流程</h4>
+<ol>
+<li><b>设置测试设备</b><br/>
+  检查测试设备是否连到 asuran，访问 <u>http://{{.Host}}/</u> 任意页面即可。然后：
   <ul><li>连接 asuran 测试专用 WiFi（如果有的话）
       <li>或，设置 DNS 域名服务器为服务器 IP（{{.IP}}）
       <li>或，设置 HTTP 代理服务器为 IP：{{.IP}}，端口：80
   </ul>
-  检查测试设备是否可以上网。如果网络与 asuran 没有问题，上网应该没有问题的
 <li><b>初始化代理</b><sub>（下面二选一即可）</sub>
   <ul><li>从测试设备访问 <u>http://i.me/</u>（地址栏输入域名 i.me 即可）。但是注意不要使用网络加速的浏览器（如 UC）。<br/>
           访问成功，会显示一条管理链接，可以在 PC 上访问，以管理测试设备的代理设置。如下图：<br/>

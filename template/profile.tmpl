@@ -218,7 +218,7 @@ function domainCmd(act, opt) {
 <table border="1">
 <tr>
 <td rowspan="11">url</td>
-<td rowspan="7">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('', '');">[proxy]</button>: 使用代理</td><td rowspan="11">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名支持通配符<br/>特殊地，all 可以操作所有已配置 URL</td>
+<td rowspan="7">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('', '');">[proxy]</button>: 使用代理</td><td rowspan="11">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
 </tr>
 <tr>
 <td colspan="2"><button type="button" onclick="proxyCmd('cache', '');">cache</button>: 代理并缓存</td>
@@ -256,7 +256,7 @@ function domainCmd(act, opt) {
 
 <table border="1">
 <tr>
-<td rowspan="4">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="3">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="4">域名: <input type="text" id="Domain"/><br/>支持通配符，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
+<td rowspan="4">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="3">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="4">域名: <input type="text" id="Domain"/><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
 </tr>
 <tr>
 <td><button type="button" onclick="domainCmd('block', redirectOpt());">block</button>: 拦截并不返回</td>

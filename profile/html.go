@@ -116,10 +116,11 @@ func WriteOwnerHtml(w io.Writer, ownerIP string, profiles []*Profile) {
 
 type profileDNSData struct {
 	Name    string
+	Host    string
 	Domains []domainData
 }
 
-func formatProfileDNSData(p *Profile) profileDNSData {
+func formatProfileDNSData(p *Profile, host string) profileDNSData {
 	domains := make([]domainData, 0, len(p.Domains))
 	even := true
 	for _, d := range p.Domains {
@@ -127,12 +128,12 @@ func formatProfileDNSData(p *Profile) profileDNSData {
 		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
 	}
 
-	return profileDNSData{p.Name, domains}
+	return profileDNSData{p.Name, host, domains}
 }
 
-func (p *Profile) WriteDNS(w io.Writer) {
+func (p *Profile) WriteDNS(w io.Writer, host string) {
 	t, err := template.ParseFiles("template/dns.tmpl")
-	err = t.Execute(w, formatProfileDNSData(p))
+	err = t.Execute(w, formatProfileDNSData(p, host))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

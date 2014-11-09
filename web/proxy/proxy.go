@@ -809,7 +809,7 @@ func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(page) == 0 {
-		f.WriteDNS(w)
+		f.WriteDNS(w, p.serveIP)
 	} else if page == "/export" {
 		export := "# 此为 DNS 独立服务的配置导出，可复制所有内容至“命令”输入窗口重新加载此配置 #\n\n"
 		export += "# Name: DNS 独立服务\n"
