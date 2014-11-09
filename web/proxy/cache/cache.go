@@ -3,8 +3,11 @@ package cache
 import (
 	"github.com/benbearchen/asuran/net"
 
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -109,6 +112,24 @@ func (c *UrlCache) Detail(w http.ResponseWriter) {
 	}
 
 	fmt.Fprintln(w, t)
+}
+
+func (c *UrlCache) Content() ([]byte, error) {
+	if c.Error != nil {
+		return nil, c.Error
+	} else if len(c.Bytes) <= 0 {
+		return c.Bytes, nil
+	} else if c.ResponseHeader.Get("Content-Encoding") == "gzip" {
+		reader, err := gzip.NewReader(bytes.NewBuffer(c.Bytes))
+		if err != nil {
+			return nil, err
+		}
+
+		defer reader.Close()
+		return ioutil.ReadAll(reader)
+	} else {
+		return c.Bytes, nil
+	}
 }
 
 func isASCII(t []byte) bool {

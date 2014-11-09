@@ -785,8 +785,9 @@ func (p *Proxy) storeHistory(profileIP, id string, prof *profile.Profile) (strin
 	}
 
 	h := f.LookHistoryByID(uint32(hID))
-	if h.Error == nil && len(h.Bytes) > 0 {
-		saveID := prof.StoreID(h.Bytes)
+	content, err := h.Content()
+	if err == nil {
+		saveID := prof.StoreID(content)
 		return h.Url, saveID
 	}
 
