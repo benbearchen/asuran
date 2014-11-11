@@ -1,3 +1,11 @@
+ver 0.2.4
+=========
+* Support saving and loading profile's commands pack
+* Show global DNS history
+* Support tcp speed
+* Make Changelog
+
+
 ver 0.1
 =========
 Key Features:
