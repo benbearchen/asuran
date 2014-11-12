@@ -3,6 +3,7 @@ package net
 import (
 	"bufio"
 	"fmt"
+	"io"
 	gonet "net"
 	"net/http"
 )
@@ -25,14 +26,34 @@ func ResetResponse(w http.ResponseWriter) {
 	}
 }
 
-func TcpWriteHttp(w http.ResponseWriter, content []byte) bool {
+type flushWriterWrapper struct {
+	w *bufio.ReadWriter
+}
+
+func flushWriterWrap(w *bufio.ReadWriter) io.Writer {
+	return &flushWriterWrapper{w}
+}
+
+func (w *flushWriterWrapper) Write(b []byte) (n int, err error) {
+	return w.w.Write(b)
+}
+
+func (w *flushWriterWrapper) Flush() {
+	w.w.Flush()
+}
+
+func TcpWriteHttp(w http.ResponseWriter, writeWrapper func(io.Writer) io.Writer, content []byte) bool {
 	conn, writer, err := hijack(w)
 	if err != nil {
 		return false
 	}
 
 	defer conn.Close()
-	writer.Write(content)
-	writer.Flush()
+	defer writer.Flush()
+	if writeWrapper != nil {
+		writeWrapper(flushWriterWrap(writer)).Write(content)
+	} else {
+		writer.Write(content)
+	}
 	return true
 }

@@ -290,6 +290,8 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 
 		act := p.urlOp.Action(remoteIP, fullUrl)
 		//fmt.Println("url act: " + act.String())
+		speed := p.urlOp.Speed(remoteIP, fullUrl)
+
 		switch act.Act {
 		case profile.UrlActCache:
 			needCache = true
@@ -315,12 +317,11 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.UrlActRestore:
 			fallthrough
 		case profile.UrlActTcpWritten:
-			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act) {
+			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed) {
 				return
 			}
 		}
 
-		speed := p.urlOp.Speed(remoteIP, fullUrl)
 		switch speed.Act {
 		case profile.SpeedActConstant:
 			writeWrap = newSpeedWriter(speed, w)
@@ -355,7 +356,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction, speed profile.SpeedAction) bool {
 	var content []byte = nil
 	contentSource := ""
 	switch act.Act {
@@ -382,11 +383,23 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		return false
 	}
 
+	var writeWrapper func(w io.Writer) io.Writer = nil
+	switch speed.Act {
+	case profile.SpeedActConstant:
+		writeWrapper = func(w io.Writer) io.Writer {
+			return newSpeedWriter(speed, w)
+		}
+	}
+
 	start := time.Now()
 	if act.Act == profile.UrlActTcpWritten {
-		net.TcpWriteHttp(w, content)
+		net.TcpWriteHttp(w, writeWrapper, content)
 	} else {
-		w.Write(content)
+		if writeWrapper != nil {
+			writeWrapper(w).Write(content)
+		} else {
+			w.Write(content)
+		}
 	}
 
 	c := cache.NewUrlCache(target, r, nil, nil, contentSource, content, rangeInfo, start, time.Now(), nil)
