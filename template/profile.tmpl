@@ -208,13 +208,14 @@ function domainCmd(act, opt) {
 <td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
-<textarea rows="10" cols="80" id="CommandBoxId" name="cmd"></textarea>
+<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}} 或设备上操作"{{end}}></textarea>
 </form>
 
 
 <hr/>
 
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
+{{if .NotOwner}}{{else}}
 <table border="1">
 <tr>
 <td rowspan="11">url</td>
@@ -269,5 +270,6 @@ function domainCmd(act, opt) {
 </tr>
 </table>
 
+{{end}} <!-- end of owner's command guide -->
 </body>
 </html>

@@ -531,6 +531,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		p.lives.Open(profileIP)
 	}
 
+	realOwner := f.Owner == ownerIP || profileIP == ownerIP
+
 	if op == "export" {
 		fmt.Fprintln(w, f.ExportCommand())
 		return
@@ -647,7 +649,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 	r.ParseForm()
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
-		if f.Owner == ownerIP || profileIP == ownerIP {
+		if realOwner {
 			for _, cmd := range v {
 				p.Command(cmd, f, p.lives.Open(profileIP))
 			}
@@ -655,7 +657,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	savedIDs := f.ListStoreIDs()
-	f.WriteHtml(w, savedIDs)
+	f.WriteHtml(w, savedIDs, realOwner)
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
