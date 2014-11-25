@@ -1,0 +1,69 @@
+<html>
+<head>
+<title>{{.Target}} 请求历史</title>
+<style type="text/css">
+/* copy from http://www.w3school.com.cn/tiy/t.asp?f=csse_table_fancy */
+#profile
+  {
+  font-family:"Trebuchet MS", Arial, Helvetica, sans-serif;
+  border-collapse:collapse;
+  }
+
+#profile td, #profile th 
+  {
+  font-size:1em;
+  border:1px solid #98bf21;
+  padding:3px 7px 2px 7px;
+  min-width:100px;
+  }
+
+#profile th 
+  {
+  font-size:1.1em;
+  text-align:left;
+  padding-top:5px;
+  padding-bottom:4px;
+  background-color:#A7C942;
+  color:#ffffff;
+  }
+
+#profile tr.alt td 
+  {
+  color:#000000;
+  background-color:#EAF2D3;
+  }
+</style>
+<script type="text/javascript">
+function domainRedirect(domain) {
+    alert("暂时未实现重定向 " + domain);
+}
+
+function proxyCache(url) {
+    alert("暂时未实现缓存 " + url);
+}
+
+</script>
+</head>
+<body>
+
+<p>提醒：如果客户端已经有 <a href="/profile">profile</a>，则不能从 DNS 服务看到历史</p>
+
+<table id="profile">
+<tr>
+<th>客户端</th>
+<th>时间</th>
+<th>解析结果</th>
+<th>事件</th>
+</tr>
+{{range .Events}}
+<tr{{if .Even}} class="alt"{{end}}>
+<td><a href="/dns/history/{{.Client}}" title="只查看 {{.Client}} 的访问历史">{{.Client}}</a></td>
+<td>{{.Time}}</td>
+<td>{{.DomainIP}}</td>
+<td>{{if .Domain}}{{.Domain}}{{end}}</td>
+</tr>
+{{end}}
+</table>
+
+</body>
+</html>

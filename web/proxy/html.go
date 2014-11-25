@@ -234,6 +234,69 @@ func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Li
 	}
 }
 
+type dnsHistoryEventData struct {
+	Even     bool
+	Time     string
+	Domain   string
+	DomainIP string
+	Client   string
+}
+
+type dnsHistoryData struct {
+	Target string
+	Events []dnsHistoryEventData
+}
+
+func formatDNSHistoryEventDataList(events []*life.HistoryEvent, f *life.Life, targetIP string) []dnsHistoryEventData {
+	list := make([]dnsHistoryEventData, 0, len(events))
+	even := true
+	for _, e := range events {
+		d := dnsHistoryEventData{}
+
+		even = !even
+		d.Even = even
+		d.Time = e.Time.Format("2006-01-02 15:04:05")
+
+		s := strings.Split(e.String, " ")
+		if len(s) >= 3 {
+			client := s[0]
+			if len(targetIP) > 0 && targetIP != client {
+				continue
+			}
+
+			d.Client = client
+
+			domain := s[2]
+			d.Domain = "域名 " + s[1] + " " + domain
+			if len(s) >= 4 {
+				d.DomainIP = s[3]
+			}
+		} else {
+			continue
+		}
+
+		list = append(list, d)
+	}
+
+	return list
+}
+
+func (p *Proxy) writeDNSHistory(w http.ResponseWriter, f *life.Life, targetIP string) {
+	t, err := template.ParseFiles("template/dnshistory.tmpl")
+	list := formatDNSHistoryEventDataList(f.HistoryEvents(), f, targetIP)
+	targetInfo := ""
+	if len(targetIP) == 0 {
+		targetInfo = "DNS 服务"
+	} else {
+		targetInfo = targetIP + " DNS"
+	}
+
+	err = t.Execute(w, dnsHistoryData{targetInfo, list})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
 type deviceData struct {
 	Even     bool
 	Name     string
@@ -251,12 +314,14 @@ func formatDevicesListData(profiles []*profile.Profile, v *life.IPLives) devices
 	if len(profiles) > 0 {
 		even := true
 		for _, p := range profiles {
+			if p.Ip == "localhost" {
+				continue
+			}
+
 			t := ""
 			f := v.OpenExists(p.Ip)
 			if f != nil {
 				t = f.CreateTime.Format("2006-01-02 15:04:05")
-			} else if p.Ip == "localhost" {
-				continue
 			}
 
 			even = !even

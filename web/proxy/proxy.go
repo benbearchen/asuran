@@ -106,6 +106,7 @@ func (p *Proxy) BindUrlOperator(op profile.UrlOperator) {
 func (p *Proxy) BindProfileOperator(op profile.ProfileOperator) {
 	p.profileOp = op
 	p.profileOp.Open("localhost").Name = "DNS 服务"
+	p.lives.Open("localhost")
 }
 
 func (p *Proxy) BindDomainOperator(op profile.DomainOperator) {
@@ -431,25 +432,20 @@ type proxyDomainOperator struct {
 
 func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if domain == "i.me" {
-		p.p.LogDomain(ip, "init", domain, p.p.serveIP)
+		p.p.LogDomain(ip, ip, "init", domain, p.p.serveIP)
 		return profile.NewDomainAction(domain, profile.DomainActNone, p.p.serveIP)
 	}
 
+	profIP := ip
 	if p.p.profileOp != nil {
 		if p.p.profileOp.FindByIp(ip) == nil {
-			a := p.p.domainOp.Action("localhost", domain)
-			if a != nil {
-				b := *a
-				a = &b
-			}
-
-			return a
+			profIP = "localhost"
 		}
 	}
 
 	if p.p.domainOp != nil {
 		act := "query"
-		a := p.p.domainOp.Action(ip, domain)
+		a := p.p.domainOp.Action(profIP, domain)
 		if a != nil {
 			b := *a
 			a = &b
@@ -469,10 +465,10 @@ func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 			resultIP = a.IP
 		}
 
-		p.p.LogDomain(ip, act, domain, resultIP)
+		p.p.LogDomain(profIP, ip, act, domain, resultIP)
 		return a
 	} else {
-		p.p.LogDomain(ip, "undef", domain, "")
+		p.p.LogDomain(profIP, ip, "undef", domain, "")
 		return nil
 	}
 }
@@ -706,14 +702,19 @@ func (p *Proxy) lookHistory(w http.ResponseWriter, profileIP, lookUrl, op string
 	}
 }
 
-func (p *Proxy) LogDomain(ip, action, domain, resultIP string) {
-	if f := p.lives.Open(ip); f != nil {
+func (p *Proxy) LogDomain(profIP, ip, action, domain, resultIP string) {
+	if f := p.lives.Open(profIP); f != nil {
 		s := ""
 		if len(resultIP) > 0 {
 			s = " "
 		}
 
-		f.Log("domain " + action + " " + domain + s + resultIP)
+		d := "domain"
+		if profIP == "localhost" {
+			d = ip
+		}
+
+		f.Log(d + " " + action + " " + domain + s + resultIP)
 	}
 }
 
@@ -833,6 +834,12 @@ func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
 		export += f.ExportDNSCommand()
 		export += "\n# end #\n"
 		fmt.Fprintln(w, export)
+	} else if target, m := httpd.MatchPath(page, "/history"); m {
+		if len(target) > 0 {
+			target = target[1:]
+		}
+
+		p.writeDNSHistory(w, p.lives.Open("localhost"), target)
 	}
 }
 
