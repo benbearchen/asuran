@@ -17,7 +17,7 @@ url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status
 
 url delete (<url-pattern>|all)
 
-domain ([default]|block|proxy) (<domain-name>|all) [<ip>]
+domain ([default]|block|proxy|null) (<domain-name>|all) [<ip>]
 
 domain delete (<domain-name>|all)
 
@@ -123,6 +123,7 @@ domain mode:
               返回自定义 <ip> 如果有设置；否则实时查询后返回。
     block     屏蔽域名，不返回任何结果。
     proxy     返回 asuran IP，以代理设备 HTTP 请求。
+    null      返回查询无结果
 
 domain-name:
     ([^.]+.)+[^.]+
@@ -170,11 +171,7 @@ func (p *Profile) CommandDelete(content string) {
 func (p *Profile) CommandDomain(content string) {
 	c, rest := cmd.TakeFirstArg(content)
 	switch c {
-	case "default":
-		commandDomainMode(p, c, rest)
-	case "block":
-		commandDomainMode(p, c, rest)
-	case "proxy":
+	case "default", "block", "proxy", "null":
 		commandDomainMode(p, c, rest)
 	case "delete":
 		commandDomainDelete(p, rest)
@@ -577,6 +574,8 @@ func commandDomainMode(p *Profile, mode, content string) {
 		*act = DomainActBlock
 	} else if mode == "proxy" {
 		*act = DomainActProxy
+	} else if mode == "null" {
+		*act = DomainActNull
 	}
 
 	if c == "all" {
@@ -612,6 +611,8 @@ func (d *DomainAction) EditCommand() string {
 		return "domain block " + d.Domain + ip + "\n"
 	case DomainActProxy:
 		return "domain proxy " + d.Domain + ip + "\n"
+	case DomainActNull:
+		return "domain null " + d.Domain + ip + "\n"
 	default:
 		return ""
 	}

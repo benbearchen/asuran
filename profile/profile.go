@@ -159,6 +159,7 @@ const (
 	DomainActNone = iota
 	DomainActBlock
 	DomainActProxy
+	DomainActNull
 )
 
 type DomainAction struct {
@@ -184,6 +185,8 @@ func (a DomainAct) String() string {
 		return "丢弃不返回"
 	case DomainActProxy:
 		return "代理域名"
+	case DomainActNull:
+		return "查询无结果"
 	default:
 		return ""
 	}

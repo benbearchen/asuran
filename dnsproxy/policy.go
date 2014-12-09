@@ -37,6 +37,8 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 		return domain, nil
 	case profile.DomainActProxy:
 		return passDomain(domain, a.IP)
+	case profile.DomainActNull:
+		return domain, []net.IP{}
 	default:
 		return passDomain(domain, a.IP)
 	}
