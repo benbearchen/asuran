@@ -4,6 +4,8 @@ ver 0.2.4
 * Show global DNS history
 * Support tcp speed
 * Make Changelog
+* Can disable DNS
+* DNS support "null" response
 
 
 ver 0.1
