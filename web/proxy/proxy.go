@@ -30,6 +30,7 @@ type Proxy struct {
 	domainOp   profile.DomainOperator
 	serveIP    string
 	mainHost   string
+	disableDNS bool
 
 	lock sync.RWMutex
 	r    *rand.Rand
@@ -121,6 +122,10 @@ func (p *Proxy) GetHandlePath() string {
 	return "/"
 }
 
+func (p *Proxy) DisableDNS() {
+	p.disableDNS = true
+}
+
 func (p *Proxy) testUrl(
 	target string,
 	w http.ResponseWriter,
@@ -178,7 +183,11 @@ func (p *Proxy) OnRequest(
 	} else if page, m := httpd.MatchPath(urlPath, "/profile"); m {
 		p.ownProfile(remoteIP, page, w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/dns"); m {
-		p.dns(page, w, r)
+		if !p.disableDNS {
+			p.dns(page, w, r)
+		} else {
+			fmt.Fprintln(w, "DNS is disabled")
+		}
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
 	} else if urlPath == "/" {
@@ -826,9 +835,9 @@ func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(page) == 0 {
+	if len(page) == 0 || page == "/" {
 		f.WriteDNS(w, p.serveIP)
-	} else if page == "/export" {
+	} else if _, m := httpd.MatchPath(page, "/export"); m {
 		export := "# 此为 DNS 独立服务的配置导出，可复制所有内容至“命令”输入窗口重新加载此配置 #\n\n"
 		export += "# Name: DNS 独立服务\n"
 		export += f.ExportDNSCommand()
@@ -840,6 +849,8 @@ func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
 		}
 
 		p.writeDNSHistory(w, p.lives.Open("localhost"), target)
+	} else {
+		http.Redirect(w, r, "..", 302)
 	}
 }
 

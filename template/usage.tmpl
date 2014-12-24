@@ -8,28 +8,33 @@ li{line-height:125%}
 <body>
 asuran 使用模式：
 <ul>
+{{if .UsingDNS}}
 <li><b>DNS 服务器</b>：
   <ul><li>将测试设备的 DNS 服务器设置为 {{.IP}}
       <li>支持控制 域名解析 行为（指定或拦截 host 等），不再纠结怎么放 hosts
   </ul>
+{{end}}
 <li><b>标准 HTTP 代理</b>：
   <ul><li>为设备的应用或系统设置代理服务器（代理服务器地址：{{.IP}}，端口 80）
       <li>此模式会代理所有的网络请求，对直接 IP 和非 80 端口访问兼容性好
       <li>支持 域名解析 行为管理和 HTTP 行为管理
       <li>支持查看代理历史
   </ul>
+{{if .UsingDNS}}
 <li><b>透明 HTTP 代理</b>：
   <ul><li>将测试设备的 DNS 服务器设置为 {{.IP}}，然后通过管理页面管理 DNS 解析和 HTTP 代理行为
       <li>通过 HTTP 匹配模式来代理并控制 HTTP 行为，通过 DNS 来控制需要代理的域名
       <li>只能整个域名都代理或都不代理。不支持代理直接 IP 的请求
       <li>支持查看代理历史
   </ul>
+{{end}}
 </ul>
 
 <hr/>
 <h3>检查 asuran 服务的网络连通性</h3>
 在设备上访问 <u>http://{{.Host}}/usage</u>，如果能看到这个页面，则表示到 asuran 的网络是通的。<br/>否则，请检查网络，再使用 asuran。
 
+{{if .UsingDNS}}
 <hr/>
 <h3>作为 DNS 服务器使用</h3>
 <ol>
@@ -40,6 +45,7 @@ asuran 使用模式：
   <li>如果你没有使用过上述 profile，则 DNS 解析行为遵循 <a href="http://{{.Host}}/dns">http://{{.Host}}/dns</a> 的设置
   <li>除了指定 hosts，你还可以拦截（domain 一栏的 block 按钮）域名的解析
 </ol>
+{{end}}
 
 <hr/>
 <h3>作为标准 HTTP 代理使用</h3>
@@ -53,6 +59,7 @@ asuran 使用模式：
   <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
 </ol>
 
+{{if .UsingDNS}}
 <hr/>
 <h3>作为透明 HTTP 代理使用</h3>
 <ol>
@@ -64,6 +71,7 @@ asuran 使用模式：
   <li>例如命令 proxy http://*.google.com/* 可以代理都有 *.google.com 下所有页面的请求，然后你可以在历史看到
   <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
 </ol>
+{{end}}
 
 <hr/>
 <h4>通用流程</h4>

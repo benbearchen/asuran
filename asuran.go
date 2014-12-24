@@ -7,6 +7,7 @@ import (
 	"github.com/benbearchen/asuran/util/cmd"
 	"github.com/benbearchen/asuran/web/proxy"
 
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
@@ -80,8 +81,14 @@ func version() {
 `)
 }
 
+var (
+	nodns = flag.Bool("nodns", false, "nodns DISABLE the dns function")
+)
+
 func main() {
 	version()
+
+	flag.Parse()
 
 	p := proxy.NewProxy(VersionCode)
 	ipProfiles := profile.NewIpProfiles()
@@ -90,7 +97,11 @@ func main() {
 	p.BindProfileOperator(ipProfiles.OperatorProfile())
 	p.BindDomainOperator(ipProfiles.OperatorDomain())
 
-	go dnsproxy.DnsProxy(dnsproxy.NewPolicy(p.NewDomainOperator()))
+	if *nodns {
+		p.DisableDNS()
+	} else {
+		go dnsproxy.DnsProxy(dnsproxy.NewPolicy(p.NewDomainOperator()))
+	}
 
 	var c cmd.Command
 	c.OpenConsole()
