@@ -1,11 +1,18 @@
-ver 0.2.4
+ver 0.3
 =========
 * Support saving and loading profile's commands pack
+* Record and replay certain commands packs
+
+
+ver 0.2.4
+=========
 * Show global DNS history
 * Support tcp speed
 * Make Changelog
 * Can disable DNS
 * DNS support "null" response
+* Can disable 302
+* Edit and `rewrite` a history
 
 
 ver 0.1
