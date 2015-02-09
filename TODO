@@ -13,6 +13,7 @@ ver 0.2.4
 * DNS support "null" response
 * Can disable 302
 * Edit and `rewrite` a history
+* `cache` with range
 
 
 ver 0.1
