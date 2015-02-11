@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -28,6 +29,11 @@ type UrlCache struct {
 	ResponseCode   int
 	RangeInfo      string
 	Error          error
+}
+
+type UrlCacheContent struct {
+	Entire *UrlCache
+	Ranges map[string]*UrlCache
 }
 
 type UrlHistory struct {
@@ -118,7 +124,7 @@ func (c *UrlCache) Content() ([]byte, error) {
 	if c.Error != nil {
 		return nil, c.Error
 	} else if len(c.Bytes) <= 0 {
-		return c.Bytes, nil
+		return []byte{}, nil
 	} else if c.ResponseHeader.Get("Content-Encoding") == "gzip" {
 		reader, err := gzip.NewReader(bytes.NewBuffer(c.Bytes))
 		if err != nil {
@@ -130,6 +136,120 @@ func (c *UrlCache) Content() ([]byte, error) {
 	} else {
 		return c.Bytes, nil
 	}
+}
+
+func (c *UrlCache) Is20x() bool {
+	return c.ResponseCode == 200 || c.ResponseCode == 206
+}
+
+func splitRangeInfo(rangeInfo string, size int) (int, int, error) {
+	prefix := "bytes="
+	if !strings.HasPrefix(rangeInfo, prefix) {
+		return 0, 0, fmt.Errorf("range %s don't begin with %s", rangeInfo, prefix)
+	}
+
+	rangeInfo = rangeInfo[len(prefix):]
+	abs := strings.Split(rangeInfo, "-")
+	if len(abs) != 2 {
+		return 0, 0, fmt.Errorf("range %s has no `-'", rangeInfo)
+	}
+
+	start, err := strconv.Atoi(abs[0])
+	if err != nil {
+		return 0, 0, err
+	} else if start >= size {
+		return 0, 0, fmt.Errorf("range %s out of size %d", rangeInfo, size)
+	}
+
+	if len(abs[1]) == 0 {
+		return start, size, nil
+	}
+
+	end, err := strconv.Atoi(abs[1])
+	if err != nil {
+		return 0, 0, err
+	} else if end >= size {
+		return 0, 0, fmt.Errorf("range %s out of size %d", rangeInfo, size)
+	}
+
+	return start, end + 1, nil
+}
+
+func (c *UrlCache) Split(rangeInfo string) *UrlCache {
+	fmt.Println("Split", rangeInfo, "of", c.Url)
+	if !c.Is20x() || c.RangeInfo == rangeInfo {
+		return c
+	} else if !(len(c.RangeInfo) == 0 && len(rangeInfo) != 0) {
+		return nil
+	}
+
+	responseCode := 206
+	b, err := c.Content()
+	size := len(b)
+	start, end, err := splitRangeInfo(rangeInfo, size)
+	fmt.Println("split info to:", start, end, err)
+	if err != nil {
+		responseCode = 416
+		b = []byte(fmt.Sprintf("out of range %v", err))
+	} else {
+		b = b[start:end]
+	}
+
+	result := *c
+	result.ResponseCode = responseCode
+	result.Bytes = b
+	result.RangeInfo = rangeInfo
+	result.ResponseHeader = make(http.Header)
+	for k, v := range c.ResponseHeader {
+		if k != "Content-Encoding" && k != "Content-Length" {
+			result.ResponseHeader[k] = v
+		}
+	}
+
+	if err == nil {
+		result.ResponseHeader["Content-Range"] = []string{fmt.Sprintf("bytes %d-%d/%d", start, end-1, size)}
+		result.ResponseHeader["Content-Length"] = []string{strconv.Itoa(end - start)}
+		result.ResponseHeader["XXX"] = []string{"from range split"}
+	}
+
+	return &result
+}
+
+func NewUrlCacheContent(cache *UrlCache) *UrlCacheContent {
+	c := &UrlCacheContent{cache, make(map[string]*UrlCache)}
+	c.Save(cache)
+	return c
+}
+
+func (c *UrlCacheContent) Save(cache *UrlCache) {
+	fmt.Println("save", cache.ResponseCode, cache.Error, cache.Url)
+	if len(cache.RangeInfo) == 0 {
+		c.Entire = cache
+	} else if c.Entire != nil {
+		// drop range caches when exists entire file
+		return
+	} else {
+		c.Ranges[cache.RangeInfo] = cache
+	}
+}
+
+func (c *UrlCacheContent) Get(rangeInfo string) *UrlCache {
+	if c.Entire != nil {
+		if len(rangeInfo) == 0 {
+			return c.Entire
+		} else {
+			result := c.Entire.Split(rangeInfo)
+			if result != nil {
+				return result
+			}
+		}
+	}
+
+	if r, ok := c.Ranges[rangeInfo]; ok {
+		return r
+	}
+
+	return nil
 }
 
 func isASCII(t []byte) bool {
@@ -157,7 +277,7 @@ func text(t []byte) string {
 }
 
 type Cache struct {
-	contents map[string]UrlCache
+	contents map[string]*UrlCacheContent
 	urlIds   map[string][]uint32
 	id       uint32
 	indexes  []*UrlHistory
@@ -174,9 +294,17 @@ func (c *Cache) historyID() uint32 {
 	return atomic.AddUint32(&c.id, 1)
 }
 
+func (c *Cache) saveUrlCache(cache *UrlCache) {
+	if ucc, ok := c.contents[cache.Url]; ok {
+		ucc.Save(cache)
+	} else {
+		c.contents[cache.Url] = NewUrlCacheContent(cache)
+	}
+}
+
 func (c *Cache) Save(cache *UrlCache, save bool) uint32 {
 	if save {
-		c.contents[cache.Url] = *cache
+		c.saveUrlCache(cache)
 	}
 
 	id := c.historyID()
@@ -192,9 +320,7 @@ func (c *Cache) Save(cache *UrlCache, save bool) uint32 {
 
 func (c *Cache) Take(url, rangeInfo string) *UrlCache {
 	if content, ok := c.contents[url]; ok {
-		if content.RangeInfo == rangeInfo {
-			return &content
-		}
+		return content.Get(rangeInfo)
 	}
 
 	return nil
@@ -242,7 +368,7 @@ func (c *Cache) History(id uint32) *UrlHistory {
 }
 
 func (c *Cache) Clear() {
-	c.contents = make(map[string]UrlCache)
+	c.contents = make(map[string]*UrlCacheContent)
 	c.urlIds = make(map[string][]uint32)
 	c.id = 0
 	c.indexes = make([]*UrlHistory, 0, 20)

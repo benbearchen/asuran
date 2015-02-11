@@ -347,6 +347,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	httpStart := time.Now()
+	fmt.Println("begin", rangeInfo, "of", requestUrl)
 	resp, postBody, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP))
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
