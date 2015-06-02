@@ -301,6 +301,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		act := p.urlOp.Action(remoteIP, fullUrl)
 		//fmt.Println("url act: " + act.String())
 		speed := p.urlOp.Speed(remoteIP, fullUrl)
+		bodyDelay := p.urlOp.BodyDelay(remoteIP, fullUrl)
 
 		switch act.Act {
 		case profile.UrlActCache:
@@ -327,14 +328,29 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.UrlActRestore:
 			fallthrough
 		case profile.UrlActTcpWritten:
-			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed) {
+			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay) {
 				return
 			}
 		}
 
+		switch bodyDelay.Act {
+		case profile.DelayActDelayEach:
+			fallthrough
+		case profile.DelayActTimeout:
+			if writeWrap == nil {
+				writeWrap = w
+			}
+
+			writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r)
+		}
+
 		switch speed.Act {
 		case profile.SpeedActConstant:
-			writeWrap = newSpeedWriter(speed, w)
+			if writeWrap == nil {
+				writeWrap = w
+			}
+
+			writeWrap = newSpeedWriter(speed, writeWrap)
 		}
 	}
 
@@ -366,7 +382,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction, speed profile.SpeedAction) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction, speed profile.SpeedAction, bodyDelay profile.DelayAction) bool {
 	var content []byte = nil
 	contentSource := ""
 	switch act.Act {
@@ -394,10 +410,26 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	var writeWrapper func(w io.Writer) io.Writer = nil
+	switch bodyDelay.Act {
+	case profile.DelayActDelayEach:
+		fallthrough
+	case profile.DelayActTimeout:
+		writeWrapper = func(w io.Writer) io.Writer {
+			return newDelayWriter(bodyDelay, w, p.r)
+		}
+	}
+
 	switch speed.Act {
 	case profile.SpeedActConstant:
-		writeWrapper = func(w io.Writer) io.Writer {
-			return newSpeedWriter(speed, w)
+		if writeWrapper != nil {
+			wrap := writeWrapper
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newSpeedWriter(speed, wrap(w))
+			}
+		} else {
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newSpeedWriter(speed, w)
+			}
 		}
 	}
 
@@ -584,7 +616,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "redirect":
 				if len(pages) >= 5 {
 					domain := pages[4]
-					f.SetUrl(profile.UrlToPattern(domain), nil, nil, nil)
+					f.SetUrl(profile.UrlToPattern(domain), nil, nil, nil, nil)
 					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
 					return
 				}
@@ -600,7 +632,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				if len(pages) >= 5 {
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
-						f.SetUrl(profile.UrlToPattern(u), nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil)
+						f.SetUrl(profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil)
 						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 <a href=\"/profile/%s/stores/%s\">%s</a> 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, profileIP, sid, id, u, profileIP)
 					}
 					return

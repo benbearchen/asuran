@@ -14,6 +14,7 @@ ver 0.2.4
 * Can disable 302
 * Edit and `rewrite` a history
 * `cache` with range
+* Can timeout http body response
 
 
 ver 0.1

@@ -13,7 +13,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)|tcpwrite <url-encoded-content>] [speed <speeds>] (<url-pattern>|all)
+url [(set|update)] [drop <duration>] [(delay|timeout) [body] [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)|tcpwrite <url-encoded-content>] [speed <speeds>] (<url-pattern>|all)
 
 url delete (<url-pattern>|all)
 
@@ -63,6 +63,9 @@ url command:
               所有请求等待 duration 时间后，丢弃请求。
 
               时间可选参数：
+    body      对 HTTP 回复的 body（而不是 headers）进行延时或超时处理。
+              允许对 headers 和 body 独立设置。
+              特殊地，timeout body 在发送进行 duration 时长后断开链接。
     rand      不使用固定时长，而是随机生成 [0, 1) * duration。
 
 
@@ -185,6 +188,7 @@ func (p *Profile) CommandUrl(content string) {
 	ok := false
 
 	var delayAction *DelayAction
+	var bodyDelayAction *DelayAction
 	var proxyAction *UrlProxyAction
 	var speedAction *SpeedAction
 
@@ -196,9 +200,16 @@ func (p *Profile) CommandUrl(content string) {
 		case "drop":
 			fallthrough
 		case "timeout":
-			delayAction, rest, ok = parseDelayAction(c, rest)
+			action, body, r, ok := parseDelayAction(c, rest)
 			if !ok {
 				return
+			}
+
+			rest = r
+			if body {
+				bodyDelayAction = action
+			} else {
+				delayAction = action
 			}
 		case "proxy":
 			fallthrough
@@ -232,6 +243,10 @@ func (p *Profile) CommandUrl(content string) {
 				delayAction = new(DelayAction)
 			}
 
+			if bodyDelayAction == nil {
+				bodyDelayAction = new(DelayAction)
+			}
+
 			if proxyAction == nil {
 				proxyAction = new(UrlProxyAction)
 			}
@@ -242,7 +257,7 @@ func (p *Profile) CommandUrl(content string) {
 		case "update":
 		default:
 			if len(c) > 0 && len(rest) == 0 {
-				commandUrl(p, delayAction, proxyAction, speedAction, c)
+				commandUrl(p, delayAction, bodyDelayAction, proxyAction, speedAction, c)
 			}
 
 			return
@@ -251,13 +266,13 @@ func (p *Profile) CommandUrl(content string) {
 
 }
 
-func commandUrl(p *Profile, delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, c string) {
+func commandUrl(p *Profile, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, c string) {
 	if c == "all" {
-		p.SetAllUrl(delayAction, proxyAction, speedAction)
+		p.SetAllUrl(delayAction, bodyDelayAction, proxyAction, speedAction)
 	} else {
 		urlPattern := restToPattern(c)
 		if len(urlPattern) > 0 {
-			p.SetUrl(urlPattern, delayAction, proxyAction, speedAction)
+			p.SetUrl(urlPattern, delayAction, bodyDelayAction, proxyAction, speedAction)
 		}
 	}
 }
@@ -291,26 +306,6 @@ func UrlToPattern(url string) string {
 	return url
 }
 
-func commandDelayMode(p *Profile, mode, args string) {
-	var act DelayActType = DelayActDelayEach
-	if mode == "drop" {
-		act = DelayActDropUntil
-	}
-
-	duration, pattern, ok := delayTimeAndPattern(args)
-	if ok {
-		if act == DelayActDelayEach && duration == 0 {
-			act = DelayActNone
-		}
-
-		if pattern == "all" {
-			p.SetAllUrlDelay(act, false, duration)
-		} else {
-			p.SetUrlDelay(pattern, act, false, duration)
-		}
-	}
-}
-
 func delayTimeAndPattern(content string) (float32, string, bool) {
 	d, p := cmd.TakeFirstArg(content)
 	duration := parseDuration(d)
@@ -319,7 +314,7 @@ func delayTimeAndPattern(content string) (float32, string, bool) {
 	return duration, pattern, ok
 }
 
-func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
+func parseDelayAction(c, rest string) (*DelayAction, bool, string, bool) {
 	var act DelayActType = DelayActNone
 	switch c {
 	case "delay":
@@ -329,16 +324,16 @@ func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
 	case "timeout":
 		act = DelayActTimeout
 	default:
-		return nil, "", false
+		return nil, false, "", false
 	}
 
-	rand, d, r, ok := takeDuration(rest)
+	body, rand, d, r, ok := takeBodyDuration(rest)
 	if !ok {
-		return nil, "", false
+		return nil, false, "", false
 	}
 
 	t := MakeDelay(act, rand, d)
-	return &t, r, true
+	return &t, body, r, true
 }
 
 func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
@@ -388,16 +383,24 @@ func parseSpeedAction(c, rest string) (*SpeedAction, string, bool) {
 	return &SpeedAction{act, speed}, rest, true
 }
 
-func takeDuration(content string) (bool, float32, string, bool) {
+func takeBodyDuration(content string) (bool, bool, float32, string, bool) {
+	body := false
 	rand := false
 	d, p := cmd.TakeFirstArg(content)
-	if d == "rand" {
-		rand = true
+	for {
+		if d == "rand" {
+			rand = true
+		} else if d == "body" {
+			body = true
+		} else {
+			break
+		}
+
 		d, p = cmd.TakeFirstArg(p)
 	}
 
 	duration := parseDuration(d)
-	return rand, duration, p, duration >= 0
+	return body, rand, duration, p, duration >= 0
 }
 
 func parseDuration(d string) float32 {
@@ -453,44 +456,21 @@ func parseSpeed(s string) (float32, bool) {
 	}
 }
 
-func commandProxyMode(p *Profile, mode, args string) {
-	var act UrlAct = UrlActNone
-	if mode == "cache" {
-		act = UrlActCache
-	} else if mode == "drop" {
-		act = UrlActStatus
+func (d *DelayAction) EditCommand(body bool) string {
+	bc := ""
+	if body {
+		bc = "body "
 	}
 
-	dropResponseCode := 0
-	if act == UrlActStatus {
-		r, rest := cmd.TakeFirstArg(args)
-		responseCode, err := strconv.Atoi(r)
-		if err != nil {
-			return
-		} else {
-			dropResponseCode = responseCode
-			args = rest
-		}
-	}
-
-	pattern := restToPattern(args)
-	if pattern == "all" {
-		p.SetAllUrlAction(act, dropResponseCode)
-	} else if len(pattern) > 0 {
-		p.SetUrlAction(pattern, act, dropResponseCode)
-	}
-}
-
-func (d *DelayAction) EditCommand() string {
 	switch d.Act {
 	case DelayActNone:
 		return ""
 	case DelayActDelayEach:
-		return "delay " + d.DurationCommand()
+		return "delay " + bc + d.DurationCommand()
 	case DelayActDropUntil:
 		return "drop " + d.DurationCommand()
 	case DelayActTimeout:
-		return "timeout " + d.DurationCommand()
+		return "timeout " + bc + d.DurationCommand()
 	default:
 		return ""
 	}
@@ -530,7 +510,11 @@ func (s *SpeedAction) EditCommand() string {
 
 func (u *urlAction) EditCommand() string {
 	c := "url"
-	if e := u.Delay.EditCommand(); len(e) > 0 {
+	if e := u.Delay.EditCommand(false); len(e) > 0 {
+		c += " " + e
+	}
+
+	if e := u.BodyDelay.EditCommand(true); len(e) > 0 {
 		c += " " + e
 	}
 
