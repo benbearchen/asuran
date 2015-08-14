@@ -93,8 +93,11 @@ func main() {
 	flag.Parse()
 
 	p := proxy.NewProxy(VersionCode)
+
 	ipProfiles := profile.NewIpProfiles()
 	ipProfiles.BindProxyHostOperator(p.NewProxyHostOperator())
+	ipProfiles.SetDefaultCopyProfile("localhost")
+
 	p.BindUrlOperator(ipProfiles.OperatorUrl())
 	p.BindProfileOperator(ipProfiles.OperatorProfile())
 	p.BindDomainOperator(ipProfiles.OperatorDomain())

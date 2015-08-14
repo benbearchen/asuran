@@ -548,11 +548,11 @@ func (p *Profile) ListStored() []*Store {
 	return s
 }
 
-func (p *Profile) CloneNew(newName, newIp string) *Profile {
+func (p *Profile) CloneNew(newName, newIp, newOwner string) *Profile {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	n := NewProfile(newName, newIp, p.Owner)
+	n := NewProfile(newName, newIp, newOwner)
 	n.proxyOp = p.proxyOp
 	for u, url := range p.Urls {
 		c := *url
