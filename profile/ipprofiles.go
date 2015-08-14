@@ -49,6 +49,18 @@ func (p *IpProfiles) CreateProfile(name, ip, owner string) *Profile {
 	return profile
 }
 
+func (p *IpProfiles) Delete(ip string) bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	_, ok := p.profiles[ip]
+	if ok {
+		delete(p.profiles, ip)
+	}
+
+	return ok
+}
+
 func (p *IpProfiles) FindByIp(ip string) *Profile {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
