@@ -1,3 +1,8 @@
+features pool
+=============
+* `cache` with range
+
+
 ver 0.3
 =========
 * Support saving and loading profile's commands pack
@@ -13,8 +18,10 @@ ver 0.2.4
 * DNS support "null" response
 * Can disable 302
 * Edit and `rewrite` a history
-* `cache` with range
 * Can timeout http body response
+* Owner can invate new IP of operator
+* Copy default DNS when create a new profile
+* Can delete profiles in root console
 
 
 ver 0.1
