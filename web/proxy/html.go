@@ -184,7 +184,12 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			d.URL = url
 
 			var opName, opPath string
-			if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
+			if s[2] == "redirect" {
+				d.HttpStatus = "重定向"
+				if len(s) >= 4 {
+					d.URL += " => " + s[3]
+				}
+			} else if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
 				d.URLID = s[2]
 				h := f.LookHistoryByID(uint32(id))
 				if h != nil {

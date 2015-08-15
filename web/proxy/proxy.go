@@ -173,10 +173,10 @@ func (p *Proxy) OnRequest(
 			page = "localhost"
 		}
 
-		target := "http://" + page
+		target := "http://" + page[1:]
 		p.testUrl(target, w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/to/"); m {
-		target := "http://" + page
+		target := "http://" + page[1:]
 		p.proxyUrl(target, w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/usage"); m {
 		p.WriteUsage(w)
@@ -363,7 +363,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	httpStart := time.Now()
-	resp, postBody, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP))
+	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP), true)
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
@@ -371,6 +371,11 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 
 		http.Error(w, "Bad Gateway", 502)
+	} else if len(redirection) > 0 {
+		http.Redirect(w, r, redirection, 302)
+		if f != nil {
+			f.Log("proxy " + fullUrl + " redirect " + redirection)
+		}
 	} else {
 		defer resp.Close()
 		content, err := resp.ProxyReturn(w, writeWrap)
