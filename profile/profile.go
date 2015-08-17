@@ -212,13 +212,14 @@ type ProxyHostOperator interface {
 }
 
 type Profile struct {
-	Name    string
-	Ip      string
-	Owner   string
-	Urls    map[string]*urlAction
-	Domains map[string]*DomainAction
-	storeID int
-	stores  map[string]*Store
+	Name      string
+	Ip        string
+	Owner     string
+	Operators map[string]bool
+	Urls      map[string]*urlAction
+	Domains   map[string]*DomainAction
+	storeID   int
+	stores    map[string]*Store
 
 	proxyOp ProxyHostOperator
 
@@ -230,6 +231,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Name = name
 	p.Ip = ip
 	p.Owner = owner
+	p.Operators = make(map[string]bool)
 	p.Urls = make(map[string]*urlAction)
 	p.Domains = make(map[string]*DomainAction)
 	p.storeID = 1
@@ -546,6 +548,40 @@ func (p *Profile) ListStored() []*Store {
 	}
 
 	return s
+}
+
+func (p *Profile) AddOperator(ip string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if len(ip) > 0 {
+		p.Operators[ip] = true
+	}
+}
+
+func (p *Profile) RemoveOperator(ip string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if len(ip) > 0 {
+		delete(p.Operators, ip)
+	}
+}
+
+func (p *Profile) CanOperate(ip string) bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.Owner == ip || p.Ip == ip {
+		return true
+	}
+
+	_, ok := p.Operators[ip]
+	if ok {
+		return true
+	}
+
+	return false
 }
 
 func (p *Profile) CloneNew(newName, newIp, newOwner string) *Profile {

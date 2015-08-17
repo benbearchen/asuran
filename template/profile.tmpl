@@ -159,7 +159,8 @@ function domainCmd(act, opt) {
 <body>
 <p>配置名字：{{.Name}}</p>
 <p>当前作用 IP：{{.IP}}</p>
-<p>操作者 IP：{{.Owner}}</p>
+<p>拥有者 IP：{{.Owner}}</p>
+<p>操作员 IP：{{.Operators}}</p>
 <hr/>
 <a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">重启客户端状态</a>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -208,7 +209,7 @@ function domainCmd(act, opt) {
 <td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
-<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}} 或设备上操作"{{end}}></textarea>
+<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 或设备上操作"{{end}}></textarea>
 </form>
 
 

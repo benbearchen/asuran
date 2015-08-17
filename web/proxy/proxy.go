@@ -568,7 +568,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		p.lives.Open(profileIP)
 	}
 
-	realOwner := f.Owner == ownerIP || profileIP == ownerIP
+	canOperate := f.CanOperate(ownerIP)
 
 	if op == "export" {
 		fmt.Fprintln(w, f.ExportCommand())
@@ -679,6 +679,29 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			p.writeStores(w, profileIP, f)
 		}
 		return
+	} else if op == "operator" {
+		if !canOperate {
+			fmt.Fprintf(w, "<html><body>无权操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP, profileIP)
+		} else {
+			if len(pages) >= 5 {
+				operator := pages[4]
+				switch pages[3] {
+				case "add":
+					f.AddOperator(operator)
+				case "remove":
+					f.RemoveOperator(operator)
+				default:
+					fmt.Fprintf(w, "<html><body>未知操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", pages[3], profileIP)
+					return
+				}
+			} else {
+				fmt.Fprintf(w, "<html><body>未知操作。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+				return
+			}
+
+			fmt.Fprintf(w, "<html><body>好了。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+		}
+		return
 	} else if op != "" {
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
@@ -686,7 +709,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 	r.ParseForm()
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
-		if realOwner {
+		if canOperate {
 			for _, cmd := range v {
 				p.Command(cmd, f, p.lives.Open(profileIP))
 			}
@@ -694,7 +717,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	savedIDs := f.ListStoreIDs()
-	f.WriteHtml(w, savedIDs, realOwner)
+	f.WriteHtml(w, savedIDs, canOperate)
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
