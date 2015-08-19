@@ -13,7 +13,15 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(set|update)] [drop <duration>] [(delay|timeout) [body] [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)|tcpwrite <url-encoded-content>] [speed <speeds>] (<url-pattern>|all)
+url [(set|update)] [settings...] (<url-pattern>|all)
+
+settings... ::=
+      [drop <duration>]
+      [(delay|timeout) [body] [rand] <duration>]
+      [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
+      [speed <speeds>]
+      [(dont302|do302)]
+
 
 url delete (<url-pattern>|all)
 
@@ -96,21 +104,30 @@ url command:
               如 100, 99KB, 0.5MB/s 均可。
 
 
+    dont302, do302
+              决定是否由 asuran 来执行 302 跳转，二选一。
+              dont302 可以让客户端收到 302 跳转；
+              另外，目标服务器返回的 301、307 会被改写为 302。
+              do302 则会让 asuran 去直接访问 302 后的链接，
+              且 asuran 支持多次 302 跳转。
+
+
     delete    删除对 url-pattern 的配置。
 
-    duration
+    <duration>
               时长，可选单位：ms, s, m, h。默认为 s
               例：90s 或 1.5m
-    responseCode
+    <responseCode>
               HTTP 返回状态码，如 200/206、302/304、404 等。
-    resource-url
+    <resource-url>
               外部资源的 URL 地址（http:// 啥的）。
-    url-encoded-content
+    <url-encoded-content>
               以 url-encoded 方式编码的文本或者二进制内容。
               直接返回给客户端。
-    store-id  上传内容或者修改请求历史内容，得到内容的 id。
+    <store-id>
+              上传内容或者修改请求历史内容，得到内容的 id。
               id 对应内容可方便修改。
-    url-pattern
+    <url-pattern>
               [domain[:port]]/[path][?key=value]
               分域名[端口]、根路径与查询参数三种匹配。
               域名忽略则匹配所有域名。
@@ -128,7 +145,7 @@ domain mode:
     proxy     返回 asuran IP，以代理设备 HTTP 请求。
     null      返回查询无结果
 
-domain-name:
+<domain-name>:
     ([^.]+.)+[^.]+
               域名，目前支持英文域名（中文域名未验证）。
     all
@@ -191,6 +208,8 @@ func (p *Profile) CommandUrl(content string) {
 	var bodyDelayAction *DelayAction
 	var proxyAction *UrlProxyAction
 	var speedAction *SpeedAction
+	settings := make(map[string]string)
+	set := false
 
 	for {
 		c, rest = cmd.TakeFirstArg(rest)
@@ -239,6 +258,8 @@ func (p *Profile) CommandUrl(content string) {
 			p.CommandDelete(rest)
 			return
 		case "set":
+			set = true
+
 			if delayAction == nil {
 				delayAction = new(DelayAction)
 			}
@@ -255,9 +276,13 @@ func (p *Profile) CommandUrl(content string) {
 				speedAction = new(SpeedAction)
 			}
 		case "update":
+		case "dont302":
+			settings["dont302"] = "on"
+		case "do302":
+			settings["dont302"] = "off"
 		default:
 			if len(c) > 0 && len(rest) == 0 {
-				commandUrl(p, delayAction, bodyDelayAction, proxyAction, speedAction, c)
+				commandUrl(p, set, delayAction, bodyDelayAction, proxyAction, speedAction, settings, c)
 			}
 
 			return
@@ -266,13 +291,13 @@ func (p *Profile) CommandUrl(content string) {
 
 }
 
-func commandUrl(p *Profile, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, c string) {
+func commandUrl(p *Profile, set bool, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string, c string) {
 	if c == "all" {
-		p.SetAllUrl(delayAction, bodyDelayAction, proxyAction, speedAction)
+		p.SetAllUrl(set, delayAction, bodyDelayAction, proxyAction, speedAction, settings)
 	} else {
 		urlPattern := restToPattern(c)
 		if len(urlPattern) > 0 {
-			p.SetUrl(urlPattern, delayAction, bodyDelayAction, proxyAction, speedAction)
+			p.SetUrl(set, urlPattern, delayAction, bodyDelayAction, proxyAction, speedAction, settings)
 		}
 	}
 }
@@ -508,6 +533,22 @@ func (s *SpeedAction) EditCommand() string {
 	}
 }
 
+func (s Settings) EditCommand() string {
+	e := make([]string, 0, len(s))
+	for k, v := range s {
+		switch k {
+		case "dont302":
+			if v == "on" {
+				e = append(e, "dont302")
+			} else {
+				e = append(e, "do302")
+			}
+		}
+	}
+
+	return strings.Join(e, " ")
+}
+
 func (u *urlAction) EditCommand() string {
 	c := "url"
 	if e := u.Delay.EditCommand(false); len(e) > 0 {
@@ -523,6 +564,10 @@ func (u *urlAction) EditCommand() string {
 	}
 
 	if e := u.Speed.EditCommand(); len(e) > 0 {
+		c += " " + e
+	}
+
+	if e := u.Settings.EditCommand(); len(e) > 0 {
 		c += " " + e
 	}
 
@@ -629,4 +674,20 @@ func (p *Profile) ExportDNSCommand() string {
 		export += d.EditCommand()
 	}
 	return export
+}
+
+func (s Settings) String() string {
+	e := make([]string, 0, len(s))
+	for k, v := range s {
+		switch k {
+		case "dont302":
+			if v == "on" {
+				e = append(e, "允许 302 穿透")
+			} else {
+				e = append(e, "捕获 302 跳转")
+			}
+		}
+	}
+
+	return strings.Join(e, "，")
 }

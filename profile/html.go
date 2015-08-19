@@ -7,12 +7,13 @@ import (
 )
 
 type urlActionData struct {
-	Pattern string
-	Action  string
-	Delay   string
-	Edit    string
-	Delete  string
-	Even    bool
+	Pattern  string
+	Action   string
+	Delay    string
+	Settings string
+	Edit     string
+	Delete   string
+	Even     bool
 }
 
 type domainData struct {
@@ -62,7 +63,7 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 			extra = ", " + extra
 		}
 
-		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.EditCommand(), u.DeleteCommand(), even})
+		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.Settings.String(), u.EditCommand(), u.DeleteCommand(), even})
 	}
 
 	even = true

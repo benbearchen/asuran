@@ -139,6 +139,21 @@ func MakeEmptyUrlProxyAction() UrlProxyAction {
 	return UrlProxyAction{UrlActNone, ""}
 }
 
+type Settings map[string]string
+
+func (s Settings) Switch(key string) bool {
+	return s.SwitchDef(key, false)
+}
+
+func (s Settings) SwitchDef(key string, def bool) bool {
+	v, ok := s[key]
+	if ok {
+		return v == "on" || v == "yes"
+	} else {
+		return def
+	}
+}
+
 type urlAction struct {
 	UrlPattern string
 	pattern    *UrlPattern
@@ -146,6 +161,7 @@ type urlAction struct {
 	Delay      DelayAction
 	BodyDelay  DelayAction
 	Speed      SpeedAction
+	Settings   Settings
 }
 
 type UrlOperator interface {
@@ -239,7 +255,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	return p
 }
 
-func (p *Profile) SetUrl(urlPattern string, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction) {
+func (p *Profile) SetUrl(set bool, urlPattern string, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -259,8 +275,16 @@ func (p *Profile) SetUrl(urlPattern string, delayAction, bodyDelayAction *DelayA
 		if speedAction != nil {
 			u.Speed = *speedAction
 		}
+
+		if set {
+			u.Settings = make(map[string]string)
+		}
+
+		for k, v := range settings {
+			u.Settings[k] = v
+		}
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeEmptyDelay(), MakeEmptySpeed()}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeEmptyDelay(), MakeEmptySpeed(), settings}
 		if delayAction != nil {
 			u.Delay = *delayAction
 		}
@@ -291,7 +315,7 @@ func (p *Profile) SetUrl(urlPattern string, delayAction, bodyDelayAction *DelayA
 	}
 }
 
-func (p *Profile) SetAllUrl(delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction) {
+func (p *Profile) SetAllUrl(set bool, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -310,6 +334,14 @@ func (p *Profile) SetAllUrl(delayAction, bodyDelayAction *DelayAction, proxyActi
 
 		if speedAction != nil {
 			u.Speed = *speedAction
+		}
+
+		if set {
+			u.Settings = make(map[string]string)
+		}
+
+		for k, v := range settings {
+			u.Settings[k] = v
 		}
 	}
 }
@@ -360,6 +392,18 @@ func (p *Profile) UrlSpeed(url string) SpeedAction {
 	}
 
 	return MakeEmptySpeed()
+}
+
+func (p *Profile) SettingDont302(url string) bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Settings.SwitchDef("dont302", true)
+	}
+
+	return true
 }
 
 func (p *Profile) MatchUrl(url string) *urlAction {

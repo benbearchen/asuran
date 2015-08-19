@@ -362,8 +362,13 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	dont302 := true
+	if prof != nil {
+		dont302 = prof.SettingDont302(fullUrl)
+	}
+
 	httpStart := time.Now()
-	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP), true)
+	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP), dont302)
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
@@ -621,7 +626,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "redirect":
 				if len(pages) >= 5 {
 					domain := pages[4]
-					f.SetUrl(profile.UrlToPattern(domain), nil, nil, nil, nil)
+					f.SetUrl(false, profile.UrlToPattern(domain), nil, nil, nil, nil, make(map[string]string))
 					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
 					return
 				}
@@ -637,7 +642,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				if len(pages) >= 5 {
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
-						f.SetUrl(profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil)
+						f.SetUrl(false, profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil, make(map[string]string))
 						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 <a href=\"/profile/%s/stores/%s\">%s</a> 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, profileIP, sid, id, u, profileIP)
 					}
 					return
