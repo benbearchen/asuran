@@ -22,6 +22,8 @@ ver 0.2.4
 * Owner can invate new IP of operator
 * Copy default DNS when create a new profile
 * Can delete profiles in root console
+* Can stop 304
+* Can modify Content-Type
 
 
 ver 0.1
