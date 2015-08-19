@@ -406,7 +406,23 @@ func (p *Profile) SettingDont302(url string) bool {
 	return true
 }
 
+func (p *Profile) SettingSwitch(url string, set string) bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Settings.Switch(set)
+	}
+
+	return false
+}
+
 func (p *Profile) SettingString(url string, set string) string {
+	return p.SettingStringDef(url, set, "")
+}
+
+func (p *Profile) SettingStringDef(url string, set string, def string) string {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -418,7 +434,7 @@ func (p *Profile) SettingString(url string, set string) string {
 		}
 	}
 
-	return ""
+	return def
 }
 
 func (p *Profile) MatchUrl(url string) *urlAction {

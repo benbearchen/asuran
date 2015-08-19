@@ -366,7 +366,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	settingContentType := "default"
 	if prof != nil {
 		dont302 = prof.SettingDont302(fullUrl)
-		settingContentType = prof.SettingString(fullUrl, "content-type")
+		settingContentType = prof.SettingStringDef(fullUrl, "content-type", settingContentType)
 	}
 
 	httpStart := time.Now()
@@ -423,7 +423,7 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	if act.Act != profile.UrlActTcpWritten {
-		p.procHeader(w.Header(), prof.SettingString(target, "content-type"))
+		p.procHeader(w.Header(), prof.SettingStringDef(target, "content-type", "default"))
 	}
 
 	var writeWrapper func(w io.Writer) io.Writer = nil
