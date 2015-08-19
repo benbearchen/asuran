@@ -21,6 +21,7 @@ settings... ::=
       [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
       [speed <speeds>]
       [(dont302|do302)]
+      [(disable304|allow304)]
       [content-type (default|remove|empty|<content-type>)]
 
 
@@ -111,6 +112,10 @@ url command:
               另外，目标服务器返回的 301、307 会被改写为 302。
               do302 则会让 asuran 去直接访问 302 后的链接，
               且 asuran 支持多次 302 跳转。
+
+    disable304, allow304
+              决定是否允许服务器返回 304，二选一。[默认] allow304
+              不允许则请求时删除 If-None-Match 与 If-Modified-Since。
 
 
     content-type default
@@ -293,6 +298,10 @@ func (p *Profile) CommandUrl(content string) {
 			settings["dont302"] = "on"
 		case "do302":
 			settings["dont302"] = "off"
+		case "disable304":
+			settings["disable304"] = "yes"
+		case "allow304":
+			settings["disable304"] = "no"
 		case "content-type":
 			v := "default"
 			v, rest = cmd.TakeFirstArg(rest)
@@ -305,7 +314,6 @@ func (p *Profile) CommandUrl(content string) {
 			return
 		}
 	}
-
 }
 
 func commandUrl(p *Profile, set bool, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string, c string) {
@@ -560,6 +568,12 @@ func (s Settings) EditCommand() string {
 			} else {
 				e = append(e, "do302")
 			}
+		case "disable304":
+			if v == "yes" {
+				e = append(e, "disable304")
+			} else {
+				e = append(e, "allow304")
+			}
 		case "content-type":
 			if v != "default" {
 				e = append(e, "content-type "+v)
@@ -706,6 +720,12 @@ func (s Settings) String() string {
 				e = append(e, "允许 302 穿透")
 			} else {
 				e = append(e, "捕获 302 跳转")
+			}
+		case "disable304":
+			if v == "yes" {
+				e = append(e, "禁止 304")
+			} else {
+				e = append(e, "允许 304")
 			}
 		case "content-type":
 			switch v {

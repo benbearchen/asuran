@@ -367,6 +367,9 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	if prof != nil {
 		dont302 = prof.SettingDont302(fullUrl)
 		settingContentType = prof.SettingStringDef(fullUrl, "content-type", settingContentType)
+		if prof.SettingSwitch(fullUrl, "disable304") {
+			p.disable304FromHeader(requestR.Header)
+		}
 	}
 
 	httpStart := time.Now()
@@ -956,4 +959,9 @@ func (p *Proxy) procHeader(header http.Header, settingContentType string) {
 	default:
 		header["Content-Type"] = []string{settingContentType}
 	}
+}
+
+func (p *Proxy) disable304FromHeader(header http.Header) {
+	delete(header, "If-None-Match")
+	delete(header, "If-Modified-Since")
 }
