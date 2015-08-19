@@ -21,6 +21,7 @@ settings... ::=
       [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
       [speed <speeds>]
       [(dont302|do302)]
+      [content-type (default|remove|empty|<content-type>)]
 
 
 url delete (<url-pattern>|all)
@@ -105,11 +106,23 @@ url command:
 
 
     dont302, do302
-              决定是否由 asuran 来执行 302 跳转，二选一。
+              决定是否由 asuran 来执行 302 跳转，二选一。[默认] dont302
               dont302 可以让客户端收到 302 跳转；
               另外，目标服务器返回的 301、307 会被改写为 302。
               do302 则会让 asuran 去直接访问 302 后的链接，
               且 asuran 支持多次 302 跳转。
+
+
+    content-type default
+    content-type remove
+    content-type empty
+    content-type <content-type> 
+              处理回复的 Content-Type。[默认] default
+              default 表示不做任何处理；
+              remove 表示移除回复的 Content-Type；
+              empty 表示将回复的 Content-Type 置为空；
+              其它将 Content-Type 设置为 <content-type> 值。
+              <content-type> 不能包含空格，所以可能不支持 multipart。
 
 
     delete    删除对 url-pattern 的配置。
@@ -280,6 +293,10 @@ func (p *Profile) CommandUrl(content string) {
 			settings["dont302"] = "on"
 		case "do302":
 			settings["dont302"] = "off"
+		case "content-type":
+			v := "default"
+			v, rest = cmd.TakeFirstArg(rest)
+			settings["content-type"] = v
 		default:
 			if len(c) > 0 && len(rest) == 0 {
 				commandUrl(p, set, delayAction, bodyDelayAction, proxyAction, speedAction, settings, c)
@@ -543,6 +560,10 @@ func (s Settings) EditCommand() string {
 			} else {
 				e = append(e, "do302")
 			}
+		case "content-type":
+			if v != "default" {
+				e = append(e, "content-type "+v)
+			}
 		}
 	}
 
@@ -685,6 +706,16 @@ func (s Settings) String() string {
 				e = append(e, "允许 302 穿透")
 			} else {
 				e = append(e, "捕获 302 跳转")
+			}
+		case "content-type":
+			switch v {
+			case "default":
+			case "remove":
+				e = append(e, "移除 Content-Type")
+			case "empty":
+				e = append(e, "置空 Content-Type")
+			default:
+				e = append(e, "Content-Type: "+v)
 			}
 		}
 	}

@@ -406,6 +406,21 @@ func (p *Profile) SettingDont302(url string) bool {
 	return true
 }
 
+func (p *Profile) SettingString(url string, set string) string {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		v, ok := u.Settings[set]
+		if ok {
+			return v
+		}
+	}
+
+	return ""
+}
+
 func (p *Profile) MatchUrl(url string) *urlAction {
 	us := parseUrlSection(url)
 	var high uint32 = 0

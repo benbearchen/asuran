@@ -363,8 +363,10 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 
 	dont302 := true
+	settingContentType := "default"
 	if prof != nil {
 		dont302 = prof.SettingDont302(fullUrl)
+		settingContentType = prof.SettingString(fullUrl, "content-type")
 	}
 
 	httpStart := time.Now()
@@ -383,6 +385,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 	} else {
 		defer resp.Close()
+		p.procHeader(resp.Header(), settingContentType)
 		content, err := resp.ProxyReturn(w, writeWrap)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
@@ -417,6 +420,10 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		}
 	default:
 		return false
+	}
+
+	if act.Act != profile.UrlActTcpWritten {
+		p.procHeader(w.Header(), prof.SettingString(target, "content-type"))
 	}
 
 	var writeWrapper func(w io.Writer) io.Writer = nil
@@ -936,4 +943,17 @@ func (p *Proxy) isSelfAddr(addr string) bool {
 	}
 
 	return false
+}
+
+func (p *Proxy) procHeader(header http.Header, settingContentType string) {
+	switch settingContentType {
+	case "default":
+	case "remove":
+		header["Content-Type"] = nil
+	case "empty":
+		settingContentType = ""
+		fallthrough
+	default:
+		header["Content-Type"] = []string{settingContentType}
+	}
 }
