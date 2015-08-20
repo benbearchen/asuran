@@ -99,7 +99,6 @@ function proxyCmd(act, opt) {
     act = act + " " + "disable304";
   }
 
-
   appendCmd('url ' + act + ' ' + u.value);
 }
 
@@ -274,10 +273,13 @@ function domainCmd(act, opt) {
 
 <table border="1">
 <tr>
-<td rowspan="4">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="3">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="4">域名: <input type="text" id="Domain"/><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
+<td rowspan="5">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="4">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="5">域名: <input type="text" id="Domain"/><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
 </tr>
 <tr>
-<td><button type="button" onclick="domainCmd('block', redirectOpt());">block</button>: 拦截并不返回</td>
+<td><button type="button" onclick="domainCmd('block', redirectOpt());">block</button>: 拦截且不返回</td>
+</tr>
+<tr>
+<td><button type="button" onclick="domainCmd('null', redirectOpt());">null</button>: 返回空结果</td>
 </tr>
 <tr>
 <td><button type="button" onclick="domainCmd('proxy', redirectOpt());">proxy</button>: 代理</td>
