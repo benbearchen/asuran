@@ -89,6 +89,17 @@ function proxyCmd(act, opt) {
     act = act + " " + opt;
   }
 
+  var s = document.getElementById('do302');
+  if (s.checked) {
+    act = act + " " + "do302";
+  }
+
+  s = document.getElementById('disable304');
+  if (s.checked) {
+    act = act + " " + "disable304";
+  }
+
+
   appendCmd('url ' + act + ' ' + u.value);
 }
 
@@ -221,8 +232,8 @@ function domainCmd(act, opt) {
 {{if .NotOwner}}{{else}}
 <table border="1">
 <tr>
-<td rowspan="11">url</td>
-<td rowspan="7">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('', '');">[proxy]</button>: 使用代理</td><td rowspan="11">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
+<td rowspan="12">url</td>
+<td rowspan="8">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('proxy', '');">[proxy]</button>: 使用代理</td><td rowspan="11">可选配置<br/><label><input id="do302" type="checkbox" />允许 302 跳转</label><br/><label><input id="disable304" type="checkbox" />禁止 304</label></td><td rowspan="12">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
 </tr>
 <tr>
 <td colspan="2"><button type="button" onclick="proxyCmd('cache', '');">cache</button>: 代理并缓存</td>
@@ -237,7 +248,10 @@ function domainCmd(act, opt) {
 <td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl', 'redirect 的第三方 URL '));">redirect</button>: 302 跳转至第三方链接</td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
+<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td rowspan="2"><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
+</tr>
+<tr>
+<td><button type="button" onclick="proxyCmd('tcpwrite', readInput('RewriteContent', 'tcpwrite 的 url-encoded 文本'));">tcpwrite</button>: 直接以 TCP 返回指定内容</td>
 </tr>
 <tr>
 <td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID', 'restore 的内容 store-id '));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id"/></td>
@@ -252,7 +266,7 @@ function domainCmd(act, opt) {
 <td><button type="button" onclick="delayCmd('timeout');">timeout</button>: 等待“时长”后掉线</td>
 </tr>
 <tr>
-<td colspan="3"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>
+<td colspan="4"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>
 </tr>
 </table>
 
