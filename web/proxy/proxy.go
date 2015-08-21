@@ -238,8 +238,11 @@ func (p *Proxy) OnRequest(
 }
 
 func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) {
-	//fmt.Println("proxy: " + target)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
+	p.remoteProxyUrl(remoteIP, target, w, r)
+}
+
+func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request) {
 	needCache := false
 
 	fullUrl := target
@@ -721,6 +724,10 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 			fmt.Fprintf(w, "<html><body>好了。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
 		}
+		return
+	} else if op == "to" {
+		url := "http://" + strings.Join(pages[3:], "/")
+		p.remoteProxyUrl(profileIP, url, w, r)
 		return
 	} else if op != "" {
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
