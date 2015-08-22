@@ -17,7 +17,7 @@ ver 0.2.4
 * Can disable DNS
 * DNS support "null" response
 * Can disable 302
-* Edit and `rewrite` a history
+* Edit or delete a stored history
 * Can timeout http body response
 * Owner can invate new IP of operator
 * Copy default DNS when create a new profile

@@ -76,7 +76,7 @@ func benchN(target string) {
 	}
 }
 
-const VersionCode = "0.2.4-dev"
+const VersionCode = "0.2.4-preview"
 
 func version() {
 	fmt.Println(`asuran ` + VersionCode + `, a web proxy with dns
