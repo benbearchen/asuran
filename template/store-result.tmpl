@@ -1,0 +1,18 @@
+<html>
+<head>
+  <title>缓存历史 {{.ID}}</title>
+</head>
+<body>
+URL {{.URL}} 的历史 <a href="/profile/{{.IP}}/look/{{.ID}}">{{.ID}}</a><br/>
+<ul>
+  <li>已缓存至 Store ID：<a href="/profile/{{.IP}}/stores/{{.SID}}">{{.SID}}</a></li>
+  <li>也可以马上：<a href="/profile/{{.IP}}/stores/edit/{{.SID}}">修改 {{.SID}} 的内容</a></li>
+  <li/>
+  <li>或者狠心：<a href="/profile/{{.IP}}/stores/delete/{{.SID}}">删除 Store ID {{.SID}}</a></li>
+</ul>
+返回
+ <a href="/profile/{{.IP}}">管理页面</a>
+ 或 
+ <a href="/profile/{{.IP}}/stores">预定义内容列表</a>
+</body>
+</html>

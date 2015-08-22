@@ -656,7 +656,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
 						f.SetUrl(false, profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil, make(map[string]string))
-						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 <a href=\"/profile/%s/stores/%s\">%s</a> 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, profileIP, sid, id, u, profileIP)
+						p.writeStoreResult(w, profileIP, u, id, sid)
 					}
 					return
 				}
@@ -689,6 +689,14 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				}
 
 				p.writeEditStore(w, profileIP, f, id)
+			case "delete":
+				if len(pages) >= 5 {
+					id := pages[4]
+					f.DeleteStore(id)
+					fmt.Fprintln(w, "已删除 "+id)
+				} else {
+					fmt.Fprintln(w, "请指定 Store ID")
+				}
 			default:
 				c := f.Restore(k)
 				if len(c) > 0 {
@@ -894,6 +902,10 @@ func (p *Proxy) storeHistory(profileIP, id string, prof *profile.Profile) (strin
 	}
 
 	h := f.LookHistoryByID(uint32(hID))
+	if h == nil {
+		return "", ""
+	}
+
 	content, err := h.Content()
 	if err == nil {
 		saveID := prof.StoreID(content)

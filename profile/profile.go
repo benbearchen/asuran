@@ -592,6 +592,13 @@ func (p *Profile) Restore(id string) []byte {
 	}
 }
 
+func (p *Profile) DeleteStore(id string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	delete(p.stores, id)
+}
+
 func (p *Profile) DeleteAllStore() {
 	p.lock.Lock()
 	defer p.lock.Unlock()

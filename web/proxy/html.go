@@ -183,7 +183,6 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			url := s[1]
 			d.URL = url
 
-			var opName, opPath string
 			if s[2] == "redirect" {
 				d.HttpStatus = "重定向"
 				if len(s) >= 4 {
@@ -207,8 +206,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 					d.URL += " " + s[3]
 				}
 
-				opName = "缓存"
-				opPath = "url/store"
+				d.OPs = append(d.OPs, opData{"缓存", "url/store", d.URLID, client})
 			} else {
 				d.HttpStatus = s[2]
 				if len(s) >= 4 {
@@ -221,8 +219,6 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			} else {
 				d.URLBody = url
 			}
-
-			d.OPs = append(d.OPs, opData{opName, opPath, d.URLID, client})
 		} else {
 			d.EventString = e.String
 		}
@@ -415,6 +411,21 @@ func formatEditStoreData(profileIP string, prof *profile.Profile, id string) edi
 func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string) {
 	t, err := template.ParseFiles("template/store-edit.tmpl")
 	err = t.Execute(w, formatEditStoreData(profileIP, prof, id))
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type storeResultData struct {
+	IP  string
+	URL string
+	ID  string
+	SID string
+}
+
+func (p *Proxy) writeStoreResult(w http.ResponseWriter, profileIP, url, id, sid string) {
+	t, err := template.ParseFiles("template/store-result.tmpl")
+	err = t.Execute(w, storeResultData{profileIP, url, id, sid})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
