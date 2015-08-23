@@ -2,20 +2,20 @@ Changelog of asuran
 =========
 
 #### asuran 0.2.4 *** 2015-08-23
-DNS
++ DNS
     + can disable dns module
     + show global dns history
     + `null` says domain has no ip
-HTTP
++ HTTP
     + can disable 302, 304
     + can set/remove content-type of response 
     + can timeout the body of response
-Profile
++ Profile
     + can delete profile from root console
     + can add/remove operators
     + copy default dns when create
     + can delete a stored content, or modify after created
-etc.
++ etc.
     + can speed tcp (hijack from http)
 
 
