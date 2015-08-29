@@ -13,11 +13,21 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(set|update)] [(delay|drop|timeout) [rand] <duration>] [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>)|tcpwrite <url-encoded-content>] [speed <speeds>] (<url-pattern>|all)
+url [(set|update)] [settings...] (<url-pattern>|all)
+
+settings... ::=
+      [drop <duration>]
+      [(delay|timeout) [body] [rand] <duration>]
+      [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
+      [speed <speeds>]
+      [(dont302|do302)]
+      [(disable304|allow304)]
+      [content-type (default|remove|empty|<content-type>)]
+
 
 url delete (<url-pattern>|all)
 
-domain ([default]|block|proxy) (<domain-name>|all) [<ip>]
+domain ([default]|block|proxy|null) (<domain-name>|all) [<ip>]
 
 domain delete (<domain-name>|all)
 
@@ -63,6 +73,9 @@ url command:
               所有请求等待 duration 时间后，丢弃请求。
 
               时间可选参数：
+    body      对 HTTP 回复的 body（而不是 headers）进行延时或超时处理。
+              允许对 headers 和 body 独立设置。
+              特殊地，timeout body 在发送进行 duration 时长后断开链接。
     rand      不使用固定时长，而是随机生成 [0, 1) * duration。
 
 
@@ -93,21 +106,46 @@ url command:
               如 100, 99KB, 0.5MB/s 均可。
 
 
+    dont302, do302
+              决定是否由 asuran 来执行 302 跳转，二选一。[默认] dont302
+              dont302 可以让客户端收到 302 跳转；
+              另外，目标服务器返回的 301、307 会被改写为 302。
+              do302 则会让 asuran 去直接访问 302 后的链接，
+              且 asuran 支持多次 302 跳转。
+
+    disable304, allow304
+              决定是否允许服务器返回 304，二选一。[默认] allow304
+              不允许则请求时删除 If-None-Match 与 If-Modified-Since。
+
+
+    content-type default
+    content-type remove
+    content-type empty
+    content-type <content-type> 
+              处理回复的 Content-Type。[默认] default
+              default 表示不做任何处理；
+              remove 表示移除回复的 Content-Type；
+              empty 表示将回复的 Content-Type 置为空；
+              其它将 Content-Type 设置为 <content-type> 值。
+              <content-type> 不能包含空格，所以可能不支持 multipart。
+
+
     delete    删除对 url-pattern 的配置。
 
-    duration
+    <duration>
               时长，可选单位：ms, s, m, h。默认为 s
               例：90s 或 1.5m
-    responseCode
+    <responseCode>
               HTTP 返回状态码，如 200/206、302/304、404 等。
-    resource-url
+    <resource-url>
               外部资源的 URL 地址（http:// 啥的）。
-    url-encoded-content
+    <url-encoded-content>
               以 url-encoded 方式编码的文本或者二进制内容。
               直接返回给客户端。
-    store-id  上传内容或者修改请求历史内容，得到内容的 id。
+    <store-id>
+              上传内容或者修改请求历史内容，得到内容的 id。
               id 对应内容可方便修改。
-    url-pattern
+    <url-pattern>
               [domain[:port]]/[path][?key=value]
               分域名[端口]、根路径与查询参数三种匹配。
               域名忽略则匹配所有域名。
@@ -123,8 +161,9 @@ domain mode:
               返回自定义 <ip> 如果有设置；否则实时查询后返回。
     block     屏蔽域名，不返回任何结果。
     proxy     返回 asuran IP，以代理设备 HTTP 请求。
+    null      返回查询无结果
 
-domain-name:
+<domain-name>:
     ([^.]+.)+[^.]+
               域名，目前支持英文域名（中文域名未验证）。
     all
@@ -170,11 +209,7 @@ func (p *Profile) CommandDelete(content string) {
 func (p *Profile) CommandDomain(content string) {
 	c, rest := cmd.TakeFirstArg(content)
 	switch c {
-	case "default":
-		commandDomainMode(p, c, rest)
-	case "block":
-		commandDomainMode(p, c, rest)
-	case "proxy":
+	case "default", "block", "proxy", "null":
 		commandDomainMode(p, c, rest)
 	case "delete":
 		commandDomainDelete(p, rest)
@@ -188,8 +223,11 @@ func (p *Profile) CommandUrl(content string) {
 	ok := false
 
 	var delayAction *DelayAction
+	var bodyDelayAction *DelayAction
 	var proxyAction *UrlProxyAction
 	var speedAction *SpeedAction
+	settings := make(map[string]string)
+	set := false
 
 	for {
 		c, rest = cmd.TakeFirstArg(rest)
@@ -199,9 +237,16 @@ func (p *Profile) CommandUrl(content string) {
 		case "drop":
 			fallthrough
 		case "timeout":
-			delayAction, rest, ok = parseDelayAction(c, rest)
+			action, body, r, ok := parseDelayAction(c, rest)
 			if !ok {
 				return
+			}
+
+			rest = r
+			if body {
+				bodyDelayAction = action
+			} else {
+				delayAction = action
 			}
 		case "proxy":
 			fallthrough
@@ -231,8 +276,14 @@ func (p *Profile) CommandUrl(content string) {
 			p.CommandDelete(rest)
 			return
 		case "set":
+			set = true
+
 			if delayAction == nil {
 				delayAction = new(DelayAction)
+			}
+
+			if bodyDelayAction == nil {
+				bodyDelayAction = new(DelayAction)
 			}
 
 			if proxyAction == nil {
@@ -243,24 +294,35 @@ func (p *Profile) CommandUrl(content string) {
 				speedAction = new(SpeedAction)
 			}
 		case "update":
+		case "dont302":
+			settings["dont302"] = "on"
+		case "do302":
+			settings["dont302"] = "off"
+		case "disable304":
+			settings["disable304"] = "yes"
+		case "allow304":
+			settings["disable304"] = "no"
+		case "content-type":
+			v := "default"
+			v, rest = cmd.TakeFirstArg(rest)
+			settings["content-type"] = v
 		default:
 			if len(c) > 0 && len(rest) == 0 {
-				commandUrl(p, delayAction, proxyAction, speedAction, c)
+				commandUrl(p, set, delayAction, bodyDelayAction, proxyAction, speedAction, settings, c)
 			}
 
 			return
 		}
 	}
-
 }
 
-func commandUrl(p *Profile, delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, c string) {
+func commandUrl(p *Profile, set bool, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string, c string) {
 	if c == "all" {
-		p.SetAllUrl(delayAction, proxyAction, speedAction)
+		p.SetAllUrl(set, delayAction, bodyDelayAction, proxyAction, speedAction, settings)
 	} else {
 		urlPattern := restToPattern(c)
 		if len(urlPattern) > 0 {
-			p.SetUrl(urlPattern, delayAction, proxyAction, speedAction)
+			p.SetUrl(set, urlPattern, delayAction, bodyDelayAction, proxyAction, speedAction, settings)
 		}
 	}
 }
@@ -294,26 +356,6 @@ func UrlToPattern(url string) string {
 	return url
 }
 
-func commandDelayMode(p *Profile, mode, args string) {
-	var act DelayActType = DelayActDelayEach
-	if mode == "drop" {
-		act = DelayActDropUntil
-	}
-
-	duration, pattern, ok := delayTimeAndPattern(args)
-	if ok {
-		if act == DelayActDelayEach && duration == 0 {
-			act = DelayActNone
-		}
-
-		if pattern == "all" {
-			p.SetAllUrlDelay(act, false, duration)
-		} else {
-			p.SetUrlDelay(pattern, act, false, duration)
-		}
-	}
-}
-
 func delayTimeAndPattern(content string) (float32, string, bool) {
 	d, p := cmd.TakeFirstArg(content)
 	duration := parseDuration(d)
@@ -322,7 +364,7 @@ func delayTimeAndPattern(content string) (float32, string, bool) {
 	return duration, pattern, ok
 }
 
-func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
+func parseDelayAction(c, rest string) (*DelayAction, bool, string, bool) {
 	var act DelayActType = DelayActNone
 	switch c {
 	case "delay":
@@ -332,16 +374,16 @@ func parseDelayAction(c, rest string) (*DelayAction, string, bool) {
 	case "timeout":
 		act = DelayActTimeout
 	default:
-		return nil, "", false
+		return nil, false, "", false
 	}
 
-	rand, d, r, ok := takeDuration(rest)
+	body, rand, d, r, ok := takeBodyDuration(rest)
 	if !ok {
-		return nil, "", false
+		return nil, false, "", false
 	}
 
 	t := MakeDelay(act, rand, d)
-	return &t, r, true
+	return &t, body, r, true
 }
 
 func parseUrlProxyAction(c, rest string) (*UrlProxyAction, string, bool) {
@@ -391,16 +433,24 @@ func parseSpeedAction(c, rest string) (*SpeedAction, string, bool) {
 	return &SpeedAction{act, speed}, rest, true
 }
 
-func takeDuration(content string) (bool, float32, string, bool) {
+func takeBodyDuration(content string) (bool, bool, float32, string, bool) {
+	body := false
 	rand := false
 	d, p := cmd.TakeFirstArg(content)
-	if d == "rand" {
-		rand = true
+	for {
+		if d == "rand" {
+			rand = true
+		} else if d == "body" {
+			body = true
+		} else {
+			break
+		}
+
 		d, p = cmd.TakeFirstArg(p)
 	}
 
 	duration := parseDuration(d)
-	return rand, duration, p, duration >= 0
+	return body, rand, duration, p, duration >= 0
 }
 
 func parseDuration(d string) float32 {
@@ -456,44 +506,21 @@ func parseSpeed(s string) (float32, bool) {
 	}
 }
 
-func commandProxyMode(p *Profile, mode, args string) {
-	var act UrlAct = UrlActNone
-	if mode == "cache" {
-		act = UrlActCache
-	} else if mode == "drop" {
-		act = UrlActStatus
+func (d *DelayAction) EditCommand(body bool) string {
+	bc := ""
+	if body {
+		bc = "body "
 	}
 
-	dropResponseCode := 0
-	if act == UrlActStatus {
-		r, rest := cmd.TakeFirstArg(args)
-		responseCode, err := strconv.Atoi(r)
-		if err != nil {
-			return
-		} else {
-			dropResponseCode = responseCode
-			args = rest
-		}
-	}
-
-	pattern := restToPattern(args)
-	if pattern == "all" {
-		p.SetAllUrlAction(act, dropResponseCode)
-	} else if len(pattern) > 0 {
-		p.SetUrlAction(pattern, act, dropResponseCode)
-	}
-}
-
-func (d *DelayAction) EditCommand() string {
 	switch d.Act {
 	case DelayActNone:
 		return ""
 	case DelayActDelayEach:
-		return "delay " + d.DurationCommand()
+		return "delay " + bc + d.DurationCommand()
 	case DelayActDropUntil:
 		return "drop " + d.DurationCommand()
 	case DelayActTimeout:
-		return "timeout " + d.DurationCommand()
+		return "timeout " + bc + d.DurationCommand()
 	default:
 		return ""
 	}
@@ -531,9 +558,39 @@ func (s *SpeedAction) EditCommand() string {
 	}
 }
 
+func (s Settings) EditCommand() string {
+	e := make([]string, 0, len(s))
+	for k, v := range s {
+		switch k {
+		case "dont302":
+			if v == "on" {
+				e = append(e, "dont302")
+			} else {
+				e = append(e, "do302")
+			}
+		case "disable304":
+			if v == "yes" {
+				e = append(e, "disable304")
+			} else {
+				e = append(e, "allow304")
+			}
+		case "content-type":
+			if v != "default" {
+				e = append(e, "content-type "+v)
+			}
+		}
+	}
+
+	return strings.Join(e, " ")
+}
+
 func (u *urlAction) EditCommand() string {
 	c := "url"
-	if e := u.Delay.EditCommand(); len(e) > 0 {
+	if e := u.Delay.EditCommand(false); len(e) > 0 {
+		c += " " + e
+	}
+
+	if e := u.BodyDelay.EditCommand(true); len(e) > 0 {
 		c += " " + e
 	}
 
@@ -542,6 +599,10 @@ func (u *urlAction) EditCommand() string {
 	}
 
 	if e := u.Speed.EditCommand(); len(e) > 0 {
+		c += " " + e
+	}
+
+	if e := u.Settings.EditCommand(); len(e) > 0 {
 		c += " " + e
 	}
 
@@ -577,6 +638,8 @@ func commandDomainMode(p *Profile, mode, content string) {
 		*act = DomainActBlock
 	} else if mode == "proxy" {
 		*act = DomainActProxy
+	} else if mode == "null" {
+		*act = DomainActNull
 	}
 
 	if c == "all" {
@@ -612,6 +675,8 @@ func (d *DomainAction) EditCommand() string {
 		return "domain block " + d.Domain + ip + "\n"
 	case DomainActProxy:
 		return "domain proxy " + d.Domain + ip + "\n"
+	case DomainActNull:
+		return "domain null " + d.Domain + ip + "\n"
 	default:
 		return ""
 	}
@@ -644,4 +709,36 @@ func (p *Profile) ExportDNSCommand() string {
 		export += d.EditCommand()
 	}
 	return export
+}
+
+func (s Settings) String() string {
+	e := make([]string, 0, len(s))
+	for k, v := range s {
+		switch k {
+		case "dont302":
+			if v == "on" {
+				e = append(e, "允许 302 穿透")
+			} else {
+				e = append(e, "捕获 302 跳转")
+			}
+		case "disable304":
+			if v == "yes" {
+				e = append(e, "禁止 304")
+			} else {
+				e = append(e, "允许 304")
+			}
+		case "content-type":
+			switch v {
+			case "default":
+			case "remove":
+				e = append(e, "移除 Content-Type")
+			case "empty":
+				e = append(e, "置空 Content-Type")
+			default:
+				e = append(e, "Content-Type: "+v)
+			}
+		}
+	}
+
+	return strings.Join(e, "，")
 }

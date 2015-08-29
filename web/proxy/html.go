@@ -17,8 +17,9 @@ import (
 )
 
 type htmlUsage struct {
-	IP   string
-	Host string
+	IP       string
+	Host     string
+	UsingDNS bool
 }
 
 func (p *Proxy) WriteUsage(w io.Writer) {
@@ -27,6 +28,7 @@ func (p *Proxy) WriteUsage(w io.Writer) {
 	u := htmlUsage{}
 	u.IP = p.serveIP
 	u.Host = p.mainHost
+	u.UsingDNS = !p.disableDNS
 
 	err = t.Execute(w, u)
 	if err != nil {
@@ -56,11 +58,12 @@ type indexData struct {
 	Version   string
 	ServeIP   string
 	ProxyHost string
+	UsingDNS  bool
 }
 
 func (p *Proxy) index(w http.ResponseWriter, ver string) {
 	t, err := template.ParseFiles("template/index.tmpl")
-	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost})
+	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, !p.disableDNS})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
@@ -180,8 +183,12 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			url := s[1]
 			d.URL = url
 
-			var opName, opPath string
-			if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
+			if s[2] == "redirect" {
+				d.HttpStatus = "重定向"
+				if len(s) >= 4 {
+					d.URL += " => " + s[3]
+				}
+			} else if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
 				d.URLID = s[2]
 				h := f.LookHistoryByID(uint32(id))
 				if h != nil {
@@ -199,8 +206,7 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 					d.URL += " " + s[3]
 				}
 
-				opName = "缓存"
-				opPath = "url/store"
+				d.OPs = append(d.OPs, opData{"缓存", "url/store", d.URLID, client})
 			} else {
 				d.HttpStatus = s[2]
 				if len(s) >= 4 {
@@ -213,8 +219,6 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			} else {
 				d.URLBody = url
 			}
-
-			d.OPs = append(d.OPs, opData{opName, opPath, d.URLID, client})
 		} else {
 			d.EventString = e.String
 		}
@@ -229,6 +233,69 @@ func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Li
 	t, err := template.ParseFiles("template/history.tmpl")
 	list := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
 	err = t.Execute(w, historyData{profileIP, list})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type dnsHistoryEventData struct {
+	Even     bool
+	Time     string
+	Domain   string
+	DomainIP string
+	Client   string
+}
+
+type dnsHistoryData struct {
+	Target string
+	Events []dnsHistoryEventData
+}
+
+func formatDNSHistoryEventDataList(events []*life.HistoryEvent, f *life.Life, targetIP string) []dnsHistoryEventData {
+	list := make([]dnsHistoryEventData, 0, len(events))
+	even := true
+	for _, e := range events {
+		d := dnsHistoryEventData{}
+
+		even = !even
+		d.Even = even
+		d.Time = e.Time.Format("2006-01-02 15:04:05")
+
+		s := strings.Split(e.String, " ")
+		if len(s) >= 3 {
+			client := s[0]
+			if len(targetIP) > 0 && targetIP != client {
+				continue
+			}
+
+			d.Client = client
+
+			domain := s[2]
+			d.Domain = "域名 " + s[1] + " " + domain
+			if len(s) >= 4 {
+				d.DomainIP = s[3]
+			}
+		} else {
+			continue
+		}
+
+		list = append(list, d)
+	}
+
+	return list
+}
+
+func (p *Proxy) writeDNSHistory(w http.ResponseWriter, f *life.Life, targetIP string) {
+	t, err := template.ParseFiles("template/dnshistory.tmpl")
+	list := formatDNSHistoryEventDataList(f.HistoryEvents(), f, targetIP)
+	targetInfo := ""
+	if len(targetIP) == 0 {
+		targetInfo = "DNS 服务"
+	} else {
+		targetInfo = targetIP + " DNS"
+	}
+
+	err = t.Execute(w, dnsHistoryData{targetInfo, list})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
@@ -251,12 +318,14 @@ func formatDevicesListData(profiles []*profile.Profile, v *life.IPLives) devices
 	if len(profiles) > 0 {
 		even := true
 		for _, p := range profiles {
+			if p.Ip == "localhost" {
+				continue
+			}
+
 			t := ""
 			f := v.OpenExists(p.Ip)
 			if f != nil {
 				t = f.CreateTime.Format("2006-01-02 15:04:05")
-			} else if p.Ip == "localhost" {
-				continue
 			}
 
 			even = !even
@@ -342,6 +411,21 @@ func formatEditStoreData(profileIP string, prof *profile.Profile, id string) edi
 func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string) {
 	t, err := template.ParseFiles("template/store-edit.tmpl")
 	err = t.Execute(w, formatEditStoreData(profileIP, prof, id))
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type storeResultData struct {
+	IP  string
+	URL string
+	ID  string
+	SID string
+}
+
+func (p *Proxy) writeStoreResult(w http.ResponseWriter, profileIP, url, id, sid string) {
+	t, err := template.ParseFiles("template/store-result.tmpl")
+	err = t.Execute(w, storeResultData{profileIP, url, id, sid})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

@@ -4,9 +4,14 @@ import (
 	"sync"
 )
 
+type ProfilesConfig struct {
+	DefaultCopyProfile string
+}
+
 type IpProfiles struct {
 	profiles map[string]*Profile
 	proxyOp  ProxyHostOperator
+	config   ProfilesConfig
 
 	lock sync.RWMutex
 }
@@ -33,6 +38,13 @@ func (p *IpProfiles) BindProxyHostOperator(op ProxyHostOperator) {
 	p.proxyOp = op
 }
 
+func (p *IpProfiles) SetDefaultCopyProfile(defaultProfile string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	p.config.DefaultCopyProfile = defaultProfile
+}
+
 func (p *IpProfiles) CreateProfile(name, ip, owner string) *Profile {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -43,10 +55,34 @@ func (p *IpProfiles) CreateProfile(name, ip, owner string) *Profile {
 		return profile
 	}
 
-	profile = NewProfile(name, ip, owner)
+	defProf := p.config.DefaultCopyProfile
+	if len(defProf) > 0 && ip != defProf {
+		def, ok := p.profiles[defProf]
+		if ok {
+			profile = def.CloneNew(name, ip, owner)
+		}
+	}
+
+	if profile == nil {
+		profile = NewProfile(name, ip, owner)
+	}
+
 	profile.proxyOp = p.proxyOp
 	p.profiles[ip] = profile
+
 	return profile
+}
+
+func (p *IpProfiles) Delete(ip string) bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	_, ok := p.profiles[ip]
+	if ok {
+		delete(p.profiles, ip)
+	}
+
+	return ok
 }
 
 func (p *IpProfiles) FindByIp(ip string) *Profile {
@@ -94,7 +130,7 @@ func (p *IpProfiles) CloneByName(name, newName, newIp string) *Profile {
 		p.lock.Lock()
 		defer p.lock.Unlock()
 
-		n = n.CloneNew(newName, newIp)
+		n = n.CloneNew(newName, newIp, n.Owner)
 		p.profiles[newIp] = n
 	}
 

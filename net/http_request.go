@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 )
 
 type HttpResponse struct {
@@ -22,8 +23,8 @@ func NewHttpGet(url string) (*HttpResponse, error) {
 	return &HttpResponse{resp}, nil
 }
 
-func NewHttp(url string, r *http.Request, dial func(netw, addr string) (net.Conn, error)) (*HttpResponse, []byte, error) {
-	client := &http.Client{Transport: &http.Transport{Dial: dial}, CheckRedirect: checkRedirect}
+func NewHttp(reqUrl string, r *http.Request, dial func(netw, addr string) (net.Conn, error), dont302 bool) (*HttpResponse, []byte, string, error) {
+	client := &http.Client{Transport: &http.Transport{Dial: dial}, CheckRedirect: checkRedirect(dont302)}
 
 	var postBody []byte
 	var body io.Reader = nil
@@ -40,17 +41,27 @@ func NewHttp(url string, r *http.Request, dial func(netw, addr string) (net.Conn
 		method = r.Method
 	}
 
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequest(method, reqUrl, body)
+	if err != nil {
+		return nil, postBody, "", err
+	}
+
 	if r != nil {
 		req.Header = r.Header
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, postBody, err
+		if urlError, ok := err.(*url.Error); ok {
+			if _, ok := urlError.Err.(*redirectError); ok {
+				return nil, postBody, urlError.URL, nil
+			}
+		}
+
+		return nil, postBody, "", err
 	}
 
-	return &HttpResponse{resp}, postBody, nil
+	return &HttpResponse{resp}, postBody, "", nil
 }
 
 func (r *HttpResponse) Close() {
@@ -102,10 +113,23 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer) ([]byt
 	return b.Bytes(), err
 }
 
-func checkRedirect(req *http.Request, via []*http.Request) error {
-	if len(via) > 0 {
-		req.Header = via[0].Header
-	}
+type redirectError struct {
+}
 
-	return nil
+func (e *redirectError) Error() string {
+	return "error for mark redirection"
+}
+
+func checkRedirect(dont302 bool) func(req *http.Request, via []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if dont302 {
+			return &redirectError{}
+		}
+
+		if len(via) > 0 {
+			req.Header = via[0].Header
+		}
+
+		return nil
+	}
 }

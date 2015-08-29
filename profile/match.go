@@ -74,7 +74,7 @@ func domainPattern2Regex(pattern string) string {
 		}
 	}
 
-	r = "^" + r + "$"
+	r = "^" + r + "\\.?$"
 	return r
 }
 

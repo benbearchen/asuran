@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>{{.Client}}'s history</title>
+<title>{{.Target}} 请求历史</title>
 <style type="text/css">
 /* copy from http://www.w3school.com.cn/tiy/t.asp?f=csse_table_fancy */
 #profile
@@ -46,19 +46,21 @@ function proxyCache(url) {
 </head>
 <body>
 
+<p>提醒：如果客户端已经有 <a href="/profile">profile</a>，则不能从 DNS 服务看到历史</p>
+
 <table id="profile">
 <tr>
-<th>操作</th>
+<th>客户端</th>
 <th>时间</th>
-<th>值/状态</th>
+<th>解析结果</th>
 <th>事件</th>
 </tr>
 {{range .Events}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td>{{range .OPs}}<a href="/profile/{{.Client}}/{{.Act}}/{{.Arg}}" target="_blank">{{.Name}}<a/> {{end}}</td>
+<td><a href="/dns/history/{{.Client}}" title="只查看 {{.Client}} 的访问历史">{{.Client}}</a></td>
 <td>{{.Time}}</td>
-<td>{{.DomainIP}}{{.HttpStatus}}</td>
-<td>{{if .Domain}}{{.Domain}}{{end}}{{if .URL}}{{if .URLID}}<a href="/profile/{{.Client}}/look/{{.URLID}}" target="_blank">{{end}}{{.URL}}{{if .URLID}}</a>{{end}} {{if .URLID}}<a href="/profile/{{.Client}}/detail/{{.URLID}}" target="_blank">HTTP 详情</a> {{end}} <a href="/profile/{{.Client}}/list/{{.URLBody}}" target="_blank">所有历史</a>{{end}}{{if .EventString}}{{.EventString}}{{end}}</td>
+<td>{{.DomainIP}}</td>
+<td>{{if .Domain}}{{.Domain}}{{end}}</td>
 </tr>
 {{end}}
 </table>

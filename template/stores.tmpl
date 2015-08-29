@@ -44,11 +44,13 @@
 {{range .Contents}}
 <tr{{if .Even}} class="alt"{{end}}>
 <td><a href="/profile/{{.Client}}/stores/{{.ID}}" target="_blank">{{.ID}}</a></td>
-<td><a href="/profile/{{.Client}}/stores/edit/{{.ID}}" target="_blank">编辑</a></td>
+<td><a href="/profile/{{.Client}}/stores/edit/{{.ID}}" target="_blank">编辑</a> <a href="/profile/{{.Client}}/stores/delete/{{.ID}}" target="_blank">删除</a></td>
 <td>{{.EncodedContent}}</td>
 </tr>
 {{end}}
 </table>
+
+{{if .Contents}}{{else}}<br/>当前没有预定义内容，请去 <a href="/profile/{{.Client}}/history">请求历史</a> 查看并缓存内容。{{end}}
 
 </body>
 </html>

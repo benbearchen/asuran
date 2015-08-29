@@ -1,3 +1,31 @@
+features pool
+=============
+* `cache` with range
+
+
+ver 0.3
+=========
+* Support saving and loading profile's commands pack
+* Record and replay certain commands packs
+
+
+ver 0.2.4
+=========
+* Show global DNS history
+* Support tcp speed
+* Make Changelog
+* Can disable DNS
+* DNS support "null" response
+* Can disable 302
+* Edit or delete a stored history
+* Can timeout http body response
+* Owner can invate new IP of operator
+* Copy default DNS when create a new profile
+* Can delete profiles in root console
+* Can stop 304
+* Can modify Content-Type
+
+
 ver 0.1
 =========
 Key Features:

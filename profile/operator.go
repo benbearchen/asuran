@@ -22,6 +22,15 @@ func (u *urlOperator) Delay(ip, url string) DelayAction {
 	}
 }
 
+func (u *urlOperator) BodyDelay(ip, url string) DelayAction {
+	profile := u.p.FindByIp(ip)
+	if profile != nil {
+		return profile.UrlBodyDelay(url)
+	} else {
+		return MakeEmptyDelay()
+	}
+}
+
 func (u *urlOperator) Speed(ip, url string) SpeedAction {
 	profile := u.p.FindByIp(ip)
 	if profile != nil {

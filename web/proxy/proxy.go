@@ -30,6 +30,7 @@ type Proxy struct {
 	domainOp   profile.DomainOperator
 	serveIP    string
 	mainHost   string
+	disableDNS bool
 
 	lock sync.RWMutex
 	r    *rand.Rand
@@ -106,6 +107,7 @@ func (p *Proxy) BindUrlOperator(op profile.UrlOperator) {
 func (p *Proxy) BindProfileOperator(op profile.ProfileOperator) {
 	p.profileOp = op
 	p.profileOp.Open("localhost").Name = "DNS 服务"
+	p.lives.Open("localhost")
 }
 
 func (p *Proxy) BindDomainOperator(op profile.DomainOperator) {
@@ -118,6 +120,10 @@ func (p *Proxy) GetDescription() string {
 
 func (p *Proxy) GetHandlePath() string {
 	return "/"
+}
+
+func (p *Proxy) DisableDNS() {
+	p.disableDNS = true
 }
 
 func (p *Proxy) testUrl(
@@ -167,17 +173,21 @@ func (p *Proxy) OnRequest(
 			page = "localhost"
 		}
 
-		target := "http://" + page
+		target := "http://" + page[1:]
 		p.testUrl(target, w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/to/"); m {
-		target := "http://" + page
+		target := "http://" + page[1:]
 		p.proxyUrl(target, w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/usage"); m {
 		p.WriteUsage(w)
 	} else if page, m := httpd.MatchPath(urlPath, "/profile"); m {
 		p.ownProfile(remoteIP, page, w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/dns"); m {
-		p.dns(page, w, r)
+		if !p.disableDNS {
+			p.dns(page, w, r)
+		} else {
+			fmt.Fprintln(w, "DNS is disabled")
+		}
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
 	} else if urlPath == "/" {
@@ -228,8 +238,11 @@ func (p *Proxy) OnRequest(
 }
 
 func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) {
-	//fmt.Println("proxy: " + target)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
+	p.remoteProxyUrl(remoteIP, target, w, r)
+}
+
+func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request) {
 	needCache := false
 
 	fullUrl := target
@@ -290,6 +303,9 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 
 		act := p.urlOp.Action(remoteIP, fullUrl)
 		//fmt.Println("url act: " + act.String())
+		speed := p.urlOp.Speed(remoteIP, fullUrl)
+		bodyDelay := p.urlOp.BodyDelay(remoteIP, fullUrl)
+
 		switch act.Act {
 		case profile.UrlActCache:
 			needCache = true
@@ -315,15 +331,29 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		case profile.UrlActRestore:
 			fallthrough
 		case profile.UrlActTcpWritten:
-			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act) {
+			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay) {
 				return
 			}
 		}
 
-		speed := p.urlOp.Speed(remoteIP, fullUrl)
+		switch bodyDelay.Act {
+		case profile.DelayActDelayEach:
+			fallthrough
+		case profile.DelayActTimeout:
+			if writeWrap == nil {
+				writeWrap = w
+			}
+
+			writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r)
+		}
+
 		switch speed.Act {
 		case profile.SpeedActConstant:
-			writeWrap = newSpeedWriter(speed, w)
+			if writeWrap == nil {
+				writeWrap = w
+			}
+
+			writeWrap = newSpeedWriter(speed, writeWrap)
 		}
 	}
 
@@ -335,8 +365,18 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	dont302 := true
+	settingContentType := "default"
+	if prof != nil {
+		dont302 = prof.SettingDont302(fullUrl)
+		settingContentType = prof.SettingStringDef(fullUrl, "content-type", settingContentType)
+		if prof.SettingSwitch(fullUrl, "disable304") {
+			p.disable304FromHeader(requestR.Header)
+		}
+	}
+
 	httpStart := time.Now()
-	resp, postBody, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP))
+	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP), dont302)
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
@@ -344,8 +384,14 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 		}
 
 		http.Error(w, "Bad Gateway", 502)
+	} else if len(redirection) > 0 {
+		http.Redirect(w, r, redirection, 302)
+		if f != nil {
+			f.Log("proxy " + fullUrl + " redirect " + redirection)
+		}
 	} else {
 		defer resp.Close()
+		p.procHeader(resp.Header(), settingContentType)
 		content, err := resp.ProxyReturn(w, writeWrap)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
@@ -355,7 +401,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction, speed profile.SpeedAction, bodyDelay profile.DelayAction) bool {
 	var content []byte = nil
 	contentSource := ""
 	switch act.Act {
@@ -382,11 +428,43 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		return false
 	}
 
+	if act.Act != profile.UrlActTcpWritten {
+		p.procHeader(w.Header(), prof.SettingStringDef(target, "content-type", "default"))
+	}
+
+	var writeWrapper func(w io.Writer) io.Writer = nil
+	switch bodyDelay.Act {
+	case profile.DelayActDelayEach:
+		fallthrough
+	case profile.DelayActTimeout:
+		writeWrapper = func(w io.Writer) io.Writer {
+			return newDelayWriter(bodyDelay, w, p.r)
+		}
+	}
+
+	switch speed.Act {
+	case profile.SpeedActConstant:
+		if writeWrapper != nil {
+			wrap := writeWrapper
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newSpeedWriter(speed, wrap(w))
+			}
+		} else {
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newSpeedWriter(speed, w)
+			}
+		}
+	}
+
 	start := time.Now()
 	if act.Act == profile.UrlActTcpWritten {
-		net.TcpWriteHttp(w, content)
+		net.TcpWriteHttp(w, writeWrapper, content)
 	} else {
-		w.Write(content)
+		if writeWrapper != nil {
+			writeWrapper(w).Write(content)
+		} else {
+			w.Write(content)
+		}
 	}
 
 	c := cache.NewUrlCache(target, r, nil, nil, contentSource, content, rangeInfo, start, time.Now(), nil)
@@ -418,25 +496,20 @@ type proxyDomainOperator struct {
 
 func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if domain == "i.me" {
-		p.p.LogDomain(ip, "init", domain, p.p.serveIP)
+		p.p.LogDomain(ip, ip, "init", domain, p.p.serveIP)
 		return profile.NewDomainAction(domain, profile.DomainActNone, p.p.serveIP)
 	}
 
+	profIP := ip
 	if p.p.profileOp != nil {
 		if p.p.profileOp.FindByIp(ip) == nil {
-			a := p.p.domainOp.Action("localhost", domain)
-			if a != nil {
-				b := *a
-				a = &b
-			}
-
-			return a
+			profIP = "localhost"
 		}
 	}
 
 	if p.p.domainOp != nil {
 		act := "query"
-		a := p.p.domainOp.Action(ip, domain)
+		a := p.p.domainOp.Action(profIP, domain)
 		if a != nil {
 			b := *a
 			a = &b
@@ -456,10 +529,10 @@ func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 			resultIP = a.IP
 		}
 
-		p.p.LogDomain(ip, act, domain, resultIP)
+		p.p.LogDomain(profIP, ip, act, domain, resultIP)
 		return a
 	} else {
-		p.p.LogDomain(ip, "undef", domain, "")
+		p.p.LogDomain(profIP, ip, "undef", domain, "")
 		return nil
 	}
 }
@@ -518,6 +591,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		p.lives.Open(profileIP)
 	}
 
+	canOperate := f.CanOperate(ownerIP)
+
 	if op == "export" {
 		fmt.Fprintln(w, f.ExportCommand())
 		return
@@ -564,7 +639,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "redirect":
 				if len(pages) >= 5 {
 					domain := pages[4]
-					f.SetUrl(profile.UrlToPattern(domain), nil, nil, nil)
+					f.SetUrl(false, profile.UrlToPattern(domain), nil, nil, nil, nil, make(map[string]string))
 					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
 					return
 				}
@@ -580,8 +655,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				if len(pages) >= 5 {
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
-						f.SetUrl(profile.UrlToPattern(u), nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil)
-						fmt.Fprintf(w, "<html><head><title>缓存历史 %s</title></head><body>历史 <a href=\"/profile/%s/stores/%s\">%s</a> 已缓存至 URL %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", id, profileIP, sid, id, u, profileIP)
+						f.SetUrl(false, profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil, make(map[string]string))
+						p.writeStoreResult(w, profileIP, u, id, sid)
 					}
 					return
 				}
@@ -614,6 +689,14 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				}
 
 				p.writeEditStore(w, profileIP, f, id)
+			case "delete":
+				if len(pages) >= 5 {
+					id := pages[4]
+					f.DeleteStore(id)
+					fmt.Fprintln(w, "已删除 "+id)
+				} else {
+					fmt.Fprintln(w, "请指定 Store ID")
+				}
 			default:
 				c := f.Restore(k)
 				if len(c) > 0 {
@@ -627,6 +710,33 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			p.writeStores(w, profileIP, f)
 		}
 		return
+	} else if op == "operator" {
+		if !canOperate {
+			fmt.Fprintf(w, "<html><body>无权操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP, profileIP)
+		} else {
+			if len(pages) >= 5 {
+				operator := pages[4]
+				switch pages[3] {
+				case "add":
+					f.AddOperator(operator)
+				case "remove":
+					f.RemoveOperator(operator)
+				default:
+					fmt.Fprintf(w, "<html><body>未知操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", pages[3], profileIP)
+					return
+				}
+			} else {
+				fmt.Fprintf(w, "<html><body>未知操作。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+				return
+			}
+
+			fmt.Fprintf(w, "<html><body>好了。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+		}
+		return
+	} else if op == "to" {
+		url := "http://" + strings.Join(pages[3:], "/")
+		p.remoteProxyUrl(profileIP, url, w, r)
+		return
 	} else if op != "" {
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
@@ -634,7 +744,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 	r.ParseForm()
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
-		if f.Owner == ownerIP || profileIP == ownerIP {
+		if canOperate {
 			for _, cmd := range v {
 				p.Command(cmd, f, p.lives.Open(profileIP))
 			}
@@ -642,7 +752,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	savedIDs := f.ListStoreIDs()
-	f.WriteHtml(w, savedIDs)
+	f.WriteHtml(w, savedIDs, canOperate)
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
@@ -691,14 +801,19 @@ func (p *Proxy) lookHistory(w http.ResponseWriter, profileIP, lookUrl, op string
 	}
 }
 
-func (p *Proxy) LogDomain(ip, action, domain, resultIP string) {
-	if f := p.lives.Open(ip); f != nil {
+func (p *Proxy) LogDomain(profIP, ip, action, domain, resultIP string) {
+	if f := p.lives.Open(profIP); f != nil {
 		s := ""
 		if len(resultIP) > 0 {
 			s = " "
 		}
 
-		f.Log("domain " + action + " " + domain + s + resultIP)
+		d := "domain"
+		if profIP == "localhost" {
+			d = ip
+		}
+
+		f.Log(d + " " + action + " " + domain + s + resultIP)
 	}
 }
 
@@ -787,6 +902,10 @@ func (p *Proxy) storeHistory(profileIP, id string, prof *profile.Profile) (strin
 	}
 
 	h := f.LookHistoryByID(uint32(hID))
+	if h == nil {
+		return "", ""
+	}
+
 	content, err := h.Content()
 	if err == nil {
 		saveID := prof.StoreID(content)
@@ -810,14 +929,22 @@ func (p *Proxy) dns(page string, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if len(page) == 0 {
+	if len(page) == 0 || page == "/" {
 		f.WriteDNS(w, p.serveIP)
-	} else if page == "/export" {
+	} else if _, m := httpd.MatchPath(page, "/export"); m {
 		export := "# 此为 DNS 独立服务的配置导出，可复制所有内容至“命令”输入窗口重新加载此配置 #\n\n"
 		export += "# Name: DNS 独立服务\n"
 		export += f.ExportDNSCommand()
 		export += "\n# end #\n"
 		fmt.Fprintln(w, export)
+	} else if target, m := httpd.MatchPath(page, "/history"); m {
+		if len(target) > 0 {
+			target = target[1:]
+		}
+
+		p.writeDNSHistory(w, p.lives.Open("localhost"), target)
+	} else {
+		http.Redirect(w, r, "..", 302)
 	}
 }
 
@@ -838,4 +965,22 @@ func (p *Proxy) isSelfAddr(addr string) bool {
 	}
 
 	return false
+}
+
+func (p *Proxy) procHeader(header http.Header, settingContentType string) {
+	switch settingContentType {
+	case "default":
+	case "remove":
+		header["Content-Type"] = nil
+	case "empty":
+		settingContentType = ""
+		fallthrough
+	default:
+		header["Content-Type"] = []string{settingContentType}
+	}
+}
+
+func (p *Proxy) disable304FromHeader(header http.Header) {
+	delete(header, "If-None-Match")
+	delete(header, "If-Modified-Since")
 }

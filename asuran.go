@@ -7,6 +7,7 @@ import (
 	"github.com/benbearchen/asuran/util/cmd"
 	"github.com/benbearchen/asuran/web/proxy"
 
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ cmd:
   bench [target.domain:port/path]
         benchmark url http://target.domain:port/path in some goroutines,
         finally calc used/avg time.  default: http://localhost
+
+  delete profile <ip>
 `)
 }
 
@@ -73,32 +76,45 @@ func benchN(target string) {
 	}
 }
 
-const VersionCode = "0.2.3"
+const VersionCode = "0.2.4"
 
 func version() {
 	fmt.Println(`asuran ` + VersionCode + `, a web proxy with dns
 `)
 }
 
+var (
+	nodns = flag.Bool("nodns", false, "nodns DISABLE the dns function")
+)
+
 func main() {
 	version()
 
+	flag.Parse()
+
 	p := proxy.NewProxy(VersionCode)
+
 	ipProfiles := profile.NewIpProfiles()
 	ipProfiles.BindProxyHostOperator(p.NewProxyHostOperator())
+	ipProfiles.SetDefaultCopyProfile("localhost")
+
 	p.BindUrlOperator(ipProfiles.OperatorUrl())
 	p.BindProfileOperator(ipProfiles.OperatorProfile())
 	p.BindDomainOperator(ipProfiles.OperatorDomain())
 
-	go dnsproxy.DnsProxy(dnsproxy.NewPolicy(p.NewDomainOperator()))
+	if *nodns {
+		p.DisableDNS()
+	} else {
+		go dnsproxy.DnsProxy(dnsproxy.NewPolicy(p.NewDomainOperator()))
+	}
 
 	var c cmd.Command
 	c.OpenConsole()
 	for {
 		fmt.Print("\n$ ")
 		command := c.Read()
-		cmd, rest := cmd.TakeFirstArg(command)
-		switch cmd {
+		command, rest := cmd.TakeFirstArg(command)
+		switch command {
 		case "":
 		case "exit":
 			return
@@ -134,9 +150,21 @@ func main() {
 					fmt.Println("port had already bound")
 				}
 			}
+		case "delete":
+			mod, rest := cmd.TakeFirstArg(rest)
+			switch mod {
+			case "profile":
+				if ipProfiles.Delete(rest) {
+					fmt.Println(`profile "` + rest + `" deleted`)
+				} else {
+					fmt.Println(`profile "` + rest + `" don't exist`)
+				}
+			default:
+				usage()
+			}
 		default:
 			usage()
-			fmt.Println("UNKNOWN command: `" + cmd + "' " + rest)
+			fmt.Println(`UNKNOWN command: "` + command + `" ` + rest)
 		}
 	}
 }

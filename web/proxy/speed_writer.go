@@ -1,10 +1,13 @@
 package proxy
 
 import (
+	gonet "github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/profile"
 
+	"bufio"
 	_ "fmt"
 	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -23,6 +26,10 @@ func newSpeedWriter(speedAction profile.SpeedAction, w io.Writer) io.Writer {
 	s.last = time.Time{}
 	s.newBytes = 0
 	return s
+}
+
+func (t *speedWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return gonet.TryHijack(t.w)
 }
 
 func (t *speedWriter) Write(p []byte) (n int, err error) {

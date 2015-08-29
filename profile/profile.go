@@ -139,17 +139,35 @@ func MakeEmptyUrlProxyAction() UrlProxyAction {
 	return UrlProxyAction{UrlActNone, ""}
 }
 
+type Settings map[string]string
+
+func (s Settings) Switch(key string) bool {
+	return s.SwitchDef(key, false)
+}
+
+func (s Settings) SwitchDef(key string, def bool) bool {
+	v, ok := s[key]
+	if ok {
+		return v == "on" || v == "yes"
+	} else {
+		return def
+	}
+}
+
 type urlAction struct {
 	UrlPattern string
 	pattern    *UrlPattern
 	Act        UrlProxyAction
 	Delay      DelayAction
+	BodyDelay  DelayAction
 	Speed      SpeedAction
+	Settings   Settings
 }
 
 type UrlOperator interface {
 	Action(ip, url string) UrlProxyAction
 	Delay(ip, url string) DelayAction
+	BodyDelay(ip, url string) DelayAction
 	Speed(ip, url string) SpeedAction
 }
 
@@ -159,6 +177,7 @@ const (
 	DomainActNone = iota
 	DomainActBlock
 	DomainActProxy
+	DomainActNull
 )
 
 type DomainAction struct {
@@ -184,6 +203,8 @@ func (a DomainAct) String() string {
 		return "丢弃不返回"
 	case DomainActProxy:
 		return "代理域名"
+	case DomainActNull:
+		return "查询无结果"
 	default:
 		return ""
 	}
@@ -207,13 +228,14 @@ type ProxyHostOperator interface {
 }
 
 type Profile struct {
-	Name    string
-	Ip      string
-	Owner   string
-	Urls    map[string]*urlAction
-	Domains map[string]*DomainAction
-	storeID int
-	stores  map[string]*Store
+	Name      string
+	Ip        string
+	Owner     string
+	Operators map[string]bool
+	Urls      map[string]*urlAction
+	Domains   map[string]*DomainAction
+	storeID   int
+	stores    map[string]*Store
 
 	proxyOp ProxyHostOperator
 
@@ -225,6 +247,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Name = name
 	p.Ip = ip
 	p.Owner = owner
+	p.Operators = make(map[string]bool)
 	p.Urls = make(map[string]*urlAction)
 	p.Domains = make(map[string]*DomainAction)
 	p.storeID = 1
@@ -232,7 +255,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	return p
 }
 
-func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction) {
+func (p *Profile) SetUrl(set bool, urlPattern string, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -241,6 +264,10 @@ func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyActio
 			u.Delay = *delayAction
 		}
 
+		if bodyDelayAction != nil {
+			u.BodyDelay = *bodyDelayAction
+		}
+
 		if proxyAction != nil {
 			u.Act = *proxyAction
 		}
@@ -248,10 +275,22 @@ func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyActio
 		if speedAction != nil {
 			u.Speed = *speedAction
 		}
+
+		if set {
+			u.Settings = make(map[string]string)
+		}
+
+		for k, v := range settings {
+			u.Settings[k] = v
+		}
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeEmptySpeed()}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeEmptyDelay(), MakeEmptySpeed(), settings}
 		if delayAction != nil {
 			u.Delay = *delayAction
+		}
+
+		if bodyDelayAction != nil {
+			u.BodyDelay = *bodyDelayAction
 		}
 
 		if proxyAction != nil {
@@ -276,13 +315,17 @@ func (p *Profile) SetUrl(urlPattern string, delayAction *DelayAction, proxyActio
 	}
 }
 
-func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction) {
+func (p *Profile) SetAllUrl(set bool, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	for _, u := range p.Urls {
 		if delayAction != nil {
 			u.Delay = *delayAction
+		}
+
+		if bodyDelayAction != nil {
+			u.BodyDelay = *bodyDelayAction
 		}
 
 		if proxyAction != nil {
@@ -292,39 +335,14 @@ func (p *Profile) SetAllUrl(delayAction *DelayAction, proxyAction *UrlProxyActio
 		if speedAction != nil {
 			u.Speed = *speedAction
 		}
-	}
-}
 
-func (p *Profile) SetUrlAction(urlPattern string, act UrlAct, responseCode int) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	u, ok := p.Urls[urlPattern]
-	if ok {
-		u.Act = UrlProxyAction{act, strconv.Itoa(responseCode)}
-	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), UrlProxyAction{act, strconv.Itoa(responseCode)}, MakeEmptyDelay(), MakeEmptySpeed()}
-		p.Urls[urlPattern] = u
-		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
-			if port, err := strconv.Atoi(u.pattern.port); err == nil {
-				p.proxyOp.New(port)
-			}
+		if set {
+			u.Settings = make(map[string]string)
 		}
-	}
 
-	host := getHostOfUrlPattern(urlPattern)
-	if len(host) != 0 {
-		p.proxyDomainIfNotExists(host)
-	}
-}
-
-func (p *Profile) SetAllUrlAction(act UrlAct, responseCode int) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	a := UrlProxyAction{act, strconv.Itoa(responseCode)}
-	for _, u := range p.Urls {
-		u.Act = a
+		for k, v := range settings {
+			u.Settings[k] = v
+		}
 	}
 }
 
@@ -340,39 +358,6 @@ func (p *Profile) UrlAction(url string) UrlProxyAction {
 	return MakeEmptyUrlProxyAction()
 }
 
-func (p *Profile) SetUrlDelay(urlPattern string, act DelayActType, rand bool, delay float32) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	u, ok := p.Urls[urlPattern]
-	if ok {
-		u.Delay = MakeDelay(act, rand, delay)
-	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeDelay(act, rand, delay), MakeEmptySpeed()}
-		p.Urls[urlPattern] = u
-		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
-			if port, err := strconv.Atoi(u.pattern.port); err == nil {
-				p.proxyOp.New(port)
-			}
-		}
-	}
-
-	host := getHostOfUrlPattern(urlPattern)
-	if len(host) != 0 {
-		p.proxyDomainIfNotExists(host)
-	}
-}
-
-func (p *Profile) SetAllUrlDelay(act DelayActType, rand bool, delay float32) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	d := MakeDelay(act, rand, delay)
-	for _, u := range p.Urls {
-		u.Delay = d
-	}
-}
-
 func (p *Profile) UrlDelay(url string) DelayAction {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -385,27 +370,16 @@ func (p *Profile) UrlDelay(url string) DelayAction {
 	return MakeEmptyDelay()
 }
 
-func (p *Profile) SetUrlSpeed(urlPattern string, act SpeedActType, speed float32) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
+func (p *Profile) UrlBodyDelay(url string) DelayAction {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
 
-	u, ok := p.Urls[urlPattern]
-	if ok {
-		u.Speed = MakeSpeed(act, speed)
-	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeSpeed(act, speed)}
-		p.Urls[urlPattern] = u
-		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
-			if port, err := strconv.Atoi(u.pattern.port); err == nil {
-				p.proxyOp.New(port)
-			}
-		}
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.BodyDelay
 	}
 
-	host := getHostOfUrlPattern(urlPattern)
-	if len(host) != 0 {
-		p.proxyDomainIfNotExists(host)
-	}
+	return MakeEmptyDelay()
 }
 
 func (p *Profile) UrlSpeed(url string) SpeedAction {
@@ -418,6 +392,49 @@ func (p *Profile) UrlSpeed(url string) SpeedAction {
 	}
 
 	return MakeEmptySpeed()
+}
+
+func (p *Profile) SettingDont302(url string) bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Settings.SwitchDef("dont302", true)
+	}
+
+	return true
+}
+
+func (p *Profile) SettingSwitch(url string, set string) bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		return u.Settings.Switch(set)
+	}
+
+	return false
+}
+
+func (p *Profile) SettingString(url string, set string) string {
+	return p.SettingStringDef(url, set, "")
+}
+
+func (p *Profile) SettingStringDef(url string, set string, def string) string {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	u := p.MatchUrl(url)
+	if u != nil {
+		v, ok := u.Settings[set]
+		if ok {
+			return v
+		}
+	}
+
+	return def
 }
 
 func (p *Profile) MatchUrl(url string) *urlAction {
@@ -575,6 +592,13 @@ func (p *Profile) Restore(id string) []byte {
 	}
 }
 
+func (p *Profile) DeleteStore(id string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	delete(p.stores, id)
+}
+
 func (p *Profile) DeleteAllStore() {
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -608,11 +632,45 @@ func (p *Profile) ListStored() []*Store {
 	return s
 }
 
-func (p *Profile) CloneNew(newName, newIp string) *Profile {
+func (p *Profile) AddOperator(ip string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if len(ip) > 0 {
+		p.Operators[ip] = true
+	}
+}
+
+func (p *Profile) RemoveOperator(ip string) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if len(ip) > 0 {
+		delete(p.Operators, ip)
+	}
+}
+
+func (p *Profile) CanOperate(ip string) bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	n := NewProfile(newName, newIp, p.Owner)
+	if p.Owner == ip || p.Ip == ip {
+		return true
+	}
+
+	_, ok := p.Operators[ip]
+	if ok {
+		return true
+	}
+
+	return false
+}
+
+func (p *Profile) CloneNew(newName, newIp, newOwner string) *Profile {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	n := NewProfile(newName, newIp, newOwner)
 	n.proxyOp = p.proxyOp
 	for u, url := range p.Urls {
 		c := *url

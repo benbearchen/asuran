@@ -7,12 +7,13 @@ import (
 )
 
 type urlActionData struct {
-	Pattern string
-	Action  string
-	Delay   string
-	Edit    string
-	Delete  string
-	Even    bool
+	Pattern  string
+	Action   string
+	Delay    string
+	Settings string
+	Edit     string
+	Delete   string
+	Even     bool
 }
 
 type domainData struct {
@@ -25,22 +26,34 @@ type domainData struct {
 }
 
 type profileData struct {
-	Name    string
-	IP      string
-	Owner   string
-	Path    string
-	Urls    []urlActionData
-	Domains []domainData
-	Stores  []string
+	Name      string
+	IP        string
+	Owner     string
+	NotOwner  bool
+	Operators string
+	Path      string
+	Urls      []urlActionData
+	Domains   []domainData
+	Stores    []string
 }
 
-func (p *Profile) formatViewData(savedIDs []string) profileData {
+func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData {
 	name := p.Name
 	ip := p.Ip
 	owner := p.Owner
+	notOwner := !canOperate
 	path := p.Ip
 	urls := make([]urlActionData, 0, len(p.Urls))
 	domains := make([]domainData, 0, len(p.Domains))
+
+	operators := ""
+	for op, _ := range p.Operators {
+		if len(operators) == 0 {
+			operators = op
+		} else {
+			operators += ", " + op
+		}
+	}
 
 	even := true
 	for _, u := range p.Urls {
@@ -50,7 +63,7 @@ func (p *Profile) formatViewData(savedIDs []string) profileData {
 			extra = ", " + extra
 		}
 
-		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.EditCommand(), u.DeleteCommand(), even})
+		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.Settings.String(), u.EditCommand(), u.DeleteCommand(), even})
 	}
 
 	even = true
@@ -59,12 +72,12 @@ func (p *Profile) formatViewData(savedIDs []string) profileData {
 		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
 	}
 
-	return profileData{name, ip, owner, path, urls, domains, savedIDs}
+	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs}
 }
 
-func (p *Profile) WriteHtml(w io.Writer, savedIDs []string) {
+func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool) {
 	t, err := template.ParseFiles("template/profile.tmpl")
-	err = t.Execute(w, p.formatViewData(savedIDs))
+	err = t.Execute(w, p.formatViewData(savedIDs, realOwner))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

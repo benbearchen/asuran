@@ -31,14 +31,16 @@ func root(w ResponseWriter, req *Msg) {
 	}
 
 	realDomain, ips := query.Query(host, domain)
-	if ips == nil || len(ips) <= 0 {
+	if ips == nil {
 		w.Hijack()
 		return
 	}
 
-	m.Answer = make([]RR, len(ips))
-	for i := 0; i < len(ips); i++ {
-		m.Answer[i] = &A{Hdr: RR_Header{Name: realDomain, Rrtype: TypeA, Class: ClassINET, Ttl: 0}, A: ips[i]}
+	if len(ips) > 0 {
+		m.Answer = make([]RR, len(ips))
+		for i := 0; i < len(ips); i++ {
+			m.Answer[i] = &A{Hdr: RR_Header{Name: realDomain, Rrtype: TypeA, Class: ClassINET, Ttl: 0}, A: ips[i]}
+		}
 	}
 
 	w.WriteMsg(m)

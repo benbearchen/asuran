@@ -9,7 +9,7 @@
 <tr><td>使用手册：</td><td><a href="/usage" target="_blank">http://{{.ProxyHost}}/usage</a></td><td>&lt;== 想知道怎么使用戳这里</td></tr>
 <tr><td>您可管理设备列表：</td><td><a href="/profile" target="_blank">http://{{.ProxyHost}}/profile</a></td></tr>
 <tr><td>当前活跃设备：</td><td><a href="/devices" target="_blank">http://{{.ProxyHost}}/devices</a></td></tr>
-<tr><td>DNS 独立域名解析服务：</td><td><a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a></td></tr>
+{{if .UsingDNS}}<tr><td>DNS 独立域名解析服务：</td><td><a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a></td></tr>{{end}}
 </table>
 
 <hr/>
