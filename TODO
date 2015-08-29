@@ -7,6 +7,10 @@ ver 0.3
 =========
 * Support saving and loading profile's commands pack
 * Record and replay certain commands packs
+* Profile's default url policy
+* Refact, remove UrlOperator
+* Using HTTP Mux?
+* More test
 
 
 ver 0.2.4
