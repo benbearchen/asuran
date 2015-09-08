@@ -11,6 +11,10 @@ ver 0.3
 * Refact, remove UrlOperator
 * Using HTTP Mux?
 * More test
+* Policy in HTTP Header
+* New policy test entry, such as 'http://localhost/policy?cmd=timeout%201'
+* Can force chunked
+* Command `url map` support sed?
 
 
 ver 0.2.4
