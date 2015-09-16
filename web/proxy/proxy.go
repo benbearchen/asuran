@@ -3,6 +3,7 @@ package proxy
 import (
 	"github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/net/httpd"
+	"github.com/benbearchen/asuran/net/websocket"
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
@@ -152,12 +153,17 @@ func (p *Proxy) testUrl(
 	}
 }
 
-func (p *Proxy) OnRequest(
-	w http.ResponseWriter,
-	r *http.Request) {
+func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	targetHost := httpd.RemoteHost(r.Host)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	urlPath := r.URL.Path
+	if u, ok := r.Header["Upgrade"]; ok {
+		if len(u) > 0 && strings.ToLower(u[0]) == "websocket" {
+			p.proxyWebsocket(remoteIP, w, r)
+			return
+		}
+	}
+
 	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
 	if strings.HasPrefix(urlPath, "http://") {
 		p.proxyUrl(urlPath, w, r)
@@ -983,4 +989,51 @@ func (p *Proxy) procHeader(header http.Header, settingContentType string) {
 func (p *Proxy) disable304FromHeader(header http.Header) {
 	delete(header, "If-None-Match")
 	delete(header, "If-Modified-Since")
+}
+
+func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Request) {
+	//fmt.Printf("recv websocket: to %s %s\n", r.Host, r.URL.Path)
+	domain, port, err := gonet.SplitHostPort(r.Host)
+	if err != nil {
+		domain = r.Host
+	}
+
+	if len(port) == 0 {
+		port = "80"
+	}
+
+	host := domain
+	if p.domainOp != nil {
+		a := p.domainOp.Action(client, domain)
+		if a != nil && len(a.IP) > 0 {
+			host = a.IP
+		}
+	}
+
+	address := gonet.JoinHostPort(host, port)
+
+	headers := make(map[string][]string)
+	for h, v := range r.Header {
+		headers[h] = v
+	}
+
+	if _, ok := headers["Host"]; !ok {
+		headers["Host"] = []string{r.Host}
+	}
+
+	upConn, err := websocket.Conn(address, r.URL.Path, headers)
+	if err != nil {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	downConn, _, err := net.TryHijack(w)
+	if err != nil {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	net.PipeConn(upConn, downConn)
 }
