@@ -992,7 +992,7 @@ func (p *Proxy) disable304FromHeader(header http.Header) {
 }
 
 func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Request) {
-	//fmt.Printf("recv websocket: to %s %s\n", r.Host, r.URL.Path)
+	//fmt.Printf("recv websocket: to %s %v\n", r.Host, r.URL)
 	domain, port, err := gonet.SplitHostPort(r.Host)
 	if err != nil {
 		domain = r.Host
@@ -1021,7 +1021,9 @@ func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Req
 		headers["Host"] = []string{r.Host}
 	}
 
-	upConn, err := websocket.Conn(address, r.URL.Path, headers)
+	path := r.URL.RequestURI()
+
+	upConn, err := websocket.Conn(address, path, headers)
 	if err != nil {
 		w.WriteHeader(502)
 		fmt.Fprintln(w, err)
