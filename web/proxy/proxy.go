@@ -165,13 +165,15 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
-	if strings.HasPrefix(urlPath, "http://") {
-		p.proxyUrl(urlPath, w, r)
+	if r.Method != "GET" && r.Method != "POST" {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
+	} else if strings.HasPrefix(urlPath, "http://") {
+		p.proxyRequest(w, r)
 	} else if targetHost == "i.me" {
 		p.initDevice(w, remoteIP)
 	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) {
-		target := "http://" + r.Host + urlPath
-		p.proxyUrl(target, w, r)
+		p.proxyRequest(w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/post"); m {
 		p.postTest(w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/test/"); m {
@@ -243,6 +245,16 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (p *Proxy) proxyRequest(w http.ResponseWriter, r *http.Request) {
+	scheme := r.URL.Scheme
+	if len(scheme) == 0 {
+		scheme = "http"
+	}
+
+	url := scheme + "://" + r.Host + r.URL.RequestURI()
+	p.proxyUrl(url, w, r)
+}
+
 func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) {
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	p.remoteProxyUrl(remoteIP, target, w, r)
@@ -252,10 +264,6 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	needCache := false
 
 	fullUrl := target
-	if len(r.URL.RawQuery) > 0 {
-		fullUrl += "?" + r.URL.RawQuery
-	}
-
 	requestUrl := fullUrl
 	requestR := r
 	contentSource := ""
