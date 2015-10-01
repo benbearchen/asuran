@@ -354,9 +354,10 @@ func matchQueryScore(pattern, query map[string]string) uint8 {
 		}
 	}
 
-	if len(pattern) > 255 {
+	score := len(pattern) + 1 // see front, empty pattern means 1
+	if score > 255 {
 		return 255
 	} else {
-		return uint8(len(pattern))
+		return uint8(score)
 	}
 }
