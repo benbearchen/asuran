@@ -15,6 +15,7 @@ ver 0.3
 * New policy test entry, such as 'http://localhost/policy?cmd=timeout%201'
 * Can force chunked
 * Command `url map` support sed?
+* `cache` support Range
 
 
 ver 0.2.4

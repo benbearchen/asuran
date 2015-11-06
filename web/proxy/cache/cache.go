@@ -177,7 +177,7 @@ func (c *Cache) historyID() uint32 {
 
 func (c *Cache) Save(cache *UrlCache, save bool) uint32 {
 	if save {
-		c.contents[cache.Url] = *cache
+		c.contents[cache.RangeInfo+" <> "+cache.Url] = *cache
 	}
 
 	id := c.historyID()
@@ -192,7 +192,7 @@ func (c *Cache) Save(cache *UrlCache, save bool) uint32 {
 }
 
 func (c *Cache) Take(url, rangeInfo string) *UrlCache {
-	if content, ok := c.contents[url]; ok {
+	if content, ok := c.contents[rangeInfo+" <> "+url]; ok {
 		if content.RangeInfo == rangeInfo {
 			return &content
 		}

@@ -375,6 +375,12 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 		c := f.CheckCache(fullUrl, rangeInfo)
 		if c != nil && c.Error == nil {
 			c.Response(w, writeWrap)
+			extraInfo := ""
+			if len(rangeInfo) > 0 {
+				extraInfo = " " + rangeInfo
+			}
+
+			f.Log("cache " + fullUrl + extraInfo)
 			return
 		}
 	}

@@ -219,6 +219,19 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			} else {
 				d.URLBody = url
 			}
+		} else if len(s) >= 2 && s[0] == "cache" {
+			d.HttpStatus = "命中缓存"
+			url := s[1]
+			d.URL = url
+			if len(s) > 2 {
+				d.URL += " " + s[2]
+			}
+
+			if strings.HasPrefix(url, "http://") {
+				d.URLBody = url[7:]
+			} else {
+				d.URLBody = url
+			}
 		} else {
 			d.EventString = e.String
 		}
