@@ -442,6 +442,20 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		return false
 	}
 
+	if len(rangeInfo) > 0 {
+		c, cr, err := cache.MakeRange(rangeInfo, content)
+		if err != nil {
+			w.WriteHeader(416)
+			fmt.Fprintln(w, "error:", err)
+			return true
+		} else {
+			w.Header()["Content-Range"] = []string{"bytes " + cr}
+			w.Header()["Content-Length"] = []string{strconv.Itoa(len(c))}
+			w.WriteHeader(206)
+			content = c
+		}
+	}
+
 	if act.Act != profile.UrlActTcpWritten {
 		p.procHeader(w.Header(), prof.SettingStringDef(target, "content-type", "default"))
 	}

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -254,5 +255,44 @@ func CheckRange(r *http.Request) string {
 		return range_[0]
 	} else {
 		return ""
+	}
+}
+
+func MakeRange(rangeInfo string, content []byte) ([]byte, string, error) {
+	if !strings.HasPrefix(rangeInfo, "bytes=") {
+		return nil, "", fmt.Errorf("unknown range: %s", rangeInfo)
+	}
+
+	s := strings.Split(rangeInfo[len("bytes="):], "-")
+	if len(s) == 0 || len(s[0]) == 0 {
+		return nil, "", fmt.Errorf("range has no sep: %s", rangeInfo)
+	}
+
+	begin, err := strconv.ParseInt(s[0], 10, 64)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid range offset(%s), from %s", s[0], rangeInfo)
+	}
+
+	if len(s) == 1 || len(s[1]) == 0 {
+		if begin >= int64(len(content)) {
+			return nil, "", fmt.Errorf("out of range: %d, from %s", begin, rangeInfo)
+		} else {
+			contentRange := fmt.Sprintf("%d-%d/%d", begin, len(content)-1, len(content))
+			return content[begin:], contentRange, nil
+		}
+	}
+
+	end, err := strconv.ParseInt(s[1], 10, 64)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid range offset(%s), from %s", s[1], rangeInfo)
+	}
+
+	if end < begin {
+		return nil, "", fmt.Errorf("out of range: %d !<= %d, from %s", begin, end, rangeInfo)
+	} else if end >= int64(len(content)) {
+		return nil, "", fmt.Errorf("out of range: %d, from %s", end, rangeInfo)
+	} else {
+		contentRange := fmt.Sprintf("%d-%d/%d", begin, end, len(content))
+		return content[begin : end+1], contentRange, nil
 	}
 }
