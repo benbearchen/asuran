@@ -198,7 +198,39 @@ func (c *Cache) Take(url, rangeInfo string) *UrlCache {
 		}
 	}
 
-	return nil
+	if len(rangeInfo) == 0 {
+		return nil
+	}
+
+	uc := c.Take(url, "")
+	if uc == nil || uc.Error != nil {
+		return nil
+	}
+
+	fc, err := uc.Content()
+	if err != nil {
+		return nil
+	}
+
+	cc, info, err := MakeRange(rangeInfo, fc)
+	if err != nil {
+		return nil
+	}
+
+	rc := *uc
+	rc.Bytes = cc
+	rc.ResponseHeader = make(map[string][]string)
+	for k, vv := range uc.ResponseHeader {
+		for _, v := range vv {
+			rc.ResponseHeader.Add(k, v)
+		}
+	}
+
+	rc.ResponseHeader.Set("Content-Range", "bytes "+info)
+	rc.ResponseHeader.Set("Content-Length", strconv.Itoa(len(cc)))
+	rc.ResponseCode = 206
+	rc.RangeInfo = rangeInfo
+	return &rc
 }
 
 func (c *Cache) Look(url string) *UrlCache {
