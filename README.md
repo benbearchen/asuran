@@ -62,3 +62,9 @@ References 参考
 * [golang](http://golang.org/), [Effective Go](http://golang.org/doc/effective_go.html)
 * golang [dns](https://github.com/miekg/dns/) by [Miek Gieben](http://www.miek.nl/)
 * [《Go Web 编程》](https://github.com/astaxie/build-web-application-with-golang/) by AstaXie （亦是 [beego](http://beego.me/) 作者）
+
+
+Thanks
+========
+
+Thanks fatcowfeng for helping asuran.  Bless.
