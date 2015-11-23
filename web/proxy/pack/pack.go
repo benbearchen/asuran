@@ -11,22 +11,25 @@ import (
 const (
 	FIELD_NAME        = "name"
 	FIELD_AUTHOR      = "author"
+	FIELD_COMMENT     = "comment"
 	FIELD_CREATE_TIME = "create"
 )
 
 type Pack struct {
 	cmd string
 
-	name   string
-	author string
-	create time.Time
+	name    string
+	author  string
+	comment string
+	create  time.Time
 }
 
-func newPack(name, author string, cmd string) *Pack {
+func newPack(name, author, comment string, cmd string) *Pack {
 	p := new(Pack)
 	p.cmd = cmd
 	p.name = name
 	p.author = author
+	p.comment = comment
 	p.create = time.Now()
 	return p
 }
@@ -76,6 +79,8 @@ func (p *Pack) load(path string) error {
 			p.name = v
 		case FIELD_AUTHOR:
 			p.author = v
+		case FIELD_COMMENT:
+			p.comment = v
 		case FIELD_CREATE_TIME:
 			u, err := strconv.ParseInt(v, 10, 64)
 			if err == nil {
@@ -96,6 +101,10 @@ func (p *Pack) Author() string {
 	return p.author
 }
 
+func (p *Pack) Comment() string {
+	return p.comment
+}
+
 func (p *Pack) CreateTime() time.Time {
 	return p.create
 }
@@ -112,6 +121,7 @@ func (p *Pack) File() string {
 
 	addHeader(FIELD_NAME, p.name)
 	addHeader(FIELD_AUTHOR, p.author)
+	addHeader(FIELD_COMMENT, p.comment)
 
 	addHeader(FIELD_CREATE_TIME, strconv.FormatInt(p.create.UnixNano(), 10))
 

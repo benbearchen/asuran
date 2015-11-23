@@ -6,16 +6,17 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
 func TestPackMap(t *testing.T) {
 	name := "a"
-	p1 := newPack(name, "1", "cmd\n")
-	p2 := newPack(name, "2", "cmd2j\n")
-	p3 := newPack(name, "3", "cmd3\n")
-	p4 := newPack(name, "4", "cmd4\n")
-	p5 := newPack(name, "5", "cmd5\n")
+	p1 := newPack(name, "1", "wuie", "cmd\n")
+	p2 := newPack(name, "2", "895yx", "cmd2j\n")
+	p3 := newPack(name, "3", "834", "cmd3\n")
+	p4 := newPack(name, "4", "asdjf", "cmd4\n")
+	p5 := newPack(name, "5", "weori", "cmd5\n")
 
 	p2.create = p2.create.Add(time.Second * 2)
 	p3.create = p3.create.Add(-time.Second * 2)
@@ -75,7 +76,7 @@ func TestDir(t *testing.T) {
 
 	ps := packList{}
 	for i := 0; i < 5; i++ {
-		p := newPack(packname, strconv.Itoa(i+1), "cmd\n")
+		p := newPack(packname, strconv.Itoa(i+1), strings.Repeat("comment ", i+1), "cmd\n")
 		ps = append(ps, p)
 		timeoffset := (i*97 + 5) % (7 + len(ps))
 		p.create = p.create.Add(time.Second * time.Duration(timeoffset))
