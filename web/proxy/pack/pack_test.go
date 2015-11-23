@@ -11,7 +11,7 @@ func TestPack(t *testing.T) {
 	defer os.Remove(path1)
 
 	p := newPack("a", "b", "comment askdf", "cmd\n")
-	err := p.WriteTo(path1)
+	err := p.WriteTo(path1, true)
 	if err != nil {
 		t.Errorf("write pack failed: %v", err)
 	}

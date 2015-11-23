@@ -80,7 +80,7 @@ func TestDir(t *testing.T) {
 		ps = append(ps, p)
 		timeoffset := (i*97 + 5) % (7 + len(ps))
 		p.create = p.create.Add(time.Second * time.Duration(timeoffset))
-		err = p.WriteTo(filepath.Join(d.dir, p.Author()))
+		err = p.WriteTo(filepath.Join(d.dir, p.Author()), true)
 		if err != nil {
 			t.Errorf("TestDir write pack(%v) failed: %v", p, err)
 		}
@@ -100,5 +100,29 @@ func TestDir(t *testing.T) {
 		if s[i-1].create.After(s[i].create) {
 			t.Errorf("TestDir d.load() wrong time seq [%d].create(%v) vs [%d].create(%v)", i-1, s[i-1].create, i, s[i].create)
 		}
+	}
+
+	err = d.Save("b", "b", "c", "ok\n")
+	if err != nil {
+		t.Errorf("TestDir d.Save() failed: %v", err)
+	}
+
+	pm := d.GetPack("b")
+	if pm == nil {
+		t.Errorf("TestDir d.GetPack() failed: return nil")
+	}
+
+	if d.GetHistoryPack("b", pm.CreateTime().UnixNano()) != pm {
+		t.Errorf("TestDir d.GetHistoryPack() failed")
+	}
+
+	pf, err := loadPack(filepath.Join(d.dir, strconv.FormatInt(pm.CreateTime().UnixNano(), 10)))
+	if err != nil || pf == nil || pf.Command() != pm.Command() {
+		t.Errorf("TestDir d.Save() failed to write file: %v, %v", pf, err)
+	}
+
+	names := d.ListNames()
+	if len(names) != 2 || names[0] != "a" || names[1] != "b" {
+		t.Errorf("TestDir .d.ListNames() failed: want %v, get %v", []string{"a", "b"}, names)
 	}
 }

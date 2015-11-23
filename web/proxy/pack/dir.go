@@ -3,6 +3,8 @@ package pack
 import (
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 )
 
 type packList []*Pack
@@ -11,6 +13,8 @@ type packMap map[string]packList
 type Dir struct {
 	dir   string
 	packs packMap
+
+	tick int64
 }
 
 func New(dir string) *Dir {
@@ -30,6 +34,7 @@ func (d *Dir) ListNames() []string {
 		names = append(names, k)
 	}
 
+	sort.Strings(names)
 	return names
 }
 
@@ -76,6 +81,67 @@ func (d *Dir) load() error {
 
 	d.packs = packs
 	return nil // or, err?
+}
+
+func (d *Dir) Save(name, author, comment string, cmd string) error {
+	p := newPack(name, author, comment, cmd)
+	d.packs.Add(p)
+
+	filename := d.NameByTime(p.CreateTime().UnixNano())
+	return p.WriteTo(filepath.Join(d.dir, filename), true)
+}
+
+func (d *Dir) NameByTime(nano int64) string {
+	var minInterval int64 = 50000 // 50us
+	if d.tick+minInterval < nano {
+		d.tick = nano
+	} else {
+		d.tick += minInterval
+	}
+
+	return strconv.FormatInt(d.tick, 10)
+}
+
+func (d *Dir) GetPack(name string) *Pack {
+	pl, ok := d.packs[name]
+	if ok {
+		return pl[len(pl)-1]
+	}
+
+	return nil
+}
+
+func (d *Dir) Get(name string) string {
+	p := d.GetPack(name)
+	if p != nil {
+		return p.Command()
+	}
+
+	return ""
+}
+
+func (d *Dir) GetHistoryPack(name string, time int64) *Pack {
+	pl, ok := d.packs[name]
+	if !ok {
+		return nil
+	}
+
+	for _, p := range pl {
+		if p.CreateTime().UnixNano() == time {
+			return p
+		}
+	}
+
+	return nil
+}
+
+func (d *Dir) GetHistory(name string, time int64) string {
+	p := d.GetHistoryPack(name, time)
+	if p != nil {
+		return p.Command()
+	}
+
+	return ""
 }
 
 func (m packMap) Add(p *Pack) {

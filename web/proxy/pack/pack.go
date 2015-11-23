@@ -128,6 +128,11 @@ func (p *Pack) File() string {
 	return header + p.cmd
 }
 
-func (p *Pack) WriteTo(path string) error {
-	return ioutil.WriteFile(path, []byte(p.File()), 0666)
+func (p *Pack) WriteTo(path string, readonly bool) error {
+	var filemode os.FileMode = 0666
+	if readonly {
+		filemode = 0444
+	}
+
+	return ioutil.WriteFile(path, []byte(p.File()), filemode)
 }
