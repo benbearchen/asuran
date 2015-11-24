@@ -1,5 +1,8 @@
+<!doctype html>
 <html>
 <head>
+<meta charset="utf-8">
+<link href="/res/js/jquery-ui.css" rel="stylesheet">
 <title>{{.IP}}'s profile</title>
 <style type="text/css">
 /* copy from http://www.w3school.com.cn/tiy/t.asp?f=csse_table_fancy */
@@ -32,7 +35,13 @@
   color:#000000;
   background-color:#EAF2D3;
   }
+
+.ui-menu { width: 350px; }
+
 </style>
+
+<script src="/res/js/external/jquery/jquery.js"></script>
+<script src="/res/js/jquery-ui.js"></script>
 
 <script type="text/javascript">
 
@@ -229,6 +238,13 @@ function domainCmd(act, opt) {
 
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
 {{if .NotOwner}}{{else}}
+<div id="commandTabs">
+<ul style="display:none;" id="ulCommandTabs">
+<li><a href="#commandTabs-1">URL 命令</a></li>
+<li><a href="#commandTabs-2">Domain 命令</a></li>
+<li><a href="#commandTabs-3">神秘功能</a></li>
+</ul>
+<div id="commandTabs-1">
 <table border="1">
 <tr>
 <td rowspan="12">url</td>
@@ -270,7 +286,8 @@ function domainCmd(act, opt) {
 </table>
 
 <p>注: 任何对 URL 的代理行为，均要求域名重定向到代理服务器。如域名还没有配置，则会自动添加</p>
-
+</div>
+<div id="commandTabs-2">
 <table border="1">
 <tr>
 <td rowspan="5">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="4">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="5">域名: <input type="text" id="Domain"/><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
@@ -288,7 +305,96 @@ function domainCmd(act, opt) {
 <td colspan="2"><button type="button" onclick="domainCmd('delete', '');">delete</button>: 删除域名配置</td>
 </tr>
 </table>
+</div>
+<div style="display:none;" id="commandTabs-3">
+请选择您想要的操作：
+<ul style="width:200px;" id="menu">
+	<li>对 URL 操作
+		<ul>
+			<li id="menu-url-proxy">对 URL 进行代理，可查看访问历史</li>
+			<li id="menu-url-timeout">阻塞一定时长后掉线</li>
+			<li id="menu-url-drop-in">从第一次访问的某时间段内均掉线</li>
+			<li id="menu-url-rewrite">对 URL 返回指定内容</li>
+			<li id="menu-url-speed">对 URL （返回内容）限速</li>
+			<li id="menu-url-status">返回特殊 HTTP 状态码（以模拟出错等）</li>
+			<li id="menu-url-redirect">302 到另一个 URL</li>
+			<li id="menu-url-map">以另一个 URL 内容返回</li>
+		</ul>
+	</li>
+	<li>对域名操作
+		<ul>
+			<li id="menu-domain-default">解析到某个 IP</li>
+			<li id="menu-domain-block">解析超时</li>
+			<li id="menu-domain-null">解析有返回，但没有 IP</li>
+			<li id="menu-domain-proxy">强制代理域名下 URL（限 80 端口）</li>
+		</ul>
+	</li>
+</ul>
+</div>
+</div>
 
 {{end}} <!-- end of owner's command guide -->
+
+<script>
+
+{{if .NotOwner}}{{else}}
+
+$( "#ulCommandTabs" ).show();
+
+$( "#commandTabs" ).tabs();
+
+showMenuHint=true;
+$( "#menu" ).menu({
+  select: function( event, ui ) {
+    switch (ui.item.context.id) {
+    case "menu-url-proxy":
+      appendCmd("url proxy <url>");
+      break;
+    case "menu-url-timeout":
+      appendCmd("url timeout <1.0s> <url>");
+      break;
+    case "menu-url-drop-in":
+      appendCmd("url drop <1.0s> <url>");
+      break;
+    case "menu-url-rewrite":
+      appendCmd("url rewrite <url-encoded-content> <url>");
+      break;
+    case "menu-url-speed":
+      appendCmd("url speed <5KB/s> <url>");
+      break;
+    case "menu-url-status":
+      appendCmd("url status <404> <url>");
+      break;
+    case "menu-url-redirect":
+      appendCmd("url redirect <new-url> <url>");
+      break;
+    case "menu-url-map":
+      appendCmd("url map <source-content-url> <url>");
+      break;
+    case "menu-domain-default":
+      appendCmd("<ip> <domain>");
+      break;
+    case "menu-domain-block":
+      appendCmd("domain block <domain>");
+      break;
+    case "menu-domain-null":
+      appendCmd("domain null <domain>");
+      break;
+    case "menu-domain-proxy":
+      appendCmd("domain proxy <domain>");
+      break;
+    default:
+      return;
+    }
+
+    if (showMenuHint) {
+      showMenuHint = false;
+      appendCmd("# 尖括号内容请替换成实际的值，如 <url> 替换成 http://a.bc/efg.html");
+    }
+  }
+});
+{{end}} <!-- end of owner's command guide -->
+
+</script>
 </body>
 </html>
