@@ -180,6 +180,33 @@ function openPack() {
   $( "#packDialog" ).dialog( "open" );
 }
 
+function reloadPack() {
+  $.ajax({
+    url: "/packs/names.json",
+    dataType: "json",
+    success: function(names) {
+      $( "#packNameOptions" ).empty();
+      for (var i = 0; i < names.length; i++) {
+        $( '<option value="' + names[i] + '">' + names[i] + '</option>' ).appendTo( "#packNameOptions" );
+      }
+    }
+  });
+}
+
+function loadPack() {
+  var name = document.getElementById('packNameOptions').value;
+  var cmd = $.ajax({
+    url : "/packs/get?name=" + name,
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("加载失败：" + cmd.responseText);
+  } else {
+    appendCmd(cmd.responseText);
+  }
+}
+
 </script>
 </head>
 
@@ -242,7 +269,8 @@ function openPack() {
 </form>
 
 <div id="packButton" style="display:none;">
-<input type="button" value="打包命令" onclick="openPack()" />
+<hr/>
+<input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em"></select><input type="button" value="加载命令包" onclick="loadPack()" />
 <div id="packDialog" title="打包命令">
 <form id="packForm" action="/profile/{{.Path}}/pack" method="post">
 包名：<input type="text" name="name" size="30" placeholder="module.case.item"/><br/>
@@ -364,6 +392,7 @@ $(document).ready(function() {
 $( "#packForm" ).ajaxForm({
   success: function(data) {
     if (data == "saved") {
+      reloadPack();
       alert("已保存");
     } else {
       alert("保存失败：" + data);
@@ -435,6 +464,8 @@ $( "#menu" ).menu({
     }
   }
 });
+
+reloadPack();
 
 }); // end of document.ready
 

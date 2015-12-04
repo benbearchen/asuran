@@ -9,6 +9,7 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/life"
 	"github.com/benbearchen/asuran/web/proxy/pack"
 
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -202,6 +203,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
+	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
+		p.dealPacks(w, r, page)
 	} else if urlPath == "/" {
 		p.index(w, p.ver)
 	} else if urlPath == "/devices" {
@@ -1093,4 +1096,35 @@ func (p *Proxy) packCommand(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Fprintf(w, "saved")
 	}
+}
+
+func (p *Proxy) dealPacks(w http.ResponseWriter, r *http.Request, page string) {
+	if len(page) <= 1 { // "" or "/"
+		p.writePacks(w)
+		return
+	}
+
+	switch page[1:] {
+	case "names.json":
+		bytes, err := json.Marshal(p.packs.ListNames())
+		if err == nil {
+			w.Write(bytes)
+		} else {
+			w.WriteHeader(502)
+			fmt.Fprintf(w, "error: %v", err)
+		}
+		return
+	case "get":
+		r.ParseForm()
+		cmd := p.packs.Get(r.Form.Get("name"))
+		if len(cmd) > 0 {
+			fmt.Fprintf(w, "%s", cmd)
+		} else {
+			w.WriteHeader(404)
+			fmt.Fprintln(w, "invalid name or pack is empty")
+		}
+		return
+	}
+
+	w.WriteHeader(404)
 }
