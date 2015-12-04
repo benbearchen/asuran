@@ -43,7 +43,7 @@
 </tr>
 {{range .Packs}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td>{{.Name}}</td>
+<td><a href="/packs/get?name={{.Name}}">{{.Name}}</a></td>
 <td>{{.Author}}</td>
 <td>{{.Comment}}</td>
 </tr>

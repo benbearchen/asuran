@@ -10,6 +10,7 @@
 <tr><td>您可管理设备列表：</td><td><a href="/profile" target="_blank">http://{{.ProxyHost}}/profile</a></td></tr>
 <tr><td>当前活跃设备：</td><td><a href="/devices" target="_blank">http://{{.ProxyHost}}/devices</a></td></tr>
 {{if .UsingDNS}}<tr><td>DNS 独立域名解析服务：</td><td><a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a></td></tr>{{end}}
+<tr><td>命令示例：</td><td><a href="/packs" target="_blank">http://{{.ProxyHost}}/packs</a></td></tr>
 </table>
 
 <hr/>
@@ -26,10 +27,11 @@ asuran {{.Version}} 当前支持特性：
 <li>HTTP 特性：<ul>
   <li>支持代理 GET，且可缓存
   <li>支持代理 POST，但不可缓存
-  <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求
+  <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求；支持完整缓存匹配 Range 请求
   <li>代理对一般 HTTP Header 原样返回（Transfer-Encoding/chunked 可能就不行了）
-  <li>代理 302 跳转，暂时不支持 302 透回客户端
+  <li>可以设置是否使 302 透回给客户端
   <li>强制返回指定 TCP 内容而不是 HTTP 协议内容
+  <li>可以设置是否主动禁止 304 请求
 </ul>
 <li>客户端行为历史记录<ul>
   <li>记录域名查询
@@ -39,7 +41,7 @@ asuran {{.Version}} 当前支持特性：
 当前不支持：
 <ul>
 <li>HTTPS
-<li>DNS 查询返回空结果以及延时
+<li>DNS 延时返回结果
 </ul>
 <hr/>
 
