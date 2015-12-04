@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"sort"
 )
 
 type urlActionData struct {
@@ -55,8 +56,15 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		}
 	}
 
+	keys := make([]string, 0, len(p.Urls))
+	for k, _ := range p.Urls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
 	even := true
-	for _, u := range p.Urls {
+	for _, k := range keys {
+		u := p.Urls[k]
 		even = !even
 		extra := u.Speed.String()
 		if len(extra) > 0 {
@@ -66,8 +74,15 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.Settings.String(), u.EditCommand(), u.DeleteCommand(), even})
 	}
 
+	keys = make([]string, 0, len(p.Domains))
+	for k, _ := range p.Domains {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
 	even = true
-	for _, d := range p.Domains {
+	for _, k := range keys {
+		d := p.Domains[k]
 		even = !even
 		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
 	}

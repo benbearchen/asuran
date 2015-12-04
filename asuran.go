@@ -9,6 +9,8 @@ import (
 
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -84,7 +86,8 @@ func version() {
 }
 
 var (
-	nodns = flag.Bool("nodns", false, "nodns DISABLE the dns function")
+	nodns   = flag.Bool("nodns", false, "nodns DISABLE the dns function")
+	dataDir = flag.String("datadir", "", "data dir save command packs, etc...")
 )
 
 func main() {
@@ -92,7 +95,12 @@ func main() {
 
 	flag.Parse()
 
-	p := proxy.NewProxy(VersionCode)
+	if *dataDir == "" {
+		dir := filepath.Join(filepath.Dir(os.Args[0]), "data")
+		dataDir = &dir
+	}
+
+	p := proxy.NewProxy(VersionCode, *dataDir)
 
 	ipProfiles := profile.NewIpProfiles()
 	ipProfiles.BindProxyHostOperator(p.NewProxyHostOperator())

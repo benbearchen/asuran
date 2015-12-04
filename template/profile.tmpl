@@ -42,6 +42,7 @@
 
 <script src="/res/js/external/jquery/jquery.js"></script>
 <script src="/res/js/jquery-ui.js"></script>
+<script src="/res/js/jquery.form.js"></script>
 
 <script type="text/javascript">
 
@@ -172,6 +173,40 @@ function domainCmd(act, opt) {
   appendCmd('domain ' + act + ' ' + d.value + opt);
 }
 
+function openPack() {
+  var cmdBox = document.getElementById('CommandBoxId');
+  var packBox = document.getElementById('PackCommandBox');
+  packBox.value = cmdBox.value;
+  $( "#packDialog" ).dialog( "open" );
+}
+
+function reloadPack() {
+  $.ajax({
+    url: "/packs/names.json",
+    dataType: "json",
+    success: function(names) {
+      $( "#packNameOptions" ).empty();
+      for (var i = 0; i < names.length; i++) {
+        $( '<option value="' + names[i] + '">' + names[i] + '</option>' ).appendTo( "#packNameOptions" );
+      }
+    }
+  });
+}
+
+function loadPack() {
+  var name = document.getElementById('packNameOptions').value;
+  var cmd = $.ajax({
+    url : "/packs/get?name=" + name,
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("加载失败：" + cmd.responseText);
+  } else {
+    appendCmd(cmd.responseText);
+  }
+}
+
 </script>
 </head>
 
@@ -233,6 +268,19 @@ function domainCmd(act, opt) {
 <textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 或设备上操作"{{end}}></textarea>
 </form>
 
+<div id="packButton" style="display:none;">
+<hr/>
+<input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em"></select><input type="button" value="加载命令包" onclick="loadPack()" />
+<div id="packDialog" title="打包命令">
+<form id="packForm" action="/profile/{{.Path}}/pack" method="post">
+包名：<input type="text" name="name" size="30" placeholder="module.case.item"/><br/>
+作者：<input type="text" name="author" size="30" placeholder="your nickname"/><br/>
+介绍：<input type="text" name="comment" size="30" placeholder=""/><br/>
+<input type="submit" value="打包如下命令：" /><br/>
+<textarea rows="5" cols="40" id="PackCommandBox" name="cmd"></textarea>
+</form>
+</div>
+</div>
 
 <hr/>
 
@@ -339,6 +387,29 @@ function domainCmd(act, opt) {
 
 {{if .NotOwner}}{{else}}
 
+$(document).ready(function() {
+
+$( "#packForm" ).ajaxForm({
+  success: function(data) {
+    if (data == "saved") {
+      reloadPack();
+      alert("已保存");
+    } else {
+      alert("保存失败：" + data);
+    }
+  },
+  error: function() {
+    alert("访问失败");
+  }
+});
+
+$( "#packDialog" ).dialog({
+  autoOpen: false,
+  width: 400
+});
+
+$( "#packButton" ).show();
+
 $( "#ulCommandTabs" ).show();
 
 $( "#commandTabs" ).tabs();
@@ -393,6 +464,11 @@ $( "#menu" ).menu({
     }
   }
 });
+
+reloadPack();
+
+}); // end of document.ready
+
 {{end}} <!-- end of owner's command guide -->
 
 </script>

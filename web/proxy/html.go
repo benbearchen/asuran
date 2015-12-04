@@ -4,6 +4,7 @@ import (
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
+	"github.com/benbearchen/asuran/web/proxy/pack"
 
 	"fmt"
 	"html/template"
@@ -439,6 +440,38 @@ type storeResultData struct {
 func (p *Proxy) writeStoreResult(w http.ResponseWriter, profileIP, url, id, sid string) {
 	t, err := template.ParseFiles("template/store-result.tmpl")
 	err = t.Execute(w, storeResultData{profileIP, url, id, sid})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type packData struct {
+	Even    bool
+	Name    string
+	Author  string
+	Comment string
+}
+
+type packsData struct {
+	Packs []packData
+}
+
+func formatPacksData(packs *pack.Dir) packsData {
+	names := packs.ListNames()
+	datas := make([]packData, 0, len(names))
+	for i, name := range names {
+		pack := packs.GetPack(name)
+		even := i%2 == 1
+		data := packData{even, pack.Name(), pack.Author(), pack.Comment()}
+		datas = append(datas, data)
+	}
+
+	return packsData{datas}
+}
+
+func (p *Proxy) writePacks(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/packs-list.tmpl")
+	err = t.Execute(w, formatPacksData(p.packs))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

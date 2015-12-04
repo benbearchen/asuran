@@ -7,7 +7,9 @@ import (
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
+	"github.com/benbearchen/asuran/web/proxy/pack"
 
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +17,7 @@ import (
 	gonet "net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -32,17 +35,19 @@ type Proxy struct {
 	serveIP    string
 	mainHost   string
 	disableDNS bool
+	packs      *pack.Dir
 
 	lock sync.RWMutex
 	r    *rand.Rand
 }
 
-func NewProxy(ver string) *Proxy {
+func NewProxy(ver string, dataDir string) *Proxy {
 	p := new(Proxy)
 	p.ver = ver
 	p.webServers = make(map[int]*httpd.Http)
 	p.lives = life.NewIPLives()
 	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	p.packs = pack.New(filepath.Join(dataDir, "packs"))
 
 	p.Bind(80)
 
@@ -198,6 +203,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
+	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
+		p.dealPacks(w, r, page)
 	} else if urlPath == "/" {
 		p.index(w, p.ver)
 	} else if urlPath == "/devices" {
@@ -771,6 +778,9 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		url := "http://" + strings.Join(pages[3:], "/")
 		p.remoteProxyUrl(profileIP, url, w, r)
 		return
+	} else if op == "pack" {
+		p.packCommand(w, r)
+		return
 	} else if op != "" {
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
@@ -1066,4 +1076,55 @@ func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Req
 	}
 
 	net.PipeConn(upConn, downConn)
+}
+
+func (p *Proxy) packCommand(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	name := r.Form.Get("name")
+	author := r.Form.Get("author")
+	comment := r.Form.Get("comment")
+	cmd := r.Form.Get("cmd")
+
+	if len(name) == 0 || len(author) == 0 || len(cmd) == 0 {
+		fmt.Fprintf(w, "error: some fields are empty")
+		return
+	}
+
+	err := p.packs.Save(name, author, comment, cmd)
+	if err != nil {
+		fmt.Fprintf(w, "save failed, err: %v", err)
+	} else {
+		fmt.Fprintf(w, "saved")
+	}
+}
+
+func (p *Proxy) dealPacks(w http.ResponseWriter, r *http.Request, page string) {
+	if len(page) <= 1 { // "" or "/"
+		p.writePacks(w)
+		return
+	}
+
+	switch page[1:] {
+	case "names.json":
+		bytes, err := json.Marshal(p.packs.ListNames())
+		if err == nil {
+			w.Write(bytes)
+		} else {
+			w.WriteHeader(502)
+			fmt.Fprintf(w, "error: %v", err)
+		}
+		return
+	case "get":
+		r.ParseForm()
+		cmd := p.packs.Get(r.Form.Get("name"))
+		if len(cmd) > 0 {
+			fmt.Fprintf(w, "%s", cmd)
+		} else {
+			w.WriteHeader(404)
+			fmt.Fprintln(w, "invalid name or pack is empty")
+		}
+		return
+	}
+
+	w.WriteHeader(404)
 }
