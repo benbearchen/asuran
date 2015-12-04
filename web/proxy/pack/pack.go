@@ -60,10 +60,17 @@ func (p *Pack) load(path string) error {
 	}
 
 	cmd := ""
+	titled := false
+	titleOver := false
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if len(line) <= 3 || line[:2] != "##" {
-			cmd += cmd + line + "\n"
+		if len(line) <= 3 || titleOver || line[:2] != "##" {
+			if titled && !titleOver {
+				titleOver = true // an empty line is needed after titles
+			} else {
+				cmd += cmd + line + "\n"
+			}
+
 			continue
 		}
 
@@ -71,6 +78,8 @@ func (p *Pack) load(path string) error {
 		if len(kv) != 2 {
 			continue
 		}
+
+		titled = true
 
 		k := strings.TrimSpace(kv[0])
 		v := strings.TrimSpace(kv[1])
@@ -124,6 +133,8 @@ func (p *Pack) File() string {
 	addHeader(FIELD_COMMENT, p.comment)
 
 	addHeader(FIELD_CREATE_TIME, strconv.FormatInt(p.create.UnixNano(), 10))
+
+	header += "\n"
 
 	return header + p.cmd
 }
