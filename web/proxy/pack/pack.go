@@ -147,3 +147,10 @@ func (p *Pack) WriteTo(path string, readonly bool) error {
 
 	return ioutil.WriteFile(path, []byte(p.File()), filemode)
 }
+
+const INVALID_NAME_CHARS = "'\"&=?#:%/\\\r\n \t"
+
+func VerifyName(name string) bool {
+	p := strings.IndexAny(name, INVALID_NAME_CHARS)
+	return p < 0
+}

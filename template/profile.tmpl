@@ -196,7 +196,7 @@ function reloadPack() {
 function loadPack() {
   var name = document.getElementById('packNameOptions').value;
   var cmd = $.ajax({
-    url : "/packs/get?name=" + name,
+    url : "/packs/get?name=" + encodeURIComponet(name),
     async: false
   });
 

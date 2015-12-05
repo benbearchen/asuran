@@ -1,6 +1,7 @@
 package pack
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -84,6 +85,18 @@ func (d *Dir) load() error {
 }
 
 func (d *Dir) Save(name, author, comment string, cmd string) error {
+	if !VerifyName(name) {
+		return fmt.Errorf("name(%q) contains invalid chars(%q)", name, INVALID_NAME_CHARS)
+	}
+
+	if !VerifyName(author) {
+		return fmt.Errorf("author(%q) contains invalid chars(%q)", author, INVALID_NAME_CHARS)
+	}
+
+	if !VerifyName(comment) {
+		return fmt.Errorf("comment(%q) contains invalid chars(%q)", comment, INVALID_NAME_CHARS)
+	}
+
 	p := newPack(name, author, comment, cmd)
 	d.packs.Add(p)
 
