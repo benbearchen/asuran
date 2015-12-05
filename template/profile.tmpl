@@ -185,9 +185,13 @@ function reloadPack() {
     url: "/packs/names.json",
     dataType: "json",
     success: function(names) {
+      var name = document.getElementById('packNameOptions').value;
       $( "#packNameOptions" ).empty();
       for (var i = 0; i < names.length; i++) {
         $( '<option value="' + names[i] + '">' + names[i] + '</option>' ).appendTo( "#packNameOptions" );
+        if (name == names[i]) {
+          $( "#packNameOptions" )[0].selectedIndex = i;
+        }
       }
     }
   });
