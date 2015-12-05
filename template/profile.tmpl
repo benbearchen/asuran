@@ -245,7 +245,7 @@ function doOperator(op) {
 <p>配置名字：{{.Name}}</p>
 <p>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}</p>
 <p>操作员 IP：<u id="operatorList">{{.Operators}}</u>{{if .NotOwner}}（你不能操作此配置）{{else}}
-<input type="button" value="增删操作员" onclick="openOperatorDialog()" />
+<input id="operatorButton" type="button" value="增删操作员" onclick="openOperatorDialog()" style="display:none" />
 <div id="operatorDialog" title="操作员" style="display:none">
 操作者 IP：<input type="text" id="operatorIP" size="16" /><br/>
 <input type="button" value="添加" onclick="doOperator('add')"/>
@@ -506,6 +506,7 @@ $( "#menu" ).menu({
 
 reloadPack();
 
+$( "#operatorButton" ).show();
 $( "#operatorDialog" ).dialog({
   autoOpen: false,
   width: 400
