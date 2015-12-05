@@ -763,15 +763,22 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				case "remove":
 					f.RemoveOperator(operator)
 				default:
-					fmt.Fprintf(w, "<html><body>未知操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", pages[3], profileIP)
+					w.WriteHeader(404)
+					fmt.Fprintf(w, "未知操作 %s", pages[3])
 					return
 				}
-			} else {
-				fmt.Fprintf(w, "<html><body>未知操作。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
-				return
 			}
 
-			fmt.Fprintf(w, "<html><body>好了。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+			operators := ""
+			for op, _ := range f.Operators {
+				if len(operators) == 0 {
+					operators = op
+				} else {
+					operators += ", " + op
+				}
+			}
+
+			fmt.Fprintf(w, "%s", operators)
 		}
 		return
 	} else if op == "to" {

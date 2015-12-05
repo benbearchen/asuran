@@ -211,14 +211,49 @@ function loadPack() {
   }
 }
 
+function openOperatorDialog() {
+  $( "#operatorDialog" ).dialog( "open" );
+}
+
+function doOperator(op) {
+  var ip = document.getElementById('operatorIP').value;
+  var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
+  if (!re.test(ip))
+  {
+    alert("无效客户端 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
+    return;
+  }
+
+  var cmd = $.ajax({
+    url : "/profile/{{.IP}}/operator/" + op + "/" + ip,
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("操作失败：" + cmd.responseText);
+  } else {
+    $( "#operatorList" ).text(cmd.responseText);
+    alert("操作成功")
+    $( "#operatorDialog" ).dialog( "close" );
+  }
+}
+
 </script>
 </head>
 
 <body>
 <p>配置名字：{{.Name}}</p>
-<p>当前作用 IP：{{.IP}}</p>
-<p>拥有者 IP：{{.Owner}}</p>
-<p>操作员 IP：{{.Operators}}</p>
+<p>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}</p>
+<p>操作员 IP：<u id="operatorList">{{.Operators}}</u>{{if .NotOwner}}（你不能操作此配置）{{else}}
+<input type="button" value="增删操作员" onclick="openOperatorDialog()" />
+<div id="operatorDialog" title="操作员" style="display:none">
+操作者 IP：<input type="text" id="operatorIP" size="16" /><br/>
+<input type="button" value="添加" onclick="doOperator('add')"/>
+<input type="button" value="删除" onclick="doOperator('remove')"/>
+<p>关于操作员的故事：
+</div>
+{{end}}
+</p>
 <hr/>
 <a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">重启客户端状态</a>
 <hr/>
@@ -269,7 +304,7 @@ function loadPack() {
 <td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
-<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 或设备上操作"{{end}}></textarea>
+<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea>
 </form>
 
 <div id="packButton" style="display:none;">
@@ -470,6 +505,11 @@ $( "#menu" ).menu({
 });
 
 reloadPack();
+
+$( "#operatorDialog" ).dialog({
+  autoOpen: false,
+  width: 400
+});
 
 }); // end of document.ready
 
