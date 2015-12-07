@@ -254,6 +254,7 @@ func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Li
 
 type dnsHistoryEventData struct {
 	Even     bool
+	Profile  bool
 	Time     string
 	Domain   string
 	DomainIP string
@@ -278,8 +279,12 @@ func formatDNSHistoryEventDataList(events []*life.HistoryEvent, f *life.Life, ta
 		s := strings.Split(e.String, " ")
 		if len(s) >= 3 {
 			client := s[0]
-			if len(targetIP) > 0 && targetIP != client {
-				continue
+			if len(targetIP) > 0 {
+				if targetIP != client {
+					continue
+				} else {
+					d.Profile = true
+				}
 			}
 
 			d.Client = client
