@@ -93,8 +93,8 @@ func (d *Dir) Save(name, author, comment string, cmd string) error {
 		return fmt.Errorf("author(%q) contains invalid chars(%q)", author, INVALID_NAME_CHARS)
 	}
 
-	if !VerifyName(comment) {
-		return fmt.Errorf("comment(%q) contains invalid chars(%q)", comment, INVALID_NAME_CHARS)
+	if !VerifyComment(comment) {
+		return fmt.Errorf("comment(%q) contains invalid chars(%q)", comment, INVALID_COMMENT_CHARS)
 	}
 
 	p := newPack(name, author, comment, cmd)

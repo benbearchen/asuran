@@ -154,3 +154,10 @@ func VerifyName(name string) bool {
 	p := strings.IndexAny(name, INVALID_NAME_CHARS)
 	return p < 0
 }
+
+const INVALID_COMMENT_CHARS = "\r\n\t"
+
+func VerifyComment(comment string) bool {
+	p := strings.IndexAny(comment, INVALID_COMMENT_CHARS)
+	return p < 0
+}
