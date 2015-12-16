@@ -56,7 +56,7 @@ func (*urlPolicyFactory) Build(args []string) (Policy, []string, error) {
 		}
 	}
 
-	if len(left) != 1 {
+	if len(left) == 0 {
 		return nil, left, fmt.Errorf("missing target url or pattern")
 	}
 
