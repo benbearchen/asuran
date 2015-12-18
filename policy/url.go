@@ -11,12 +11,24 @@ var urlSubKeys sub
 
 func init() {
 	urlSubKeys.init(
-		defaultKeyword,
-		proxyKeyword,
-		statusKeyword,
-		speedKeyword,
-		timeoutKeyword,
 		dropKeyword,
+		delayKeyword,
+		timeoutKeyword,
+		proxyKeyword,
+		cacheKeyword,
+		statusKeyword,
+		mapKeyword,
+		redirectKeyword,
+		rewriteKeyword,
+		restoreKeyword,
+		tcpwriteKeyword,
+		speedKeyword,
+		dont302Keyword,
+		do302Keyword,
+		disable304Keyword,
+		allow304Keyword,
+		contentTypeKeyword,
+		deleteKeyword,
 	)
 
 	regFactory(new(urlPolicyFactory))
