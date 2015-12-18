@@ -12,11 +12,12 @@ var domainSubKeys sub
 
 func init() {
 	domainSubKeys.init(
-		"default",
-		"block",
-		"proxy",
-		"null",
-		"delay",
+		defaultKeyword,
+		blockKeyword,
+		proxyKeyword,
+		nullKeyword,
+		delayKeyword,
+		deleteKeyword,
 	)
 
 	regFactory(new(domainPolicyFactory))
