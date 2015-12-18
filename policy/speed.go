@@ -41,7 +41,7 @@ func (s *SpeedPolicy) Keyword() string {
 }
 
 func (s *SpeedPolicy) Command() string {
-	return "speed " + formatSpeed(s.speed)
+	return speedKeyword + " " + formatSpeed(s.speed)
 }
 
 func (s *SpeedPolicy) Comment() string {

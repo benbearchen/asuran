@@ -11,10 +11,12 @@ var urlSubKeys sub
 
 func init() {
 	urlSubKeys.init(
-		"proxy",
-		"status",
+		defaultKeyword,
+		proxyKeyword,
+		statusKeyword,
 		speedKeyword,
-		"timeout",
+		timeoutKeyword,
+		dropKeyword,
 	)
 
 	regFactory(new(urlPolicyFactory))
@@ -99,7 +101,26 @@ func (u *UrlPolicy) Comment() string {
 	return strings.Join(c, "；")
 }
 
-func (u *UrlPolicy) Speed() Policy {
+func (u *UrlPolicy) Speed() *SpeedPolicy {
 	p, _ := u.subKeys[speedKeyword]
-	return p
+	if p != nil {
+		p, ok := p.(*SpeedPolicy)
+		if ok {
+			return p
+		}
+	}
+
+	return nil
+}
+
+func (u *UrlPolicy) Status() *StatusPolicy {
+	p, _ := u.subKeys[statusKeyword]
+	if p != nil {
+		p, ok := p.(*StatusPolicy)
+		if ok {
+			return p
+		}
+	}
+
+	return nil
 }
