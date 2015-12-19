@@ -42,7 +42,7 @@ func (s *stringPolicy) Keyword() string {
 }
 
 func (s *stringPolicy) Command() string {
-	return s.keyword
+	return s.keyword + " " + s.str
 }
 
 func (s *stringPolicy) Comment() string {
