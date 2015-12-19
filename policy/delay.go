@@ -149,55 +149,106 @@ func (p *baseDelayPolicy) RandDuration(r *rand.Rand) time.Duration {
 	return (time.Duration)(t * 1000000000)
 }
 
-func (p *DelayPolicy) Keyword() string {
+func (d *DelayPolicy) Keyword() string {
 	return delayKeyword
 }
 
-func (p *DelayPolicy) Command() string {
-	return delayKeyword + " " + p.command()
+func (d *DelayPolicy) Command() string {
+	return delayKeyword + " " + d.command()
 }
 
-func (p *DelayPolicy) Comment() string {
-	c := "延时" + p.comment() + "后继续"
-	if p.body {
+func (d *DelayPolicy) Comment() string {
+	c := "延时" + d.comment() + "后继续"
+	if d.body {
 		c = "对 HTTP Body "
 	}
 
 	return c
 }
 
-func (p *TimeoutPolicy) Keyword() string {
+func (d *DelayPolicy) Update(p Policy) error {
+	if d.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *DelayPolicy:
+		d.body = p.body
+		d.rand = p.rand
+		d.duration = p.duration
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
+}
+
+func (d *TimeoutPolicy) Keyword() string {
 	return timeoutKeyword
 }
 
-func (p *TimeoutPolicy) Command() string {
-	return timeoutKeyword + " " + p.command()
+func (d *TimeoutPolicy) Command() string {
+	return timeoutKeyword + " " + d.command()
 }
 
-func (p *TimeoutPolicy) Comment() string {
-	c := "等" + p.comment() + "后超时"
-	if p.body {
+func (d *TimeoutPolicy) Comment() string {
+	c := "等" + d.comment() + "后超时"
+	if d.body {
 		c = "对 HTTP Body "
 	}
 
 	return c
 }
 
-func (p *DropPolicy) Keyword() string {
+func (d *TimeoutPolicy) Update(p Policy) error {
+	if d.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *TimeoutPolicy:
+		d.body = p.body
+		d.rand = p.rand
+		d.duration = p.duration
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
+}
+
+func (d *DropPolicy) Keyword() string {
 	return dropKeyword
 }
 
-func (p *DropPolicy) Command() string {
-	return dropKeyword + " " + p.command()
+func (d *DropPolicy) Command() string {
+	return dropKeyword + " " + d.command()
 }
 
-func (p *DropPolicy) Comment() string {
-	c := "丢弃前" + p.comment() + "请求"
-	if p.body {
+func (d *DropPolicy) Comment() string {
+	c := "丢弃前" + d.comment() + "请求"
+	if d.body {
 		c = "对 HTTP Body "
 	}
 
 	return c
+}
+
+func (d *DropPolicy) Update(p Policy) error {
+	if d.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *DropPolicy:
+		d.body = p.body
+		d.rand = p.rand
+		d.duration = p.duration
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
 }
 
 func parseDuration(d string) (float32, error) {

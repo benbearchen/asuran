@@ -47,4 +47,73 @@ func TestUrlPolicy(t *testing.T) {
 			}
 		}
 	}
+
+	cmdex := "url status 502 g.cn"
+	ex, err := Factory(cmdex)
+	if err != nil {
+		t.Errorf("url(%s) failed: %v", cmdex, err)
+	} else {
+		err = u.Update(ex)
+		if err != nil {
+			t.Errorf("url(%s).Update(%s) failed: %v", cmd, cmdex, err)
+		}
+
+		if u.Command() != cmdex {
+			t.Errorf("url(%s).Update(%s).Command() changed: %s", cmd, cmdex, u.Command())
+		}
+	}
+
+	cmd = u.Command()
+	cmdex = "url update speed 1"
+	ex, err = Factory(cmdex)
+	if err != nil {
+		t.Errorf("url(%s) failed: %v", cmdex, err)
+	} else {
+		if ex.(*UrlPolicy).Set() {
+			t.Errorf("url(%s).Set() not false", cmdex)
+		}
+
+		err = u.Update(ex)
+		if err != nil {
+			t.Errorf("url(%s).Update(%s) failed: %v", cmd, cmdex, err)
+		}
+
+		p := u.(*UrlPolicy)
+		if p.Speed() == nil || p.Speed().Speed() != 1 {
+			t.Errorf("url(%s).Update(%s).Speed() wrong: %v", cmd, cmdex, p.Speed())
+		}
+
+		if p.Status() == nil || p.Status().StatusCode() != 502 {
+			t.Errorf("url(%s).Update(%s).Status() wrong: %v", cmd, cmdex, p.Status())
+		}
+	}
+
+	cmd = u.Command()
+	cmdex = "url set dont302"
+	ex, err = Factory(cmdex)
+	if err != nil {
+		t.Errorf("url(%s) failed: %v", cmdex, err)
+	} else {
+		if !ex.(*UrlPolicy).Set() {
+			t.Errorf("url(%s).Set() not true", cmdex)
+		}
+
+		err = u.Update(ex)
+		if err != nil {
+			t.Errorf("url(%s).Update(%s) failed: %v", cmd, cmdex, err)
+		}
+
+		p := u.(*UrlPolicy)
+		if p.Speed() != nil {
+			t.Errorf("url(%s).Update(%s).Speed() not be nil: %v", cmd, cmdex, p.Speed())
+		}
+
+		if p.Status() != nil {
+			t.Errorf("url(%s).Update(%s).Status() not be nil: %v", cmd, cmdex, p.Status())
+		}
+
+		if p.Dont302() == false {
+			t.Errorf("url(%s).Update(%s).Dont302() not be true", cmd, cmdex)
+		}
+	}
 }

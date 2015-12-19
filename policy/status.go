@@ -51,6 +51,21 @@ func (s *StatusPolicy) Comment() string {
 	return "状态码 " + strconv.Itoa(s.status)
 }
 
+func (s *StatusPolicy) Update(p Policy) error {
+	if s.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", s.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *StatusPolicy:
+		s.status = p.status
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
+}
+
 func (s *StatusPolicy) StatusCode() int {
 	return s.status
 }

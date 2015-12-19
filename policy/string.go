@@ -49,6 +49,21 @@ func (s *stringPolicy) Comment() string {
 	return s.comment(s.str)
 }
 
+func (s *stringPolicy) Update(p Policy) error {
+	if s.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", s.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *stringPolicy:
+		s.str = p.Value()
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
+}
+
 func (s *stringPolicy) Value() string {
 	return s.str
 }

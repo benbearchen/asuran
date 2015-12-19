@@ -33,3 +33,7 @@ func (dog *dogPolicy) Command() string {
 func (dog *dogPolicy) Comment() string {
 	return dog.comment
 }
+
+func (dog *dogPolicy) Update(Policy) error {
+	return nil
+}

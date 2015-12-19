@@ -127,6 +127,24 @@ func (d *DomainPolicy) Comment() string {
 	}
 }
 
+func (d *DomainPolicy) Update(p Policy) error {
+	if d.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *DomainPolicy:
+		d.target = p.target
+		d.act = p.act
+		d.delay = p.delay
+		d.ip = p.ip
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
+}
+
 func (d *DomainPolicy) Domain() string {
 	return d.target
 }

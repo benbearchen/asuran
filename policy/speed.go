@@ -48,6 +48,25 @@ func (s *SpeedPolicy) Comment() string {
 	return "匀速 " + formatSpeed(s.speed)
 }
 
+func (s *SpeedPolicy) Update(p Policy) error {
+	if s.Keyword() != p.Keyword() {
+		return fmt.Errorf("unmatch keywrod: %s vs %s", s.Keyword(), p.Keyword())
+	}
+
+	switch p := p.(type) {
+	case *SpeedPolicy:
+		s.speed = p.speed
+	default:
+		return fmt.Errorf("unmatch policy")
+	}
+
+	return nil
+}
+
+func (s *SpeedPolicy) Speed() float32 {
+	return s.speed
+}
+
 func formatSpeed(speed float32) string {
 	if speed >= 1024*1024*1024 {
 		return strconv.FormatFloat(float64(speed)/1024/1024/1024, 'f', -1, 32) + "GB/s"
