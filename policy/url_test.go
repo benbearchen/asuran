@@ -16,6 +16,10 @@ func TestUrlPolicy(t *testing.T) {
 		if !ok {
 			t.Errorf("url(%s) result not *UrlPolicy", cmd, u)
 		} else {
+			if url.Target() != "g.cn" {
+				t.Errorf(`url(%s).Target() wrong: %s`, cmd, url.Target())
+			}
+
 			if url.Speed() == nil {
 				t.Errorf("url(%s) missed speed policy", cmd)
 			}
@@ -26,7 +30,7 @@ func TestUrlPolicy(t *testing.T) {
 		}
 	}
 
-	cmd = "url status 400 g.cn"
+	cmd = "url drop 1s status 400 g.cn"
 	u, err = Factory(cmd)
 	if err != nil {
 		t.Errorf("url(%s) failed: %v", cmd, err)
@@ -39,6 +43,17 @@ func TestUrlPolicy(t *testing.T) {
 		if !ok {
 			t.Errorf("url(%s) result not *UrlPolicy", cmd, u)
 		} else {
+			if url.DelayPolicy() == nil {
+				t.Errorf("url(%s) missed drop policy", cmd)
+			} else {
+				d, ok := url.DelayPolicy().(*DropPolicy)
+				if !ok {
+					t.Errorf("url(%s).DelayPolicy() not drop policy: %v", cmd, url.DelayPolicy())
+				} else if d.duration != 1 {
+					t.Errorf("url(%s).DelayPolicy().duration is wrong: %d", cmd, d.duration)
+				}
+			}
+
 			p := url.Status()
 			if p == nil {
 				t.Errorf("url(%s) missed status policy", cmd)
@@ -58,7 +73,7 @@ func TestUrlPolicy(t *testing.T) {
 			t.Errorf("url(%s).Update(%s) failed: %v", cmd, cmdex, err)
 		}
 
-		if u.Command() != cmdex {
+		if u.Command() != "url drop 1s status 502 g.cn" {
 			t.Errorf("url(%s).Update(%s).Command() changed: %s", cmd, cmdex, u.Command())
 		}
 	}
@@ -114,6 +129,10 @@ func TestUrlPolicy(t *testing.T) {
 
 		if p.Dont302() == false {
 			t.Errorf("url(%s).Update(%s).Dont302() not be true", cmd, cmdex)
+		}
+
+		if p.DelayPolicy() != nil {
+			t.Errorf("url(%s).Update(%s).DelayPolicy() not be nil: %v", cmd, cmdex, p.DelayPolicy())
 		}
 	}
 }

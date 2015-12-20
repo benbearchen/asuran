@@ -38,10 +38,13 @@ func init() {
 }
 
 type UrlPolicy struct {
-	target  string
-	set     *SetPolicy
-	subs    []Policy
-	subKeys map[string]Policy
+	target   string
+	set      *SetPolicy
+	delays   Policy // drop, delay, timeout
+	contents Policy // proxy, cache, map, redirect, rewrite, restore, tcpwrite
+	bodys    Policy // delay body, timeout body
+	subs     []Policy
+	subKeys  map[string]Policy
 }
 
 type urlPolicyFactory struct {
@@ -78,24 +81,47 @@ func (*urlPolicyFactory) Build(args []string) (Policy, []string, error) {
 		left = nil
 	}
 
-	return newUrlPolicy(subs, target), left, nil
+	p, err := newUrlPolicy(subs, target)
+	return p, left, err
 }
 
-func newUrlPolicy(subs []Policy, target string) *UrlPolicy {
+func newUrlPolicy(subs []Policy, target string) (*UrlPolicy, error) {
 	u := new(UrlPolicy)
 	u.target = target
-	u.subs = subs
+	u.subs = make([]Policy, 0, 4)
 	u.subKeys = make(map[string]Policy)
+
 	for _, p := range subs {
 		switch p := p.(type) {
 		case *SetPolicy:
 			u.set = p
+		case *DelayPolicy, *TimeoutPolicy, *DropPolicy:
+			if p.(baseDelayInterface).Body() {
+				if u.bodys != nil {
+					return nil, fmt.Errorf(`conflict keyword: "%s" vs "%s"`, u.bodys.Command(), p.Command())
+				} else {
+					u.bodys = p
+				}
+			} else {
+				if u.delays != nil {
+					return nil, fmt.Errorf(`conflict keyword: "%s" vs "%s"`, u.delays.Command(), p.Command())
+				} else {
+					u.delays = p
+				}
+			}
+		case *ProxyPolicy, *CachePolicy, *MapPolicy, *RedirectPolicy, *RewritePolicy, *RestorePolicy, *TcpwritePolicy:
+			if u.contents != nil {
+				return nil, fmt.Errorf(`conflict keyword: "%s" vs "%s"`, u.contents.Command(), p.Command())
+			} else {
+				u.contents = p
+			}
 		default:
+			u.subs = append(u.subs, p)
 			u.subKeys[p.Keyword()] = p
 		}
 	}
 
-	return u
+	return u, nil
 }
 
 func FactoryUrl(cmd string) (*UrlPolicy, error) {
@@ -119,6 +145,18 @@ func (u *UrlPolicy) Keyword() string {
 func (u *UrlPolicy) Command() string {
 	s := make([]string, 0, 2+len(u.subs))
 	s = append(s, urlKeyword)
+	if u.delays != nil {
+		s = append(s, u.delays.Command())
+	}
+
+	if u.contents != nil {
+		s = append(s, u.contents.Command())
+	}
+
+	if u.bodys != nil {
+		s = append(s, u.bodys.Command())
+	}
+
 	for _, p := range u.subs {
 		s = append(s, p.Command())
 	}
@@ -129,6 +167,18 @@ func (u *UrlPolicy) Command() string {
 
 func (u *UrlPolicy) Comment() string {
 	c := make([]string, 0, len(u.subs))
+	if u.delays != nil {
+		c = append(c, u.delays.Comment())
+	}
+
+	if u.contents != nil {
+		c = append(c, u.contents.Comment())
+	}
+
+	if u.bodys != nil {
+		c = append(c, u.bodys.Comment())
+	}
+
 	for _, p := range u.subs {
 		c = append(c, p.Comment())
 	}
@@ -157,9 +207,24 @@ func (u *UrlPolicy) Update(p Policy) error {
 
 func (u *UrlPolicy) update(p *UrlPolicy) error {
 	if p.Set() {
+		u.delays = p.delays
+		u.contents = p.contents
+		u.bodys = p.bodys
 		u.subs = p.subs
 		u.subKeys = p.subKeys
 	} else {
+		if p.delays != nil {
+			u.delays = p.delays
+		}
+
+		if p.contents != nil {
+			u.contents = p.contents
+		}
+
+		if p.bodys != nil {
+			u.bodys = p.bodys
+		}
+
 		for i, s := range u.subs {
 			key := s.Keyword()
 			sub, ok := p.subKeys[key]
@@ -178,6 +243,10 @@ func (u *UrlPolicy) update(p *UrlPolicy) error {
 	}
 
 	return nil
+}
+
+func (u *UrlPolicy) Target() string {
+	return u.target
 }
 
 func (u *UrlPolicy) Speed() *SpeedPolicy {
@@ -226,4 +295,33 @@ func (u *UrlPolicy) Disable304() bool {
 	}
 
 	return false
+}
+
+func (u *UrlPolicy) ContentType() string {
+	p, _ := u.subKeys[contentTypeKeyword]
+	if p != nil {
+		c, ok := p.(*ContentTypePolicy)
+		if ok {
+			return c.Value()
+		}
+	}
+
+	return ""
+}
+
+func (u *UrlPolicy) Delete() bool {
+	_, ok := u.subKeys[delayKeyword]
+	return ok
+}
+
+func (u *UrlPolicy) DelayPolicy() Policy {
+	return u.delays
+}
+
+func (u *UrlPolicy) ContentPolicy() Policy {
+	return u.contents
+}
+
+func (u *UrlPolicy) BodyPolicy() Policy {
+	return u.bodys
 }

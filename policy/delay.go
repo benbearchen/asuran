@@ -136,6 +136,14 @@ func (p *baseDelayPolicy) comment() string {
 	return c
 }
 
+func (p *baseDelayPolicy) Body() bool {
+	return p.body
+}
+
+func (p *baseDelayPolicy) Rand() bool {
+	return p.rand
+}
+
 func (p *baseDelayPolicy) Duration() time.Duration {
 	return (time.Duration)(p.duration * 1000000000)
 }
@@ -147,6 +155,11 @@ func (p *baseDelayPolicy) RandDuration(r *rand.Rand) time.Duration {
 	}
 
 	return (time.Duration)(t * 1000000000)
+}
+
+type baseDelayInterface interface {
+	Body() bool
+	Rand() bool
 }
 
 func (d *DelayPolicy) Keyword() string {
