@@ -2,7 +2,7 @@ package proxy
 
 import (
 	gonet "github.com/benbearchen/asuran/net"
-	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/policy"
 
 	"bufio"
 	"fmt"
@@ -14,7 +14,7 @@ import (
 )
 
 type delayWriter struct {
-	delay      profile.DelayAction
+	delay      policy.Policy
 	w          io.Writer
 	d          time.Duration
 	start      time.Time
@@ -23,11 +23,15 @@ type delayWriter struct {
 	first      bool
 }
 
-func newDelayWriter(delayAction profile.DelayAction, w io.Writer, r *rand.Rand) io.Writer {
+type delayInterface interface {
+	RandDuration(r *rand.Rand) time.Duration
+}
+
+func newDelayWriter(delayAction policy.Policy, w io.Writer, r *rand.Rand) io.Writer {
 	d := new(delayWriter)
 	d.delay = delayAction
 	d.w = w
-	d.d = delayAction.RandDuration(r)
+	d.d = delayAction.(delayInterface).RandDuration(r)
 	d.start = time.Now()
 	d.r = r
 	d.first = true
@@ -44,13 +48,13 @@ func (d *delayWriter) Write(p []byte) (n int, err error) {
 		d.Flush()
 	}
 
-	switch d.delay.Act {
-	case profile.DelayActDelayEach:
+	switch d.delay.(type) {
+	case *policy.DelayPolicy:
 		if !d.hasDelayed {
 			d.hasDelayed = true
 			<-time.NewTimer(d.d).C
 		}
-	case profile.DelayActTimeout:
+	case *policy.TimeoutPolicy:
 		once := len(p) / 1024
 		sum := 0
 		if once < 1 {

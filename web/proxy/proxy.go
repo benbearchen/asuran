@@ -4,6 +4,7 @@ import (
 	"github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/net/httpd"
 	"github.com/benbearchen/asuran/net/websocket"
+	"github.com/benbearchen/asuran/policy"
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
@@ -288,88 +289,94 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	var writeWrap io.Writer = nil
+	var up *policy.UrlPolicy
 
 	if p.urlOp != nil {
-		delay := p.urlOp.Delay(remoteIP, fullUrl)
-		//fmt.Println("url delay: " + delay.String())
-		switch delay.Act {
-		case profile.DelayActDelayEach:
-			if delay.Time > 0 {
-				// TODO: create request before sleep, more effective
+		up = p.urlOp.Action(remoteIP, fullUrl)
+	}
+
+	if up != nil {
+		delay := up.DelayPolicy()
+		if delay != nil {
+			//fmt.Println("url delay: " + delay.String())
+			switch delay := delay.(type) {
+			case *policy.DelayPolicy:
+				if delay.Duration() > 0 {
+					// TODO: create request before sleep, more effective
+					d := delay.RandDuration(p.r)
+					time.Sleep(d)
+					f.Log("proxy " + fullUrl + " delay " + d.String())
+				}
+				break
+			case *policy.DropPolicy:
 				d := delay.RandDuration(p.r)
-				time.Sleep(d)
-				f.Log("proxy " + fullUrl + " delay " + d.String())
-			}
-			break
-		case profile.DelayActDropUntil:
-			d := delay.RandDuration(p.r)
-			if u != nil && u.DropUntil(d) {
-				f.Log("proxy " + fullUrl + " drop " + d.String())
+				if u != nil && u.DropUntil(d) {
+					f.Log("proxy " + fullUrl + " drop " + d.String())
+					net.ResetResponse(w)
+					return
+				}
+				break
+			case *policy.TimeoutPolicy:
+				if delay.Duration() > 0 {
+					d := delay.RandDuration(p.r)
+					time.Sleep(d)
+					f.Log("proxy " + fullUrl + " timeout " + d.String())
+				} else {
+					f.Log("proxy " + fullUrl + " timeout")
+				}
 				net.ResetResponse(w)
 				return
+				break
 			}
-			break
-		case profile.DelayActTimeout:
-			if delay.Time > 0 {
-				d := delay.RandDuration(p.r)
-				time.Sleep(d)
-				f.Log("proxy " + fullUrl + " timeout " + d.String())
-			} else {
-				f.Log("proxy " + fullUrl + " timeout")
-			}
-			net.ResetResponse(w)
-			return
-			break
 		}
 
-		act := p.urlOp.Action(remoteIP, fullUrl)
-		//fmt.Println("url act: " + act.String())
-		speed := p.urlOp.Speed(remoteIP, fullUrl)
-		bodyDelay := p.urlOp.BodyDelay(remoteIP, fullUrl)
-
-		switch act.Act {
-		case profile.UrlActCache:
-			needCache = true
-		case profile.UrlActStatus:
-			status := 502
-			if c, err := strconv.Atoi(act.ContentValue); err == nil {
-				status = c
+		if s := up.Status(); s != nil {
+			status := s.StatusCode()
+			if status == 0 {
+				status = 502
 			}
 
 			w.WriteHeader(status)
 			f.Log("proxy " + fullUrl + " status " + strconv.Itoa(status))
 			return
-		case profile.UrlActMap:
-			requestUrl = act.ContentValue
-			requestR = nil
-			contentSource = "map " + act.ContentValue
-		case profile.UrlActRedirect:
-			http.Redirect(w, r, act.ContentValue, 302)
-			f.Log("proxy " + fullUrl + " redirect " + act.ContentValue)
-			return
-		case profile.UrlActRewritten:
-			fallthrough
-		case profile.UrlActRestore:
-			fallthrough
-		case profile.UrlActTcpWritten:
-			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay) {
+		}
+
+		act := up.ContentPolicy()
+		//fmt.Println("url act: " + act.String())
+		speed := up.Speed()
+		bodyDelay := up.BodyPolicy()
+
+		if act != nil {
+			switch act := act.(type) {
+			case *policy.CachePolicy:
+				needCache = true
+			case *policy.MapPolicy:
+				requestUrl = act.Value()
+				requestR = nil
+				contentSource = "map " + act.Value()
+			case *policy.RedirectPolicy:
+				http.Redirect(w, r, act.Value(), 302)
+				f.Log("proxy " + fullUrl + " redirect " + act.Value())
 				return
+			case *policy.RewritePolicy, *policy.RestorePolicy, *policy.TcpwritePolicy:
+				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay, up.ContentType()) {
+					return
+				}
 			}
 		}
 
-		switch bodyDelay.Act {
-		case profile.DelayActDelayEach:
-			fallthrough
-		case profile.DelayActTimeout:
-			if writeWrap == nil {
-				writeWrap = w
-			}
+		if bodyDelay != nil {
+			switch bodyDelay.(type) {
+			case *policy.DelayPolicy, *policy.TimeoutPolicy:
+				if writeWrap == nil {
+					writeWrap = w
+				}
 
-			writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r)
+				writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r)
+			}
 		}
 
-		switch speed.Act {
-		case profile.SpeedActConstant:
+		if speed != nil {
 			if writeWrap == nil {
 				writeWrap = w
 			}
@@ -394,10 +401,10 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 
 	dont302 := true
 	settingContentType := "default"
-	if prof != nil {
-		dont302 = prof.SettingDont302(fullUrl)
-		settingContentType = prof.SettingStringDef(fullUrl, "content-type", settingContentType)
-		if prof.SettingSwitch(fullUrl, "disable304") {
+	if up != nil {
+		dont302 = up.Dont302()
+		settingContentType = up.ContentType()
+		if up.Disable304() {
 			p.disable304FromHeader(requestR.Header)
 		}
 	}
@@ -428,26 +435,30 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction, speed profile.SpeedAction, bodyDelay profile.DelayAction) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act policy.Policy, speed *policy.SpeedPolicy, bodyDelay policy.Policy, contentType string) bool {
 	var content []byte = nil
 	contentSource := ""
-	switch act.Act {
-	case profile.UrlActRewritten:
-		fallthrough
-	case profile.UrlActTcpWritten:
-		u, err := url.QueryUnescape(act.ContentValue)
+	istcp := false
+	switch act := act.(type) {
+	case *policy.RewritePolicy:
+		u, err := url.QueryUnescape(act.Value())
 		if err != nil {
 			return false
 		}
 
 		content = []byte(u)
-		if act.Act == profile.UrlActRewritten {
-			contentSource = "rewrite"
-		} else if act.Act == profile.UrlActTcpWritten {
-			contentSource = "tcpwrite"
+		contentSource = "rewrite"
+	case *policy.TcpwritePolicy:
+		istcp = true
+		u, err := url.QueryUnescape(act.Value())
+		if err != nil {
+			return false
 		}
-	case profile.UrlActRestore:
-		content = prof.Restore(act.ContentValue)
+
+		content = []byte(u)
+		contentSource = "tcpwrite"
+	case *policy.RestorePolicy:
+		content = prof.Restore(act.Value())
 		if content == nil {
 			return false
 		}
@@ -469,22 +480,21 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if act.Act != profile.UrlActTcpWritten {
-		p.procHeader(w.Header(), prof.SettingStringDef(target, "content-type", "default"))
+	if _, ok := act.(*policy.TcpwritePolicy); !ok {
+		p.procHeader(w.Header(), contentType)
 	}
 
 	var writeWrapper func(w io.Writer) io.Writer = nil
-	switch bodyDelay.Act {
-	case profile.DelayActDelayEach:
-		fallthrough
-	case profile.DelayActTimeout:
-		writeWrapper = func(w io.Writer) io.Writer {
-			return newDelayWriter(bodyDelay, w, p.r)
+	if bodyDelay != nil {
+		switch bodyDelay.(type) {
+		case *policy.DelayPolicy, *policy.TimeoutPolicy:
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newDelayWriter(bodyDelay, w, p.r)
+			}
 		}
 	}
 
-	switch speed.Act {
-	case profile.SpeedActConstant:
+	if speed != nil {
 		if writeWrapper != nil {
 			wrap := writeWrapper
 			writeWrapper = func(w io.Writer) io.Writer {
@@ -498,7 +508,7 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	start := time.Now()
-	if act.Act == profile.UrlActTcpWritten {
+	if istcp {
 		net.TcpWriteHttp(w, writeWrapper, content)
 	} else {
 		if writeWrapper != nil {
@@ -509,7 +519,7 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	c := cache.NewUrlCache(target, r, nil, nil, contentSource, content, rangeInfo, start, time.Now(), nil)
-	if act.Act == profile.UrlActTcpWritten {
+	if istcp {
 		c.ResponseCode = 599
 	} else {
 		c.ResponseCode = 200
@@ -535,10 +545,10 @@ type proxyDomainOperator struct {
 	p *Proxy
 }
 
-func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
+func (p *proxyDomainOperator) Action(ip, domain string) *policy.DomainPolicy {
 	if domain == "i.me" {
 		p.p.LogDomain(ip, ip, "init", domain, p.p.serveIP)
-		return profile.NewDomainAction(domain, profile.DomainActNone, p.p.serveIP)
+		return policy.NewStaticDomainPolicy(domain, p.p.serveIP)
 	}
 
 	profIP := ip
@@ -551,23 +561,21 @@ func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if p.p.domainOp != nil {
 		act := "query"
 		a := p.p.domainOp.Action(profIP, domain)
-		if a != nil {
-			b := *a
-			a = &b
-		}
-
-		if a != nil {
-			if a.Act == profile.DomainActProxy {
-				a.IP = p.p.serveIP
+		if a != nil && a.Action() != nil {
+			switch a.Action().(type) {
+			case *policy.ProxyPolicy:
+				a = policy.NewStaticDomainPolicy(domain, p.p.serveIP)
 				act = "proxy"
-			} else if a.Act == profile.DomainActBlock {
+			case *policy.BlockPolicy:
 				act = "block"
+			case *policy.NullPolicy:
+				act = "null"
 			}
 		}
 
 		resultIP := ""
-		if a != nil && len(a.IP) > 0 {
-			resultIP = a.IP
+		if a != nil && len(a.IP()) > 0 {
+			resultIP = a.IP()
 		}
 
 		p.p.LogDomain(profIP, ip, act, domain, resultIP)
@@ -680,7 +688,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "redirect":
 				if len(pages) >= 5 {
 					domain := pages[4]
-					f.SetUrl(false, profile.UrlToPattern(domain), nil, nil, nil, nil, make(map[string]string))
+					dp, _ := policy.Factory("domain proxy " + profile.UrlToPattern(domain))
+					f.SetDomainPolicy(dp.(*policy.DomainPolicy))
 					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
 					return
 				}
@@ -696,7 +705,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				if len(pages) >= 5 {
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
-						f.SetUrl(false, profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil, make(map[string]string))
+						up, _ := policy.Factory("url restore " + sid + " " + profile.UrlToPattern(u))
+						f.SetUrlPolicy(up.(*policy.UrlPolicy))
 						p.writeStoreResult(w, profileIP, u, id, sid)
 					}
 					return
@@ -927,11 +937,11 @@ func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr stri
 	}
 
 	a := p.domainOp.Action(client, domain)
-	if a == nil || len(a.IP) == 0 {
+	if a == nil || len(a.IP()) == 0 {
 		return nil
 	}
 
-	address := gonet.JoinHostPort(a.IP, port)
+	address := gonet.JoinHostPort(a.IP(), port)
 	return func(network, addr string) (gonet.Conn, error) {
 		if network == "tcp" {
 			return gonet.Dial(network, address)
@@ -1050,8 +1060,8 @@ func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Req
 	host := domain
 	if p.domainOp != nil {
 		a := p.domainOp.Action(client, domain)
-		if a != nil && len(a.IP) > 0 {
-			host = a.IP
+		if a != nil && len(a.IP()) > 0 {
+			host = a.IP()
 		}
 	}
 

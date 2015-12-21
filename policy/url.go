@@ -186,6 +186,15 @@ func (u *UrlPolicy) Comment() string {
 	return strings.Join(c, "；")
 }
 
+func (u *UrlPolicy) OtherComment() string {
+	c := make([]string, 0, len(u.subs))
+	for _, p := range u.subs {
+		c = append(c, p.Comment())
+	}
+
+	return strings.Join(c, "；")
+}
+
 func (u *UrlPolicy) Set() bool {
 	return u.set != nil && u.set.Value()
 }
@@ -306,7 +315,7 @@ func (u *UrlPolicy) ContentType() string {
 		}
 	}
 
-	return ""
+	return ContentTypeActDefault
 }
 
 func (u *UrlPolicy) Delete() bool {

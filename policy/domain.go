@@ -83,6 +83,10 @@ func newDomainPolicy(domain string, act, delay Policy, ip string) *DomainPolicy 
 	return &DomainPolicy{domain, act, delay, ip}
 }
 
+func NewStaticDomainPolicy(domain, ip string) *DomainPolicy {
+	return &DomainPolicy{domain, nil, nil, ip}
+}
+
 func (d *DomainPolicy) Keyword() string {
 	return domainKeyword
 }
@@ -134,7 +138,6 @@ func (d *DomainPolicy) Update(p Policy) error {
 
 	switch p := p.(type) {
 	case *DomainPolicy:
-		d.target = p.target
 		d.act = p.act
 		d.delay = p.delay
 		d.ip = p.ip
@@ -151,6 +154,19 @@ func (d *DomainPolicy) Domain() string {
 
 func (d *DomainPolicy) Action() Policy {
 	return d.act
+}
+
+func (d *DomainPolicy) Delete() bool {
+	if d.act != nil {
+		_, ok := d.act.(*DeletePolicy)
+		return ok
+	}
+
+	return false
+}
+
+func (d *DomainPolicy) SetProxy() {
+	d.act = new(ProxyPolicy)
 }
 
 func (d *DomainPolicy) Delay() Policy {
