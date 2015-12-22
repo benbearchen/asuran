@@ -79,6 +79,8 @@ func (*urlPolicyFactory) Build(args []string) (Policy, []string, error) {
 
 	if len(left) == 0 {
 		left = nil
+	} else if len(left) >= 1 {
+		return nil, left, fmt.Errorf("unnecessary args: %v", left)
 	}
 
 	p, err := newUrlPolicy(subs, target)
@@ -319,7 +321,7 @@ func (u *UrlPolicy) ContentType() string {
 }
 
 func (u *UrlPolicy) Delete() bool {
-	_, ok := u.subKeys[delayKeyword]
+	_, ok := u.subKeys[deleteKeyword]
 	return ok
 }
 
