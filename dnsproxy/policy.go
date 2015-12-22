@@ -1,18 +1,22 @@
 package dnsproxy
 
 import (
-	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/policy"
 
 	_ "fmt"
 	"net"
 	"strings"
 )
 
-type Policy struct {
-	op profile.DomainOperator
+type DomainOperator interface {
+	Action(ip, domain string) *policy.DomainPolicy
 }
 
-func NewPolicy(op profile.DomainOperator) *Policy {
+type Policy struct {
+	op DomainOperator
+}
+
+func NewPolicy(op DomainOperator) *Policy {
 	p := Policy{}
 	p.op = op
 	return &p
@@ -29,18 +33,20 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 		return passDomain(domain, "")
 	}
 
+	if a.Action() == nil {
+		return passDomain(domain, a.IP())
+	}
+
 	//fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
-	switch a.Act {
-	case profile.DomainActNone:
-		return passDomain(domain, a.IP)
-	case profile.DomainActBlock:
+	switch a.Action().(type) {
+	case *policy.BlockPolicy:
 		return domain, nil
-	case profile.DomainActProxy:
-		return passDomain(domain, a.IP)
-	case profile.DomainActNull:
+	case *policy.ProxyPolicy:
+		return passDomain(domain, a.IP())
+	case *policy.NullPolicy:
 		return domain, []net.IP{}
 	default:
-		return passDomain(domain, a.IP)
+		return passDomain(domain, a.IP())
 	}
 }
 

@@ -1,42 +1,19 @@
 package profile
 
+import (
+	"github.com/benbearchen/asuran/policy"
+)
+
 type urlOperator struct {
 	p *IpProfiles
 }
 
-func (u *urlOperator) Action(ip, url string) UrlProxyAction {
+func (u *urlOperator) Action(ip, url string) *policy.UrlPolicy {
 	profile := u.p.FindByIp(ip)
 	if profile != nil {
 		return profile.UrlAction(url)
 	} else {
-		return MakeEmptyUrlProxyAction()
-	}
-}
-
-func (u *urlOperator) Delay(ip, url string) DelayAction {
-	profile := u.p.FindByIp(ip)
-	if profile != nil {
-		return profile.UrlDelay(url)
-	} else {
-		return MakeEmptyDelay()
-	}
-}
-
-func (u *urlOperator) BodyDelay(ip, url string) DelayAction {
-	profile := u.p.FindByIp(ip)
-	if profile != nil {
-		return profile.UrlBodyDelay(url)
-	} else {
-		return MakeEmptyDelay()
-	}
-}
-
-func (u *urlOperator) Speed(ip, url string) SpeedAction {
-	profile := u.p.FindByIp(ip)
-	if profile != nil {
-		return profile.UrlSpeed(url)
-	} else {
-		return MakeEmptySpeed()
+		return nil
 	}
 }
 
@@ -92,7 +69,7 @@ type domainOperator struct {
 	p *IpProfiles
 }
 
-func (d *domainOperator) Action(ip, domain string) *DomainAction {
+func (d *domainOperator) Action(ip, domain string) *policy.DomainPolicy {
 	profile := d.p.FindByIp(ip)
 	if profile != nil {
 		return profile.Domain(domain)

@@ -66,12 +66,19 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 	for _, k := range keys {
 		u := p.Urls[k]
 		even = !even
-		extra := u.Speed.String()
-		if len(extra) > 0 {
-			extra = ", " + extra
+		act := "透明代理"
+		delay := "即时返回"
+		other := u.p.OtherComment()
+
+		if a := u.p.ContentPolicy(); a != nil {
+			act = a.Comment()
 		}
 
-		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.Settings.String(), u.EditCommand(), u.DeleteCommand(), even})
+		if d := u.p.DelayPolicy(); d != nil {
+			delay = d.Comment()
+		}
+
+		urls = append(urls, urlActionData{u.UrlPattern, act, delay, other, u.EditCommand(), u.DeleteCommand(), even})
 	}
 
 	keys = make([]string, 0, len(p.Domains))
@@ -84,7 +91,13 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 	for _, k := range keys {
 		d := p.Domains[k]
 		even = !even
-		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
+		act := "正常通行"
+
+		if a := d.p.Action(); a != nil {
+			act = a.Comment()
+		}
+
+		domains = append(domains, domainData{d.Domain, act, d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
 	}
 
 	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs}
@@ -153,7 +166,13 @@ func formatProfileDNSData(p *Profile, host string) profileDNSData {
 	even := true
 	for _, d := range p.Domains {
 		even = !even
-		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
+		act := "正常通行"
+
+		if a := d.p.Action(); a != nil {
+			act = a.Comment()
+		}
+
+		domains = append(domains, domainData{d.Domain, act, d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
 	}
 
 	return profileDNSData{p.Name, host, domains}

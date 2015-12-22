@@ -2,7 +2,7 @@ package proxy
 
 import (
 	gonet "github.com/benbearchen/asuran/net"
-	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/policy"
 
 	"bufio"
 	_ "fmt"
@@ -13,13 +13,13 @@ import (
 )
 
 type speedWriter struct {
-	speed    profile.SpeedAction
+	speed    *policy.SpeedPolicy
 	w        io.Writer
 	last     time.Time
 	newBytes int
 }
 
-func newSpeedWriter(speedAction profile.SpeedAction, w io.Writer) io.Writer {
+func newSpeedWriter(speedAction *policy.SpeedPolicy, w io.Writer) io.Writer {
 	s := new(speedWriter)
 	s.speed = speedAction
 	s.w = w
@@ -76,8 +76,8 @@ func (t *speedWriter) next(c int) (int, time.Duration) {
 		//fmt.Printf("%15v avg      %.2fKB/s\n", now.Sub(t.last), float64(int64(t.newBytes)*int64(time.Second)/int64(d))/1024)
 	}
 
-	maxLast := int(float32(d) * t.speed.Speed / float32(time.Second))
-	next := int(float32(d+time.Second/2)*t.speed.Speed/float32(time.Second)) - maxLast
+	maxLast := int(float32(d) * t.speed.Speed() / float32(time.Second))
+	next := int(float32(d+time.Second/2)*t.speed.Speed()/float32(time.Second)) - maxLast
 	if t.newBytes > 0 && t.newBytes < maxLast && d > 5*time.Second {
 		t.last = now
 		t.newBytes = 0
