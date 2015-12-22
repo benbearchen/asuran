@@ -108,11 +108,11 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 				p.proxyOp.New(port)
 			}
 		}
-	}
 
-	host := getHostOfUrlPattern(urlPattern)
-	if len(host) != 0 {
-		p.proxyDomainIfNotExists(host)
+		host := getHostOfUrlPattern(urlPattern)
+		if len(host) != 0 {
+			p.proxyDomainIfNotExists(host)
+		}
 	}
 }
 
@@ -391,8 +391,10 @@ func (p *Profile) Clear() {
 
 func getHostOfUrlPattern(urlPattern string) string {
 	p := strings.Index(urlPattern, "/")
-	if p <= 0 {
+	if p == 0 {
 		return ""
+	} else if p < 0 {
+		p = len(urlPattern)
 	}
 
 	server := urlPattern[0:p]
