@@ -12,10 +12,10 @@ ver 0.3  fatcow
 * Using HTTP Mux?
 * More test
 * Policy in HTTP Header
-* New policy test entry, such as 'http://localhost/policy?cmd=timeout%201'
+* New policy test entry, such as 'http://localhost/profile/192.168.1.2/policy/timeout 1/g.cn'
 * Can force chunked
 * Command `url map` support sed?
-* `cache` support Range
+* Range response by splitting complete `cache`
 
 
 ver 0.2.4
