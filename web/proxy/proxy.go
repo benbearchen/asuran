@@ -26,6 +26,8 @@ import (
 	"time"
 )
 
+const ASURAN_POLICY_HEADER = "ASURAN_POLICY"
+
 type Proxy struct {
 	ver        string
 	webServers map[int]*httpd.Http
@@ -265,10 +267,10 @@ func (p *Proxy) proxyRequest(w http.ResponseWriter, r *http.Request) {
 
 func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) {
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
-	p.remoteProxyUrl(remoteIP, target, w, r)
+	p.remoteProxyUrl(remoteIP, target, w, r, nil)
 }
 
-func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request) {
+func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request, up *policy.UrlPolicy) {
 	needCache := false
 
 	fullUrl := target
@@ -289,10 +291,20 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	var writeWrap io.Writer = nil
-	var up *policy.UrlPolicy
 
-	if p.urlOp != nil {
-		up = p.urlOp.Action(remoteIP, fullUrl)
+	if up == nil {
+		if cmd := r.Header.Get(ASURAN_POLICY_HEADER); len(cmd) > 0 {
+			p, err := policy.Factory("url " + cmd)
+			if err != nil {
+				w.WriteHeader(400)
+				fmt.Fprintf(w, `policy "url %s" err: %v`, cmd, err)
+				return
+			}
+
+			up = p.(*policy.UrlPolicy)
+		} else if p.urlOp != nil {
+			up = p.urlOp.Action(remoteIP, fullUrl)
+		}
 	}
 
 	if up != nil {
@@ -792,8 +804,32 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 		return
 	} else if op == "to" {
+		if len(pages) <= 3 || pages[3] == "" {
+			w.WriteHeader(400)
+			fmt.Fprintln(w, "profile/.../to/ need a target, like profile/.../to/g.cn")
+			return
+		}
+
 		url := "http://" + strings.Join(pages[3:], "/")
-		p.remoteProxyUrl(profileIP, url, w, r)
+		p.remoteProxyUrl(profileIP, url, w, r, nil)
+		return
+	} else if op == "policy" {
+		if len(pages) <= 4 || pages[4] == "" {
+			w.WriteHeader(400)
+			fmt.Fprintln(w, "profile/.../policy/ need policy command and target, like profile/.../to/rewrite xyz/g.cn")
+			return
+		}
+
+		cmd := pages[3]
+		up, err := policy.Factory("url " + cmd)
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, `policy "url %s" err: %v`, cmd, err)
+			return
+		}
+
+		url := "http://" + strings.Join(pages[4:], "/")
+		p.remoteProxyUrl(profileIP, url, w, r, up.(*policy.UrlPolicy))
 		return
 	} else if op == "pack" {
 		p.packCommand(w, r)
