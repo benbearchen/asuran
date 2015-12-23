@@ -26,7 +26,7 @@ func init() {
 type DomainPolicy struct {
 	target string
 	act    Policy
-	delay  Policy
+	delay  *DelayPolicy
 	ip     string
 }
 
@@ -38,7 +38,8 @@ func (*domainPolicyFactory) Keyword() string {
 }
 
 func (*domainPolicyFactory) Build(args []string) (Policy, []string, error) {
-	var act, delay Policy
+	var act Policy = nil
+	var delay *DelayPolicy = nil
 	for len(args) > 0 {
 		keyword, rest := args[0], args[1:]
 		if !domainSubKeys.isSubKey(keyword) {
@@ -49,8 +50,8 @@ func (*domainPolicyFactory) Build(args []string) (Policy, []string, error) {
 		if err != nil {
 			return nil, rest, err
 		} else {
-			if _, ok := p.(*DelayPolicy); ok {
-				delay = p
+			if d, ok := p.(*DelayPolicy); ok {
+				delay = d
 			} else {
 				act = p
 			}
@@ -79,7 +80,7 @@ func (*domainPolicyFactory) Build(args []string) (Policy, []string, error) {
 	return newDomainPolicy(target, act, delay, ip), nil, nil
 }
 
-func newDomainPolicy(domain string, act, delay Policy, ip string) *DomainPolicy {
+func newDomainPolicy(domain string, act Policy, delay *DelayPolicy, ip string) *DomainPolicy {
 	return &DomainPolicy{domain, act, delay, ip}
 }
 
@@ -132,17 +133,17 @@ func (d *DomainPolicy) Comment() string {
 }
 
 func (d *DomainPolicy) Update(p Policy) error {
-	if d.Keyword() != p.Keyword() {
-		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
-	}
-
 	switch p := p.(type) {
 	case *DomainPolicy:
 		d.act = p.act
 		d.delay = p.delay
 		d.ip = p.ip
+	case *DefaultPolicy, *ProxyPolicy, *BlockPolicy, *NullPolicy:
+		d.act = p
+	case *DelayPolicy:
+		d.delay = p
 	default:
-		return fmt.Errorf("unmatch policy")
+		return fmt.Errorf("unmatch policy to domain: %s", p.Command())
 	}
 
 	return nil
@@ -169,7 +170,7 @@ func (d *DomainPolicy) SetProxy() {
 	d.act = new(ProxyPolicy)
 }
 
-func (d *DomainPolicy) Delay() Policy {
+func (d *DomainPolicy) Delay() *DelayPolicy {
 	return d.delay
 }
 

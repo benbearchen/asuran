@@ -202,15 +202,30 @@ func (u *UrlPolicy) Set() bool {
 }
 
 func (u *UrlPolicy) Update(p Policy) error {
-	if u.Keyword() != p.Keyword() {
-		return fmt.Errorf("unmatch keywrod: %s vs %s", u.Keyword(), p.Keyword())
-	}
-
 	switch p := p.(type) {
 	case *UrlPolicy:
 		return u.update(p)
+	case *DelayPolicy, *TimeoutPolicy, *DropPolicy:
+		if p.(baseDelayInterface).Body() {
+			u.bodys = p
+		} else {
+			u.delays = p
+		}
+	case *ProxyPolicy, *CachePolicy, *MapPolicy, *RedirectPolicy, *RewritePolicy, *RestorePolicy, *TcpwritePolicy:
+		u.contents = p
+	case *StatusPolicy, *SpeedPolicy, *Dont302Policy, *Disable304Policy, *ContentTypePolicy:
+		for i, s := range u.subs {
+			if s.Keyword() == p.Keyword() {
+				u.subs[i] = p
+				u.subKeys[p.Keyword()] = p
+				return nil
+			}
+		}
+
+		u.subs = append(u.subs, p)
+		u.subKeys[p.Keyword()] = p
 	default:
-		return fmt.Errorf("unmatch policy")
+		return fmt.Errorf("unmatch policy to url: %s", p.Command())
 	}
 
 	return nil
