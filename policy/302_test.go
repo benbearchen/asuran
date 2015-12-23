@@ -8,6 +8,10 @@ func TestDont302Policy(t *testing.T) {
 	if err != nil {
 		t.Errorf(`Factory("%s") failed: %v`, cmd, err)
 	} else {
+		if p.Keyword() != dont302Keyword {
+			t.Errorf(`Factory("%s").Keyword() not match %s: %s`, cmd, dont302Keyword, p.Keyword())
+		}
+
 		if p.Command() != cmd {
 			t.Errorf(`Factory("%s").Command() failed: "%s"`, cmd, p.Command())
 		} else {
@@ -25,6 +29,10 @@ func TestDont302Policy(t *testing.T) {
 	if err != nil {
 		t.Errorf(`Factory("%s") failed: %v`, cmd, err)
 	} else {
+		if p.Keyword() != dont302Keyword {
+			t.Errorf(`Factory("%s").Keyword() not match %s: %s`, cmd, dont302Keyword, p.Keyword())
+		}
+
 		if p.Command() != cmd {
 			t.Errorf(`Factory("%s").Command() failed: "%s"`, cmd, p.Command())
 		} else {

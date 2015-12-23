@@ -23,6 +23,7 @@ func (b *boolPolicyFactory) Build(args []string) (Policy, []string, error) {
 
 type boolPolicy struct {
 	keyword string
+	orikey  string
 	boolean bool
 	comment string
 }
@@ -32,7 +33,7 @@ func (b *boolPolicy) Keyword() string {
 }
 
 func (b *boolPolicy) Command() string {
-	return b.keyword
+	return b.orikey
 }
 
 func (b *boolPolicy) Comment() string {
@@ -46,7 +47,9 @@ func (b *boolPolicy) Update(p Policy) error {
 
 	switch p := p.(type) {
 	case *boolPolicy:
-		b.boolean = p.Value()
+		b.orikey = p.orikey
+		b.boolean = p.boolean
+		b.comment = p.comment
 	default:
 		return fmt.Errorf("unmatch policy")
 	}
