@@ -413,16 +413,19 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 
 	dont302 := true
 	settingContentType := "default"
+	var hostPolicy *policy.HostPolicy
 	if up != nil {
 		dont302 = up.Dont302()
 		settingContentType = up.ContentType()
 		if up.Disable304() {
 			p.disable304FromHeader(requestR.Header)
 		}
+
+		hostPolicy = up.Host()
 	}
 
 	httpStart := time.Now()
-	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP), dont302)
+	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP, hostPolicy), dont302)
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
@@ -953,31 +956,37 @@ func (p *Proxy) NewProxyHostOperator() profile.ProxyHostOperator {
 	return &proxyHostOperator{p}
 }
 
-func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr string) (gonet.Conn, error) {
-	if p.domainOp == nil {
-		return nil
+func (p *Proxy) parseDomainAsDial(target, client string, hostPolicy *policy.HostPolicy) func(network, addr string) (gonet.Conn, error) {
+	address := ""
+	if hostPolicy == nil {
+		if p.domainOp == nil {
+			return nil
+		}
+
+		u, err := url.Parse(target)
+		if err != nil {
+			return nil
+		}
+
+		domain, port, err := gonet.SplitHostPort(u.Host)
+		if err != nil {
+			domain = u.Host
+		}
+
+		if len(port) == 0 {
+			port = "80"
+		}
+
+		a := p.domainOp.Action(client, domain)
+		if a == nil || len(a.IP()) == 0 {
+			return nil
+		}
+
+		address = gonet.JoinHostPort(a.IP(), port)
+	} else {
+		address = hostPolicy.HTTP()
 	}
 
-	u, err := url.Parse(target)
-	if err != nil {
-		return nil
-	}
-
-	domain, port, err := gonet.SplitHostPort(u.Host)
-	if err != nil {
-		domain = u.Host
-	}
-
-	if len(port) == 0 {
-		port = "80"
-	}
-
-	a := p.domainOp.Action(client, domain)
-	if a == nil || len(a.IP()) == 0 {
-		return nil
-	}
-
-	address := gonet.JoinHostPort(a.IP(), port)
 	return func(network, addr string) (gonet.Conn, error) {
 		if network == "tcp" {
 			return gonet.Dial(network, address)

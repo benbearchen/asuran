@@ -30,6 +30,7 @@ func init() {
 		disable304Keyword,
 		allow304Keyword,
 		contentTypeKeyword,
+		hostKeyword,
 		deleteKeyword,
 	)
 
@@ -333,6 +334,18 @@ func (u *UrlPolicy) ContentType() string {
 	}
 
 	return ContentTypeActDefault
+}
+
+func (u *UrlPolicy) Host() *HostPolicy {
+	p, _ := u.subKeys[hostKeyword]
+	if p != nil {
+		c, ok := p.(*HostPolicy)
+		if ok {
+			return c
+		}
+	}
+
+	return nil
 }
 
 func (u *UrlPolicy) Delete() bool {

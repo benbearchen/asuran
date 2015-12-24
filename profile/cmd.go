@@ -19,6 +19,7 @@ settings... ::=
       [(dont302|do302)]
       [(disable304|allow304)]
       [content-type (default|remove|empty|<content-type>)]
+      [host <ip:port>]
 
 
 url delete (<url-pattern>|all)
@@ -123,6 +124,10 @@ url command:
               empty 表示将回复的 Content-Type 置为空；
               其它将 Content-Type 设置为 <content-type> 值。
               <content-type> 不能包含空格，所以可能不支持 multipart。
+
+
+    host <ip:port>
+              指定实际连接的服务器地址
 
 
     delete    删除对 url-pattern 的配置。
