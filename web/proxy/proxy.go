@@ -363,12 +363,13 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 			case *policy.CachePolicy:
 				needCache = true
 			case *policy.MapPolicy:
-				requestUrl = act.Value()
+				requestUrl = act.URL(requestUrl)
 				requestR = nil
-				contentSource = "map " + act.Value()
+				contentSource = "map " + requestUrl
 			case *policy.RedirectPolicy:
-				http.Redirect(w, r, act.Value(), 302)
-				f.Log("proxy " + fullUrl + " redirect " + act.Value())
+				requestUrl = act.URL(requestUrl)
+				http.Redirect(w, r, requestUrl, 302)
+				f.Log("proxy " + fullUrl + " redirect " + requestUrl)
 				return
 			case *policy.RewritePolicy, *policy.RestorePolicy, *policy.TcpwritePolicy:
 				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay, up.ContentType()) {
