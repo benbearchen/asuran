@@ -128,7 +128,7 @@ func (p *baseDelayPolicy) command() string {
 func (p *baseDelayPolicy) comment() string {
 	c := formatDuration(p.duration)
 	if p.rand {
-		c = "随机（" + c + "）"
+		c = "随机 " + c + " "
 	} else {
 		c = " " + c + " "
 	}
@@ -173,7 +173,7 @@ func (d *DelayPolicy) Command() string {
 func (d *DelayPolicy) Comment() string {
 	c := "延时" + d.comment() + "后继续"
 	if d.body {
-		c = "对 HTTP Body "
+		c = "对 HTTP Body " + c
 	}
 
 	return c
@@ -207,7 +207,7 @@ func (d *TimeoutPolicy) Command() string {
 func (d *TimeoutPolicy) Comment() string {
 	c := "等" + d.comment() + "后超时"
 	if d.body {
-		c = "对 HTTP Body "
+		c = "等 HTTP Body 传输" + d.comment() + "后断开"
 	}
 
 	return c

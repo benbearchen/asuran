@@ -191,6 +191,10 @@ func (u *UrlPolicy) Comment() string {
 
 func (u *UrlPolicy) OtherComment() string {
 	c := make([]string, 0, len(u.subs))
+	if u.bodys != nil {
+		c = append(c, u.bodys.Comment())
+	}
+
 	for _, p := range u.subs {
 		c = append(c, p.Comment())
 	}
