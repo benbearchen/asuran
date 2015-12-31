@@ -51,6 +51,10 @@ func (*domainPolicyFactory) Build(args []string) (Policy, []string, error) {
 			return nil, rest, err
 		} else {
 			if d, ok := p.(*DelayPolicy); ok {
+				if d.Body() {
+					return nil, rest, fmt.Errorf(`domain delay can't be "body": %s`, d.Command())
+				}
+
 				delay = d
 			} else {
 				act = p
@@ -114,22 +118,27 @@ func (d *DomainPolicy) Command() string {
 }
 
 func (d *DomainPolicy) Comment() string {
-	if d.act == nil {
-		return ""
+	suffix := ""
+	if d.delay != nil {
+		suffix = "(" + d.delay.Comment() + ")"
 	}
 
-	switch d.act.(type) {
-	case *DefaultPolicy:
-		return "正常通行"
-	case *BlockPolicy:
-		return "丢弃不返回"
-	case *ProxyPolicy:
-		return "代理域名"
-	case *NullPolicy:
-		return "查询无结果"
-	default:
-		return ""
+	act := "正常通行"
+	if d.act != nil {
+		switch d.act.(type) {
+		case *DefaultPolicy:
+			act = "正常通行"
+		case *BlockPolicy:
+			act = "丢弃不返回"
+		case *ProxyPolicy:
+			act = "代理域名"
+		case *NullPolicy:
+			act = "查询无结果"
+		default:
+		}
 	}
+
+	return act + suffix
 }
 
 func (d *DomainPolicy) Update(p Policy) error {

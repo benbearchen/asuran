@@ -24,7 +24,7 @@ settings... ::=
 
 url delete (<url-pattern>|all)
 
-domain ([default]|block|proxy|null) (<domain-name>|all) [<ip>]
+domain ([default]|block|proxy|null) (delay [rand] <duration>) (<domain-name>|all) [<ip>]
 
 domain delete (<domain-name>|all)
 
@@ -162,6 +162,9 @@ domain mode:
     block     屏蔽域名，不返回任何结果。
     proxy     返回 asuran IP，以代理设备 HTTP 请求。
     null      返回查询无结果
+
+    delay [rand] <duration>
+              延时后返回，定义与 url delay 相同（不支持 body）
 
 <domain-name>:
     ([^.]+.)+[^.]+

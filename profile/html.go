@@ -91,11 +91,7 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 	for _, k := range keys {
 		d := p.Domains[k]
 		even = !even
-		act := "正常通行"
-
-		if a := d.p.Action(); a != nil {
-			act = a.Comment()
-		}
+		act := d.p.Comment()
 
 		domains = append(domains, domainData{d.Domain, act, d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
 	}

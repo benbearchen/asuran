@@ -4,8 +4,10 @@ import (
 	"github.com/benbearchen/asuran/policy"
 
 	_ "fmt"
+	"math/rand"
 	"net"
 	"strings"
+	"time"
 )
 
 type DomainOperator interface {
@@ -14,11 +16,13 @@ type DomainOperator interface {
 
 type Policy struct {
 	op DomainOperator
+	r  *rand.Rand
 }
 
 func NewPolicy(op DomainOperator) *Policy {
 	p := Policy{}
 	p.op = op
+	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	return &p
 }
 
@@ -31,6 +35,11 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	a := p.op.Action(clientIP, pureDomain)
 	if a == nil {
 		return passDomain(domain, "")
+	}
+
+	if d := a.Delay(); d != nil {
+		duration := d.RandDuration(p.r)
+		time.Sleep(duration)
 	}
 
 	if a.Action() == nil {
