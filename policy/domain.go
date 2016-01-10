@@ -57,6 +57,10 @@ func (*domainPolicyFactory) Build(args []string) (Policy, []string, error) {
 
 				delay = d
 			} else {
+				if act != nil {
+					return nil, args, fmt.Errorf(`too many ops: "%s" vs "%s"`, act.Keyword(), p.Keyword())
+				}
+
 				act = p
 			}
 		}

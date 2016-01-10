@@ -23,6 +23,12 @@ func TestDomainPolicy(t *testing.T) {
 		t.Errorf("domain(%s) didn't detect error", cmd)
 	}
 
+	cmd = "domain block proxy abc"
+	d, err = Factory(cmd)
+	if err == nil {
+		t.Errorf("domain(%s) didn't detect error", cmd)
+	}
+
 	cmd = "domain block g.cn"
 	d, err = Factory(cmd)
 	if err != nil {
