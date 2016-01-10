@@ -9,7 +9,7 @@ func CommandUsage() string {
 -------
 # 以 # 开头的行为注释
 
-url [(set|update)] [settings...] (<url-pattern>|all)
+url [(set|update)] [settings...] [<url-pattern>|all]
 
 settings... ::=
       [drop <duration>]
@@ -154,6 +154,11 @@ url command:
               域名支持通配符“*”，如 *.com, *play.org
     all
               特殊地，all 可以操作所有已经配置的 url-pattern。
+    缺省目标
+              如果既不提供 <url-pattern> 也不提供 all，那么
+              设置会被设置到默认目标。
+              默认目标可以匹配所有无法匹配的 <url-pattern>。
+
 
 domain mode:
               以下域名模式只能多选一：
@@ -213,41 +218,19 @@ func UrlToPattern(url string) string {
 	return url
 }
 
-func (u *urlAction) EditCommand() string {
-	command := u.p.Command()
-	if command != "" {
-		command += "\n"
-	}
-
-	return command
-}
-
-func (u *urlAction) DeleteCommand() string {
-	return "url delete " + u.UrlPattern + "\n"
-}
-
-func (d *DomainAction) EditCommand() string {
-	command := d.p.Command()
-	if command != "" {
-		command += "\n"
-	}
-
-	return command
-}
-
-func (d *DomainAction) DeleteCommand() string {
-	return "domain delete " + d.Domain + "\n"
-}
-
 func (p *Profile) ExportCommand() string {
 	export := "# 此为客户端配置导出，可复制所有内容至“命令”输入窗口重新加载此配置 #\n\n"
 	export += "# Name: " + p.Name + "\n"
 	export += "# IP: " + p.Ip + "\n"
 	export += "# Owner: " + p.Owner + "\n"
 
+	if p.UrlDefault.Command() != "url " {
+		export += "\n# URL 缺省配置\n" + p.UrlDefault.Command() + "\n"
+	}
+
 	export += "\n# 以下为 URL 命令定义 #\n"
 	for _, u := range p.Urls {
-		export += u.EditCommand()
+		export += u.p.Command() + "\n"
 	}
 
 	export += p.ExportDNSCommand()
@@ -259,7 +242,7 @@ func (p *Profile) ExportCommand() string {
 func (p *Profile) ExportDNSCommand() string {
 	export := "\n# 以下为域名命令定义 #\n"
 	for _, d := range p.Domains {
-		export += d.EditCommand()
+		export += d.p.Command() + "\n"
 	}
 	return export
 }

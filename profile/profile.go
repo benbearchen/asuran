@@ -48,14 +48,15 @@ type ProxyHostOperator interface {
 }
 
 type Profile struct {
-	Name      string
-	Ip        string
-	Owner     string
-	Operators map[string]bool
-	Urls      map[string]*urlAction
-	Domains   map[string]*DomainAction
-	storeID   int
-	stores    map[string]*Store
+	Name       string
+	Ip         string
+	Owner      string
+	Operators  map[string]bool
+	Urls       map[string]*urlAction
+	UrlDefault *policy.UrlPolicy
+	Domains    map[string]*DomainAction
+	storeID    int
+	stores     map[string]*Store
 
 	proxyOp ProxyHostOperator
 
@@ -69,6 +70,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Owner = owner
 	p.Operators = make(map[string]bool)
 	p.Urls = make(map[string]*urlAction)
+	p.UrlDefault = policy.NewDefaultUrlPolicy()
 	p.Domains = make(map[string]*DomainAction)
 	p.storeID = 1
 	p.stores = make(map[string]*Store)
@@ -80,6 +82,11 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 	defer p.lock.Unlock()
 
 	urlPattern := s.Target()
+	if urlPattern == "" {
+		p.UrlDefault.Update(s)
+		return
+	}
+
 	all := urlPattern == "all"
 
 	if s.Delete() {
@@ -125,7 +132,7 @@ func (p *Profile) UrlAction(url string) *policy.UrlPolicy {
 		return u.p
 	}
 
-	return nil
+	return p.UrlDefault
 }
 
 func (p *Profile) MatchUrl(url string) *urlAction {
@@ -222,6 +229,7 @@ func (p *Profile) proxyDomainIfNotExists(domain string) {
 	dp, err := policy.Factory("domain proxy " + domain)
 	if err != nil {
 		fmt.Println("set domain", domain, "failed,", err)
+		return
 	}
 
 	p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), dp.(*policy.DomainPolicy)}

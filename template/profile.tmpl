@@ -271,7 +271,7 @@ function doOperator(op) {
 </tr>
 {{range .Urls}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');"/>&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');"/></td>
+<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');"/>{{if .Delete}}&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');"/>{{end}}</td>
 <td style="min-width:500px;">{{.Pattern}}</td>
 <td>{{.Action}}</td>
 <td>{{.Delay}}</td>

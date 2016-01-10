@@ -48,6 +48,11 @@ type UrlPolicy struct {
 	subKeys  map[string]Policy
 }
 
+func NewDefaultUrlPolicy() *UrlPolicy {
+	p, _ := newUrlPolicy([]Policy{}, "")
+	return p
+}
+
 type urlPolicyFactory struct {
 }
 

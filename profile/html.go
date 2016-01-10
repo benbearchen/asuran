@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"github.com/benbearchen/asuran/policy"
+
 	"fmt"
 	"html/template"
 	"io"
@@ -56,29 +58,44 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		}
 	}
 
-	keys := make([]string, 0, len(p.Urls))
+	keys := make([]string, 0, len(p.Urls)+1)
+	keys = append(keys, "")
 	for k, _ := range p.Urls {
 		keys = append(keys, k)
 	}
 
-	sort.Strings(keys)
+	sort.Strings(keys[1:])
 	even := true
 	for _, k := range keys {
-		u := p.Urls[k]
 		even = !even
+		target := ""
+		edit := ""
+		del := ""
+		var up *policy.UrlPolicy
+		if k == "" {
+			up = p.UrlDefault
+			target = "[缺省目标]"
+		} else {
+			up = p.Urls[k].p
+			target = up.Target()
+			del = "url delete " + target + "\n"
+		}
+
 		act := "透明代理"
 		delay := "即时返回"
-		other := u.p.OtherComment()
+		other := up.OtherComment()
 
-		if a := u.p.ContentPolicy(); a != nil {
+		edit = up.Command() + "\n"
+
+		if a := up.ContentPolicy(); a != nil {
 			act = a.Comment()
 		}
 
-		if d := u.p.DelayPolicy(); d != nil {
+		if d := up.DelayPolicy(); d != nil {
 			delay = d.Comment()
 		}
 
-		urls = append(urls, urlActionData{u.UrlPattern, act, delay, other, u.EditCommand(), u.DeleteCommand(), even})
+		urls = append(urls, urlActionData{target, act, delay, other, edit, del, even})
 	}
 
 	keys = make([]string, 0, len(p.Domains))
@@ -92,8 +109,10 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		d := p.Domains[k]
 		even = !even
 		act := d.p.Comment()
+		edit := d.p.Command() + "\n"
+		del := "domain delete " + d.TargetString() + "\n"
 
-		domains = append(domains, domainData{d.Domain, act, d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
+		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
 
 	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs}
@@ -163,12 +182,14 @@ func formatProfileDNSData(p *Profile, host string) profileDNSData {
 	for _, d := range p.Domains {
 		even = !even
 		act := "正常通行"
+		edit := d.p.Command() + "\n"
+		del := "domain delete " + d.TargetString() + "\n"
 
 		if a := d.p.Action(); a != nil {
 			act = a.Comment()
 		}
 
-		domains = append(domains, domainData{d.Domain, act, d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
+		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
 
 	return profileDNSData{p.Name, host, domains}
