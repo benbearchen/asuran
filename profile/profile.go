@@ -108,6 +108,7 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 	} else if u, ok := p.Urls[urlPattern]; ok {
 		u.p.Update(s)
 	} else {
+		s.Def(p.UrlDefault)
 		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), s}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {

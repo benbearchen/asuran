@@ -46,6 +46,8 @@ type UrlPolicy struct {
 	bodys    Policy // delay body, timeout body
 	subs     []Policy
 	subKeys  map[string]Policy
+
+	def *UrlPolicy
 }
 
 func NewDefaultUrlPolicy() *UrlPolicy {
@@ -286,7 +288,7 @@ func (u *UrlPolicy) Target() string {
 }
 
 func (u *UrlPolicy) Speed() *SpeedPolicy {
-	p, _ := u.subKeys[speedKeyword]
+	p := u.subKeyDef(speedKeyword)
 	if p != nil {
 		p, ok := p.(*SpeedPolicy)
 		if ok {
@@ -298,7 +300,7 @@ func (u *UrlPolicy) Speed() *SpeedPolicy {
 }
 
 func (u *UrlPolicy) Status() *StatusPolicy {
-	p, _ := u.subKeys[statusKeyword]
+	p := u.subKeyDef(statusKeyword)
 	if p != nil {
 		p, ok := p.(*StatusPolicy)
 		if ok {
@@ -310,7 +312,7 @@ func (u *UrlPolicy) Status() *StatusPolicy {
 }
 
 func (u *UrlPolicy) Dont302() bool {
-	p, _ := u.subKeys[dont302Keyword]
+	p := u.subKeyDef(dont302Keyword)
 	if p != nil {
 		d, ok := p.(*Dont302Policy)
 		if ok {
@@ -322,7 +324,7 @@ func (u *UrlPolicy) Dont302() bool {
 }
 
 func (u *UrlPolicy) Disable304() bool {
-	p, _ := u.subKeys[disable304Keyword]
+	p := u.subKeyDef(disable304Keyword)
 	if p != nil {
 		d, ok := p.(*Disable304Policy)
 		if ok {
@@ -334,7 +336,7 @@ func (u *UrlPolicy) Disable304() bool {
 }
 
 func (u *UrlPolicy) ContentType() string {
-	p, _ := u.subKeys[contentTypeKeyword]
+	p := u.subKeyDef(contentTypeKeyword)
 	if p != nil {
 		c, ok := p.(*ContentTypePolicy)
 		if ok {
@@ -346,7 +348,7 @@ func (u *UrlPolicy) ContentType() string {
 }
 
 func (u *UrlPolicy) Host() *HostPolicy {
-	p, _ := u.subKeys[hostKeyword]
+	p := u.subKeyDef(hostKeyword)
 	if p != nil {
 		c, ok := p.(*HostPolicy)
 		if ok {
@@ -363,13 +365,68 @@ func (u *UrlPolicy) Delete() bool {
 }
 
 func (u *UrlPolicy) DelayPolicy() Policy {
-	return u.delays
+	if u.delays != nil {
+		return u.delays
+	} else if u.def != nil {
+		return u.def.DelayPolicy()
+	} else {
+		return nil
+	}
+}
+
+func (u *UrlPolicy) DelayComment() string {
+	if u.delays != nil {
+		return u.delays.Comment()
+	} else if u.def != nil {
+		return "[" + u.def.DelayComment() + "]"
+	} else {
+		return "即时返回"
+	}
 }
 
 func (u *UrlPolicy) ContentPolicy() Policy {
-	return u.contents
+	if u.contents != nil {
+		return u.contents
+	} else if u.def != nil {
+		return u.def.ContentPolicy()
+	} else {
+		return nil
+	}
+}
+
+func (u *UrlPolicy) ContentComment() string {
+	if u.contents != nil {
+		return u.contents.Comment()
+	} else if u.def != nil {
+		return "[" + u.def.ContentComment() + "]"
+	} else {
+		return "透明代理"
+	}
 }
 
 func (u *UrlPolicy) BodyPolicy() Policy {
-	return u.bodys
+	if u.bodys != nil {
+		return u.bodys
+	} else if u.def != nil {
+		return u.def.BodyPolicy()
+	} else {
+		return nil
+	}
+}
+
+func (u *UrlPolicy) Def(def *UrlPolicy) {
+	u.def = def
+}
+
+func (u *UrlPolicy) subKeyDef(key string) Policy {
+	p, _ := u.subKeys[key]
+	if p != nil {
+		return p
+	}
+
+	if u.def != nil {
+		return u.def.subKeyDef(key)
+	}
+
+	return nil
 }

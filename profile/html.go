@@ -81,19 +81,11 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 			del = "url delete " + target + "\n"
 		}
 
-		act := "透明代理"
-		delay := "即时返回"
+		act := up.ContentComment()
+		delay := up.DelayComment()
 		other := up.OtherComment()
 
 		edit = up.Command() + "\n"
-
-		if a := up.ContentPolicy(); a != nil {
-			act = a.Comment()
-		}
-
-		if d := up.DelayPolicy(); d != nil {
-			delay = d.Comment()
-		}
 
 		urls = append(urls, urlActionData{target, act, delay, other, edit, del, even})
 	}
