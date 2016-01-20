@@ -193,6 +193,10 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		p.testUrl(target, w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/to/"); m {
 		target := "http://" + page[1:]
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+
 		p.proxyUrl(target, w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/usage"); m {
 		p.WriteUsage(w)
@@ -815,6 +819,10 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 
 		url := "http://" + strings.Join(pages[3:], "/")
+		if r.URL.RawQuery != "" {
+			url = url + "?" + r.URL.RawQuery
+		}
+
 		p.remoteProxyUrl(profileIP, url, w, r, nil)
 		return
 	} else if op == "policy" {
@@ -833,6 +841,10 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 
 		url := "http://" + strings.Join(pages[4:], "/")
+		if r.URL.RawQuery != "" {
+			url = url + "?" + r.URL.RawQuery
+		}
+
 		p.remoteProxyUrl(profileIP, url, w, r, up.(*policy.UrlPolicy))
 		return
 	} else if op == "pack" {
