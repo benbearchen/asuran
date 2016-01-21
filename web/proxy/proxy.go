@@ -56,20 +56,26 @@ func NewProxy(ver string, dataDir string) *Proxy {
 
 	ips := net.LocalIPs()
 	if ips == nil {
-		fmt.Println("Proxy can't get local ip")
+		fmt.Println("大王不好了，找不到本地 IP 啊！！")
 	} else {
 		for _, ip := range ips {
 			p.serveIP = ip
-			fmt.Println("proxy on ip: " + ip)
+			fmt.Println("HTTP 代理、DNS 服务 监听 IP: " + ip)
+			fmt.Println()
 			for port, _ := range p.webServers {
 				p.mainHost = ip
 				if port != 80 {
 					p.mainHost += ":" + strconv.Itoa(port)
 				}
 
-				fmt.Println("visit http://" + p.mainHost + "/ for more information")
+				fmt.Println("标准 HTTP 代理地址:  " + ip + ":" + strconv.Itoa(port))
+				fmt.Println("asuran 管理界面:     http://" + p.mainHost + "/    ∈←← ←  ←    ←")
 			}
+
+			fmt.Println()
 		}
+
+		fmt.Println("本机还可访问 http://localhost/ 进入管理界面")
 	}
 
 	return p
