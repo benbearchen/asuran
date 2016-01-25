@@ -11,6 +11,7 @@ settings... ::=
       [drop <duration>]
       [(delay|timeout) [body] [rand] <duration>]
       [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
+      [chunked (default|on|off|block <n>|size <n>[,<n2>[...]])]
       [speed <speeds>]
       [(dont302|do302)]
       [(disable304|allow304)]
@@ -92,6 +93,15 @@ url command:
               store-id 内容可以上传，也可以从请求历史修改。
     tcpwrite <url-encoded-content>
               直接以 TCP 而不是 HTTP 格式返回内容
+
+
+    chunked default|on|off|block <n>|size <n>[,<n2>[...]]
+              强制指定 chunked 的形式。
+              default 表示不修改已有 chunked 行为；
+              on 表示开启 chunked 并以任意长度返回；
+              off 表示关闭 chunked 以普通 Content-Length 整体返回；
+              block <n> 表示（平）分成几个 chunked 块返回；
+              size <n>,<n2> 表示指定每个块的字节数，剩余块以最后一个为准。
 
 
     speed <speeds>
