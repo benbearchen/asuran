@@ -120,7 +120,7 @@ func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool) {
 
 func WriteCommandUsage(w io.Writer) {
 	t, err := template.New("profile-command-usage").Parse(`<html><body><pre>{{.}}</pre></body><html>`)
-	err = t.Execute(w, CommandUsage())
+	err = t.Execute(w, policy.CommandUsage())
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
