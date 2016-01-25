@@ -31,6 +31,7 @@ func init() {
 		allow304Keyword,
 		contentTypeKeyword,
 		hostKeyword,
+		removeKeyword,
 		deleteKeyword,
 	)
 
