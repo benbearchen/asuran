@@ -17,6 +17,7 @@ settings... ::=
       [content-type (default|remove|empty|<content-type>)]
       [host <ip:port>]
 
+url remove <setting-keyword> [<url-pattern>|all]
 
 url delete (<url-pattern>|all)
 
@@ -79,6 +80,7 @@ url command:
               对请求直接以 responseCode 回应。
               responseCode 可以是 404、502 等，
               但不应该是 200、302 等。
+              警告：status 以后可能作为独立设置
     map <resource-url>
               代理将请求 resource-url 的内容并返回。
     redirect <resource-url>
@@ -113,7 +115,7 @@ url command:
     content-type default
     content-type remove
     content-type empty
-    content-type <content-type> 
+    content-type <content-type>
               处理回复的 Content-Type。[默认] default
               default 表示不做任何处理；
               remove 表示移除回复的 Content-Type；
@@ -125,6 +127,10 @@ url command:
     host <ip:port>
               指定实际连接的服务器地址
 
+
+    remove <setting-keyword>
+              移除 url 下关键字为 <setting-keyword> 的子策略。
+              setting-keyword 可以是 cache/delay/content-type/host 等。
 
     delete    删除对 url-pattern 的配置。
 
