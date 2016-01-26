@@ -237,6 +237,8 @@ func (u *UrlPolicy) Update(p Policy) error {
 
 		u.subs = append(u.subs, p)
 		u.subKeys[p.Keyword()] = p
+	case *RemovePolicy:
+		u.remove(p)
 	default:
 		return fmt.Errorf("unmatch policy to url: %s", p.Command())
 	}
@@ -249,8 +251,8 @@ func (u *UrlPolicy) update(p *UrlPolicy) error {
 		u.delays = p.delays
 		u.contents = p.contents
 		u.bodys = p.bodys
-		u.subs = p.subs
-		u.subKeys = p.subKeys
+		u.subs = make([]Policy, 0)
+		u.subKeys = make(map[string]Policy)
 	} else {
 		if p.delays != nil {
 			u.delays = p.delays
@@ -263,22 +265,33 @@ func (u *UrlPolicy) update(p *UrlPolicy) error {
 		if p.bodys != nil {
 			u.bodys = p.bodys
 		}
+	}
 
-		for i, s := range u.subs {
-			key := s.Keyword()
-			sub, ok := p.subKeys[key]
-			if ok {
-				u.subs[i] = sub
-				u.subKeys[key] = sub
-			}
+	for i, s := range u.subs {
+		key := s.Keyword()
+		sub, ok := p.subKeys[key]
+		if ok {
+			u.subs[i] = sub
+			u.subKeys[key] = sub
 		}
+	}
 
-		for key, sub := range p.subKeys {
+	var remove *RemovePolicy
+	for key, sub := range p.subKeys {
+		switch key {
+		case removeKeyword:
+			remove = sub.(*RemovePolicy)
+		case deleteKeyword:
+		default:
 			if _, ok := u.subKeys[key]; !ok {
 				u.subs = append(u.subs, sub)
 				u.subKeys[key] = sub
 			}
 		}
+	}
+
+	if remove != nil {
+		u.remove(remove)
 	}
 
 	return nil
@@ -430,4 +443,26 @@ func (u *UrlPolicy) subKeyDef(key string) Policy {
 	}
 
 	return nil
+}
+
+func (u *UrlPolicy) remove(r *RemovePolicy) {
+	keyword := r.Value()
+	switch keyword {
+	case delayKeyword, timeoutKeyword, dropKeyword:
+		if u.delays != nil && u.delays.Keyword() == keyword {
+			u.delays = nil
+		}
+	case proxyKeyword, cacheKeyword, mapKeyword, redirectKeyword, rewriteKeyword, restoreKeyword, tcpwriteKeyword:
+		if u.contents != nil && u.contents.Keyword() == keyword {
+			u.contents = nil
+		}
+	default:
+		for i, p := range u.subs {
+			if p.Keyword() == keyword {
+				copy(u.subs[i:len(u.subs)-1], u.subs[i+1:])
+				u.subs = u.subs[:len(u.subs)-1]
+				delete(u.subKeys, p.Keyword())
+			}
+		}
+	}
 }
