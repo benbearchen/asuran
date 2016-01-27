@@ -21,13 +21,14 @@ type delayWriter struct {
 	hasDelayed bool
 	r          *rand.Rand
 	first      bool
+	canSubPkg  bool
 }
 
 type delayInterface interface {
 	RandDuration(r *rand.Rand) time.Duration
 }
 
-func newDelayWriter(delayAction policy.Policy, w io.Writer, r *rand.Rand) io.Writer {
+func newDelayWriter(delayAction policy.Policy, w io.Writer, r *rand.Rand, canSubPackage bool) io.Writer {
 	d := new(delayWriter)
 	d.delay = delayAction
 	d.w = w
@@ -35,6 +36,7 @@ func newDelayWriter(delayAction policy.Policy, w io.Writer, r *rand.Rand) io.Wri
 	d.start = time.Now()
 	d.r = r
 	d.first = true
+	d.canSubPkg = canSubPackage
 	return d
 }
 
@@ -55,12 +57,15 @@ func (d *delayWriter) Write(p []byte) (n int, err error) {
 			<-time.NewTimer(d.d).C
 		}
 	case *policy.TimeoutPolicy:
-		once := len(p) / 1024
+		once := len(p)
 		sum := 0
-		if once < 1 {
-			once = 1
-		} else if once > 10*1024 {
-			once = 10 * 1024
+		if d.canSubPkg {
+			once /= 1024
+			if once < 1 {
+				once = 1
+			} else if once > 10*1024 {
+				once = 10 * 1024
+			}
 		}
 
 		i := 0

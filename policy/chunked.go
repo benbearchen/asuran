@@ -2,6 +2,7 @@ package policy
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -16,7 +17,7 @@ const (
 	ChunkedSize
 )
 
-const keywordChunked = "chunked"
+const chunkedKeyword = "chunked"
 
 type ChunkedPolicy struct {
 	op     ChunkedOption
@@ -32,7 +33,7 @@ func init() {
 }
 
 func (f *chunkedPolicyFactory) Keyword() string {
-	return keywordChunked
+	return chunkedKeyword
 }
 
 func (f *chunkedPolicyFactory) Build(args []string) (Policy, []string, error) {
@@ -100,11 +101,11 @@ func newChunkedPolicy(option ChunkedOption, blockN int, sizes []int) *ChunkedPol
 }
 
 func (c *ChunkedPolicy) Keyword() string {
-	return keywordChunked
+	return chunkedKeyword
 }
 
 func (c *ChunkedPolicy) Command() string {
-	cs := []string{keywordChunked}
+	cs := []string{chunkedKeyword}
 	switch c.op {
 	case ChunkedDefault:
 		cs = append(cs, "default")
@@ -177,4 +178,31 @@ func (c *ChunkedPolicy) Sizes() []int {
 	} else {
 		return c.sizes
 	}
+}
+
+type ChunkedSizeQueue struct {
+	sizes []int
+	index int
+}
+
+func (q *ChunkedSizeQueue) Next() int {
+	r := q.sizes[q.index]
+	if q.index+1 < len(q.sizes) {
+		q.index++
+	}
+
+	if r < 0 {
+		return math.MaxInt32
+	} else {
+		return r
+	}
+}
+
+func (c *ChunkedPolicy) SizesQueue() *ChunkedSizeQueue {
+	sizes := c.Sizes()
+	if len(sizes) > 0 {
+		return &ChunkedSizeQueue{sizes, 0}
+	}
+
+	return nil
 }

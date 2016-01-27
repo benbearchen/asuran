@@ -95,11 +95,15 @@ func (r *HttpResponse) ResponseCode() int {
 	return r.resp.StatusCode
 }
 
-func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer) ([]byte, error) {
+func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer, forceChunked bool) ([]byte, error) {
 	defer r.resp.Body.Close()
 	h := w.Header()
 	for k, v := range r.Header() {
 		h[k] = v
+	}
+
+	if forceChunked {
+		h.Del("Content-Length")
 	}
 
 	w.WriteHeader(r.ResponseCode())
@@ -108,9 +112,18 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer) ([]byt
 		wrap = w
 	}
 
-	var b bytes.Buffer
-	_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
-	return b.Bytes(), err
+	if forceChunked {
+		bytes, err := ioutil.ReadAll(r.resp.Body)
+		if err == nil {
+			_, err = wrap.Write(bytes)
+		}
+
+		return bytes, err
+	} else {
+		var b bytes.Buffer
+		_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
+		return b.Bytes(), err
+	}
 }
 
 type redirectError struct {
