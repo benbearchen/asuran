@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 type HttpResponse struct {
@@ -95,7 +96,7 @@ func (r *HttpResponse) ResponseCode() int {
 	return r.resp.StatusCode
 }
 
-func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer, forceChunked bool) ([]byte, error) {
+func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer, recvFirst, forceChunked bool) ([]byte, error) {
 	defer r.resp.Body.Close()
 	h := w.Header()
 	for k, v := range r.Header() {
@@ -106,20 +107,27 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer, forceC
 		h.Del("Content-Length")
 	}
 
-	w.WriteHeader(r.ResponseCode())
-
 	if wrap == nil {
 		wrap = w
 	}
 
-	if forceChunked {
+	if recvFirst {
 		bytes, err := ioutil.ReadAll(r.resp.Body)
 		if err == nil {
+			if !forceChunked {
+				w.Header().Set("Content-Length", strconv.Itoa(len(bytes)))
+			}
+
+			w.WriteHeader(r.ResponseCode())
 			_, err = wrap.Write(bytes)
+		} else {
+			w.WriteHeader(502)
 		}
 
 		return bytes, err
 	} else {
+		w.WriteHeader(r.ResponseCode())
+
 		var b bytes.Buffer
 		_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
 		return b.Bytes(), err

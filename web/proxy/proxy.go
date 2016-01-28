@@ -302,6 +302,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 
 	var writeWrap io.Writer = nil
 	forceChunked := false
+	forceRecvFirst := false
 
 	if up == nil {
 		if cmd := r.Header.Get(ASURAN_POLICY_HEADER); len(cmd) > 0 {
@@ -395,6 +396,10 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 			if chunkedOp != policy.ChunkedDefault && chunkedOp != policy.ChunkedOff {
 				forceChunked = true
 			}
+
+			if chunkedOp == policy.ChunkedOff || chunkedOp == policy.ChunkedBlock || chunkedOp == policy.ChunkedSize {
+				forceRecvFirst = true
+			}
 		}
 
 		if bodyDelay != nil {
@@ -471,7 +476,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	} else {
 		defer resp.Close()
 		p.procHeader(resp.Header(), settingContentType)
-		content, err := resp.ProxyReturn(w, writeWrap, forceChunked)
+		content, err := resp.ProxyReturn(w, writeWrap, forceRecvFirst, forceChunked)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
 		if f != nil {
