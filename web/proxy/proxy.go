@@ -301,6 +301,8 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	var writeWrap io.Writer = nil
+	forceChunked := false
+	forceRecvFirst := false
 
 	if up == nil {
 		if cmd := r.Header.Get(ASURAN_POLICY_HEADER); len(cmd) > 0 {
@@ -367,6 +369,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 		//fmt.Println("url act: " + act.String())
 		speed := up.Speed()
 		bodyDelay := up.BodyPolicy()
+		chunked := up.Chunked()
 
 		if act != nil {
 			switch act := act.(type) {
@@ -382,9 +385,20 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 				f.Log("proxy " + fullUrl + " redirect " + requestUrl)
 				return
 			case *policy.RewritePolicy, *policy.RestorePolicy, *policy.TcpwritePolicy:
-				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay, up.ContentType()) {
+				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, chunked, bodyDelay, up.ContentType()) {
 					return
 				}
+			}
+		}
+
+		if chunked != nil {
+			chunkedOp := chunked.Option()
+			if chunkedOp != policy.ChunkedDefault && chunkedOp != policy.ChunkedOff {
+				forceChunked = true
+			}
+
+			if chunkedOp == policy.ChunkedOff || chunkedOp == policy.ChunkedBlock || chunkedOp == policy.ChunkedSize {
+				forceRecvFirst = true
 			}
 		}
 
@@ -395,7 +409,8 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 					writeWrap = w
 				}
 
-				writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r)
+				canSubPackage := !forceChunked
+				writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r, canSubPackage)
 			}
 		}
 
@@ -404,7 +419,16 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 				writeWrap = w
 			}
 
-			writeWrap = newSpeedWriter(speed, writeWrap)
+			canSubPackage := !forceChunked
+			writeWrap = newSpeedWriter(speed, writeWrap, canSubPackage)
+		}
+
+		if forceChunked {
+			if writeWrap == nil {
+				writeWrap = w
+			}
+
+			writeWrap = newChunkedWriter(chunked, writeWrap)
 		}
 	}
 
@@ -452,7 +476,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	} else {
 		defer resp.Close()
 		p.procHeader(resp.Header(), settingContentType)
-		content, err := resp.ProxyReturn(w, writeWrap)
+		content, err := resp.ProxyReturn(w, writeWrap, forceRecvFirst, forceChunked)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
 		if f != nil {
@@ -461,7 +485,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act policy.Policy, speed *policy.SpeedPolicy, bodyDelay policy.Policy, contentType string) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act policy.Policy, speed *policy.SpeedPolicy, chunked *policy.ChunkedPolicy, bodyDelay policy.Policy, contentType string) bool {
 	var content []byte = nil
 	contentSource := ""
 	istcp := false
@@ -510,25 +534,47 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		p.procHeader(w.Header(), contentType)
 	}
 
+	forceChunked := false
+	if chunked != nil {
+		chunkedOp := chunked.Option()
+		if chunkedOp != policy.ChunkedDefault && chunkedOp != policy.ChunkedOff {
+			forceChunked = true
+		}
+	}
+
 	var writeWrapper func(w io.Writer) io.Writer = nil
 	if bodyDelay != nil {
 		switch bodyDelay.(type) {
 		case *policy.DelayPolicy, *policy.TimeoutPolicy:
 			writeWrapper = func(w io.Writer) io.Writer {
-				return newDelayWriter(bodyDelay, w, p.r)
+				return newDelayWriter(bodyDelay, w, p.r, true)
 			}
 		}
 	}
 
 	if speed != nil {
+		canSubPackage := !forceChunked
 		if writeWrapper != nil {
 			wrap := writeWrapper
 			writeWrapper = func(w io.Writer) io.Writer {
-				return newSpeedWriter(speed, wrap(w))
+				return newSpeedWriter(speed, wrap(w), canSubPackage)
 			}
 		} else {
 			writeWrapper = func(w io.Writer) io.Writer {
-				return newSpeedWriter(speed, w)
+				return newSpeedWriter(speed, w, canSubPackage)
+			}
+		}
+	}
+
+	if forceChunked {
+		if writeWrapper != nil {
+			wrap := writeWrapper
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newChunkedWriter(chunked, wrap(w))
+			}
+		} else {
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newChunkedWriter(chunked, w)
 			}
 		}
 	}
@@ -537,6 +583,12 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	if istcp {
 		net.TcpWriteHttp(w, writeWrapper, content)
 	} else {
+		if !forceChunked {
+			// set the Content-Length, then chunked would be disabled
+			w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+		}
+
+		w.WriteHeader(200)
 		if writeWrapper != nil {
 			writeWrapper(w).Write(content)
 		} else {

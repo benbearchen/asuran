@@ -24,6 +24,7 @@ func init() {
 		rewriteKeyword,
 		restoreKeyword,
 		tcpwriteKeyword,
+		chunkedKeyword,
 		speedKeyword,
 		dont302Keyword,
 		do302Keyword,
@@ -226,7 +227,7 @@ func (u *UrlPolicy) Update(p Policy) error {
 		}
 	case *ProxyPolicy, *CachePolicy, *MapPolicy, *RedirectPolicy, *RewritePolicy, *RestorePolicy, *TcpwritePolicy:
 		u.contents = p
-	case *StatusPolicy, *SpeedPolicy, *Dont302Policy, *Disable304Policy, *ContentTypePolicy:
+	case *StatusPolicy, *SpeedPolicy, *Dont302Policy, *Disable304Policy, *ContentTypePolicy, *ChunkedPolicy:
 		for i, s := range u.subs {
 			if s.Keyword() == p.Keyword() {
 				u.subs[i] = p
@@ -364,7 +365,19 @@ func (u *UrlPolicy) ContentType() string {
 func (u *UrlPolicy) Host() *HostPolicy {
 	p := u.subKeyDef(hostKeyword)
 	if p != nil {
-		c, ok := p.(*HostPolicy)
+		h, ok := p.(*HostPolicy)
+		if ok {
+			return h
+		}
+	}
+
+	return nil
+}
+
+func (u *UrlPolicy) Chunked() *ChunkedPolicy {
+	p := u.subKeyDef(chunkedKeyword)
+	if p != nil {
+		c, ok := p.(*ChunkedPolicy)
 		if ok {
 			return c
 		}

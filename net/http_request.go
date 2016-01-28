@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 type HttpResponse struct {
@@ -95,22 +96,42 @@ func (r *HttpResponse) ResponseCode() int {
 	return r.resp.StatusCode
 }
 
-func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer) ([]byte, error) {
+func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer, recvFirst, forceChunked bool) ([]byte, error) {
 	defer r.resp.Body.Close()
 	h := w.Header()
 	for k, v := range r.Header() {
 		h[k] = v
 	}
 
-	w.WriteHeader(r.ResponseCode())
+	if forceChunked {
+		h.Del("Content-Length")
+	}
 
 	if wrap == nil {
 		wrap = w
 	}
 
-	var b bytes.Buffer
-	_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
-	return b.Bytes(), err
+	if recvFirst {
+		bytes, err := ioutil.ReadAll(r.resp.Body)
+		if err == nil {
+			if !forceChunked {
+				w.Header().Set("Content-Length", strconv.Itoa(len(bytes)))
+			}
+
+			w.WriteHeader(r.ResponseCode())
+			_, err = wrap.Write(bytes)
+		} else {
+			w.WriteHeader(502)
+		}
+
+		return bytes, err
+	} else {
+		w.WriteHeader(r.ResponseCode())
+
+		var b bytes.Buffer
+		_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
+		return b.Bytes(), err
+	}
 }
 
 type redirectError struct {
