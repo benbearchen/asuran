@@ -10,7 +10,7 @@ url [(set|update)] [settings...] [<url-pattern>|all]
 settings... ::=
       [drop <duration>]
       [(delay|timeout) [body] [rand] <duration>]
-      [(proxy|cache|status <responseCode>|(map|redirect) <resource-url>|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
+      [(proxy|cache|status <responseCode>|(map|redirect) (<resource-url>|replace /<match>/<new>/)|rewrite <url-encoded-content>|restore <store-id>|tcpwrite <url-encoded-content>)]
       [chunked (default|on|off|block <n>|size <n>[,<n2>[...]])]
       [speed <speeds>]
       [(dont302|do302)]
@@ -86,6 +86,11 @@ url command:
               代理将请求 resource-url 的内容并返回。
     redirect <resource-url>
               返回 302 以让客户端自己跳转至 resource-url。
+    map replace /<match>/<new>/
+    redirect replace /<match>/<new>/
+              对目标 url 用 <new> 替换 <match> 后再去 map/redirect。
+              <match> 必须是正则表达式（可包含捕获项），
+              而 <new> 可由普通字符串或捕获结果混合组成。
     rewrite <url-encoded-content>
               以 url-encoded-content 的原始内容返回。
     restore <store-id>
