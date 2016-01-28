@@ -6,20 +6,20 @@ Changelog of asuran
     + jQuery for UI, such as command menu, pack dialogs, etc
     + Refact core policy class, very effective
         + Policy in http headers
-        + Policy testing in "profile/<ip>/policy/<cmd>/testurl"
+        + Policy testing in `profile/<ip>/policy/<cmd>/testurl`
     + Command Pack, write, save and restore
     + Profile's owner can invite/remove operators
     + URL command
-        + map|redirect replace /<match>/<new>/
-        + chunked default|on|off|block <n>|size <n>[,<n2>[,<n3>...]]
-        + host <host:port>
-        + remove <keyword>
+        + `map|redirect replace /<match>/<new>/`
+        + `chunked default|on|off|block <n>|size <n>[,<n2>[,<n3>...]]`
+        + `host <host:port>`
+        + `remove <keyword>`
     + Domain command
-        + delay [rand] <duration>
+        + `delay [rand] <duration>`
 + bug
     + fix mistake of url args' matching count comparing
     + fix that a range request may cover the cache of full request
-    + fix that /to/ testing lost the query args
+    + fix that `/to/` testing lost the query args
 + other
     + Can proxy websocket, and can not modify it
 

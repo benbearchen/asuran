@@ -107,6 +107,7 @@ url command:
               off 表示关闭 chunked 以普通 Content-Length 整体返回；
               block <n> 表示（平）分成几个 chunked 块返回；
               size <n>,<n2> 表示指定每个块的字节数，剩余块以最后一个为准。
+              size 的字节数，0 表示任意长度，-1 表示后续所有内容。
               警告：因技术原因，强制 chunked 后速度控制等部分策略会失准！
 
 
