@@ -219,7 +219,16 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
 		p.dealPacks(w, r, page)
 	} else if urlPath == "/" {
-		p.index(w, p.ver)
+		ip := func() string {
+			if p.isSelfAddr(remoteIP) {
+				return ""
+			} else {
+				return remoteIP
+			}
+		}()
+		p.index(w, p.ver, ip)
+	} else if urlPath == "/features" {
+		p.features(w, p.ver)
 	} else if urlPath == "/devices" {
 		p.devices(w)
 	} else if urlPath == "/about" {
@@ -258,6 +267,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/to/"+p.mainHost+"/about to purely proxy of http://"+p.mainHost+"/about")
 		fmt.Fprintln(w, "")
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy")
+		fmt.Fprintln(w, "")
+		fmt.Fprintln(w, "visit http://"+p.mainHost+"/profile/255.255.255.255/policy/speed%2015/"+p.mainHost+"/about to test the command policy")
 	} else if urlPath == "/urlencoded" {
 		p.urlEncoded(w)
 	} else {

@@ -60,11 +60,20 @@ type indexData struct {
 	ServeIP   string
 	ProxyHost string
 	UsingDNS  bool
+	Client    string
 }
 
-func (p *Proxy) index(w http.ResponseWriter, ver string) {
+func (p *Proxy) index(w http.ResponseWriter, ver, clientIP string) {
 	t, err := template.ParseFiles("template/index.tmpl")
-	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, !p.disableDNS})
+	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, !p.disableDNS, clientIP})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+func (p *Proxy) features(w http.ResponseWriter, ver string) {
+	t, err := template.ParseFiles("template/features.tmpl")
+	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, !p.disableDNS, ""})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

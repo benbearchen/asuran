@@ -1,58 +1,43 @@
 <html>
-<head><title>asuran</title></head>
+<head>
+<title>asuran {{.Version}}</title>
+<style>
+body{
+  font-size:2.5em;
+}
+.entry{
+  width:9em;
+  text-align:center;
+  float:left;
+  margin:10px;
+  border-style: outset;
+  border-width: 10px;
+  padding:1em;
+}
+br{
+  clear:both;
+}
+</style>
+</head>
 <body>
 <b><a href="https://github.com/benbearchen/asuran">asuran</a></b> {{.Version}} 是一个通过 DNS 实现透明代理的服务。
 
 <hr/>
 
-<table>
-<tr><td>使用手册：</td><td><a href="/usage" target="_blank">http://{{.ProxyHost}}/usage</a></td><td>&lt;== 想知道怎么使用戳这里</td></tr>
-<tr><td>您可管理设备列表：</td><td><a href="/profile" target="_blank">http://{{.ProxyHost}}/profile</a></td></tr>
-<tr><td>当前活跃设备：</td><td><a href="/devices" target="_blank">http://{{.ProxyHost}}/devices</a></td></tr>
-{{if .UsingDNS}}<tr><td>DNS 独立域名解析服务：</td><td><a href="/dns" target="_blank">http://{{.ProxyHost}}/dns</a></td></tr>{{end}}
-<tr><td>命令示例：</td><td><a href="/packs" target="_blank">http://{{.ProxyHost}}/packs</a></td></tr>
-</table>
-
-<hr/>
-asuran {{.Version}} 当前支持特性：
-<ul>
-<li>每个客户端一个配置，可独立定义过滤、代理的域名、URL
-<li>支持拦截域名解析或者将域名重定向到 asuran 以实现代理服务
-<li>支持按域名、URL 路径、查询参数匹配 URL，并对 URL 实现以下操作：
-<ul>
-<li>延时、或按时阻止 URL
-<li>指定 HTTP 内容返回的速度
-<li>缓存 URL 内容，可原样或修改后给以后的请求返回
-</ul>
-<li>HTTP 特性：<ul>
-  <li>支持代理 GET，且可缓存
-  <li>支持代理 POST，但不可缓存
-  <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求；支持完整缓存匹配 Range 请求
-  <li>代理对一般 HTTP Header 原样返回（Transfer-Encoding/chunked 可能就不行了）
-  <li>可以设置是否使 302 透回给客户端
-  <li>强制返回指定 TCP 内容而不是 HTTP 协议内容
-  <li>可以设置是否主动禁止 304 请求
-  <li>设定 HTTP 回复 body 的传输掉线时长
-  <li>修改或删除 Content-Type
-</ul>
-<li>DNS 特性：<ul>
-  <li>返回指定 IP
-  <li>返回空结果
-  <li>无任何回复
-  <li>延时返回结果
-</ul>
-<li>客户端行为历史记录<ul>
-  <li>记录域名查询
-  <li>记录 HTTP 请求，可查看每一次请求的详情，如请求时间，HTTP Headers，POST 内容和返回内容等
-</ul>
-<li>添加、删除配置的操作员，允许更多操作入口
-<li>对一批命令打包，方便重复利用
-</ul>
-当前不支持：
-<ul>
-<li>HTTPS
-</ul>
-<hr/>
+{{if .Client}}<div class="entry"><a href="/profile/{{.Client}}" target="_blank">配置当前设备</a></div>{{end}}
+<div class="entry"><a href="/profile" target="_blank">您管理的设备</a></div>
+<div class="entry"><a href="/devices" target="_blank">所有设备</a></div>
+<br/><hr/>
+{{if .UsingDNS}}
+<div class="entry"><a href="/dns" target="_blank">DNS 服务</a></div>
+<br/><hr/>
+{{end}}
+<div class="entry"><a href="/usage" target="_blank">初始使用说明</a></div>
+<div class="entry"><a href="/features" target="_blank">特性介绍</a></div>
+<div class="entry"><a href="/profile/commands" target="_blank">命令定义</a></div>
+<div class="entry"><a href="/packs" target="_blank">已有命令包</a></div>
+<br/><hr/>
+<div class="entry"><a href="/about" target="_blank">黑技巧</a></div>
 
 </body>
 </html>
