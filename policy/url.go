@@ -155,8 +155,22 @@ func (u *UrlPolicy) Keyword() string {
 }
 
 func (u *UrlPolicy) Command() string {
-	s := make([]string, 0, 2+len(u.subs))
+	s := make([]string, 0, 3)
 	s = append(s, urlKeyword)
+	p := u.Policy()
+	if p != "" {
+		s = append(s, p)
+	}
+
+	if u.target != "" {
+		s = append(s, u.target)
+	}
+
+	return strings.Join(s, " ")
+}
+
+func (u *UrlPolicy) Policy() string {
+	s := make([]string, 0, 2+len(u.subs))
 	if u.delays != nil {
 		s = append(s, u.delays.Command())
 	}
@@ -173,7 +187,6 @@ func (u *UrlPolicy) Command() string {
 		s = append(s, p.Command())
 	}
 
-	s = append(s, u.target)
 	return strings.Join(s, " ")
 }
 

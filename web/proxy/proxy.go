@@ -735,7 +735,9 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		fmt.Fprintln(w, f.ExportCommand())
 		return
 	} else if op == "restart" {
-		if f := p.lives.OpenExists(profileIP); f != nil {
+		if !canOperate {
+			fmt.Fprintln(w, "没有操作权限")
+		} else if f := p.lives.OpenExists(profileIP); f != nil {
 			f.Restart()
 			fmt.Fprintln(w, profileIP+" 已经重新初始化")
 		} else {
@@ -916,10 +918,24 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 		p.remoteProxyUrl(profileIP, url, w, r, up.(*policy.UrlPolicy))
 		return
+	} else if op == "match" {
+		r.ParseForm()
+		if v, ok := r.Form["url"]; ok && len(v) > 0 {
+			c := f.UrlAction(v[0])
+			if c != nil {
+				fmt.Fprintf(w, "%s", c.Policy())
+			}
+		} else {
+			w.WriteHeader(404)
+			fmt.Fprintln(w, "miss url")
+		}
+
+		return
 	} else if op == "pack" {
 		p.packCommand(w, r)
 		return
 	} else if op != "" {
+		w.WriteHeader(404)
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
 	}
