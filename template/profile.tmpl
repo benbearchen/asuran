@@ -38,6 +38,16 @@
 
 .ui-menu { width: 350px; }
 
+.btn{
+  margin:10px;
+  border-style: outset;
+  border-width: 2px;
+  float:left;
+  padding:3px;
+}
+hr{
+  clear:both;
+}
 </style>
 
 <script src="/res/js/external/jquery/jquery.js"></script>
@@ -242,24 +252,21 @@ function doOperator(op) {
 </head>
 
 <body>
-<p>配置名字：{{.Name}}</p>
-<p>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}</p>
-<p>操作员 IP：<u id="operatorList">{{.Operators}}</u>{{if .NotOwner}}（你不能操作此配置）{{else}}
+<div>配置名字：{{.Name}}</div>
+<div>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}</div>
+<div>操作员 IP：<u id="operatorList">{{.Operators}}</u>{{if .NotOwner}}（你不能操作此配置）{{else}}
 <input id="operatorButton" type="button" value="增删操作员" onclick="openOperatorDialog()" style="display:none" />
 <div id="operatorDialog" title="操作员" style="display:none">
 操作者 IP：<input type="text" id="operatorIP" size="16" /><br/>
 <input type="button" value="添加" onclick="doOperator('add')"/>
 <input type="button" value="删除" onclick="doOperator('remove')"/>
-<p>关于操作员的故事：
 </div>
 {{end}}
-</p>
-<hr/>
-<a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">重启客户端状态</a>
-<hr/>
-<a href="/profile/{{.IP}}/history" target="_blank" title="查看域名查询、HTTP 访问等日志">查看日志</a>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="/profile/{{.IP}}/stores" target="_blank" title="">查看当前保存的内容列表</a>
+</div>
+<hr style="margin-bottom: 0"/>
+<div class="btn" style="color:#FF0000;"><a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">！重启客户端状态！</a></div>
+<div class="btn"><a href="/profile/{{.IP}}/history" target="_blank" title="查看域名查询、HTTP 访问等日志">查看日志</a></div>
+<div class="btn"><a href="/profile/{{.IP}}/stores" target="_blank" title="">查看当前保存的内容列表</a></div>
 <hr/>
 <table id="profile">
 <tr>
