@@ -45,6 +45,27 @@
   float:left;
   padding:3px;
 }
+.btnToggle{
+  width:1.7em;
+  height:1.7em;
+  //vertical-align:middle;
+  text-align:center;
+}
+.commandGroup{
+  border: 1px solid #cccccc;
+  background: #f6f6f6 url("/res/js/images/ui-bg_glass_100_f6f6f6_1x400.png") 50% 50% repeat-x;
+  //font-weight: bold;
+  color: #1c94c4;
+  padding: 4px;
+  margin-bottom: 5px;
+}
+.toggleGroup{
+  margin-left:2em;
+  color: #000000;
+}
+.groupName{
+  margin-left:4px;
+}
 hr{
   clear:both;
 }
@@ -279,6 +300,7 @@ function matchURLPolicy() {
 }
 
 function createPolicyForOnlineTest() {
+  createURLPolicy(false);
   // TODO:
 }
 
@@ -313,18 +335,50 @@ function createPolicy() {
   $("#createPolicyDialog").dialog("open");
 }
 
-function createURLPolicy() {
+function createURLPolicy(showURL) {
   $("#createPolicyDialog").dialog("close");
 
+  if (showURL) {
+    $("#urlDialogGroupURL").show();
+  } else {
+    $("#urlDialogGroupURL").hide();
+  }
+
+  $("#urlCommandDialog").dialog("open");
+  // TODO:
+}
+
+function onURLCommandDialogOK() {
   // TODO:
 }
 
 function createDomainPolicy() {
   $("#createPolicyDialog").dialog("close");
 
+  $("#domainCommandDialog").dialog("open");
   // TODO:
 }
 
+function onDomainCommandDialogOK() {
+  // TODO:
+}
+
+function toggleGroup(group) {
+  var g = $("#"+group);
+  var s = g.children("span");
+  var d = g.children("div");
+  if (s.hasClass("ui-icon ui-icon-minusthick")) {
+    d.hide();
+    s.removeClass("ui-icon ui-icon-minusthick").addClass("ui-icon ui-icon-plusthick");
+  } else {
+    d.show();
+    s.removeClass("ui-icon ui-icon-plusthick").addClass("ui-icon ui-icon-minusthick");
+  }
+}
+
+function closeDialog(dlg) {
+  $("#"+dlg).dialog("close");
+}
 </script>
 </head>
 
@@ -335,12 +389,12 @@ function createDomainPolicy() {
 <input id="operatorButton" type="button" value="增删操作员" onclick="openOperatorDialog()" style="display:none" />
 <div id="operatorDialog" title="操作员" style="display:none">
 操作者 IP：<input type="text" id="operatorIP" size="16" /><br/>
-<input type="button" value="添加" onclick="doOperator('add')"/>
-<input type="button" value="删除" onclick="doOperator('remove')"/>
+<input type="button" value="添加" onclick="doOperator('add')" />
+<input type="button" value="删除" onclick="doOperator('remove')" />
 </div>
 {{end}}
 </div>
-<hr style="margin-bottom: 0"/>
+<hr style="margin-bottom: 0" />
 {{if .NotOwner}}{{else}}
 <div class="btn" style="color:#FF0000;"><a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">！重启客户端状态！</a></div>
 {{end}}
@@ -357,7 +411,7 @@ function createDomainPolicy() {
 </tr>
 {{range .Urls}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');"/>{{if .Delete}}&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');"/>{{end}}</td>
+<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');" />{{if .Delete}}&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');" />{{end}}</td>
 <td style="min-width:500px;">{{.Pattern}}</td>
 <td>{{.Action}}</td>
 <td>{{.Delay}}</td>
@@ -376,7 +430,7 @@ function createDomainPolicy() {
 </tr>
 {{range .Domains}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');"/>&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');"/></td>
+<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');" />&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');" /></td>
 <td style="min-width:500px;">{{.Domain}}</td>
 <td>{{.Action}}</td>
 <td>{{.IP}}</td>
@@ -387,19 +441,21 @@ function createDomainPolicy() {
 
 <form action="/profile/{{.Path}}" method="post">
 <table width="600"><tr>
-<td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
-<td><input type="button" value="在线测试 URL" onclick="onlineTest()"/>
+<td><b>命令：</b></td><td><input type="submit" value="执行命令" /></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
+<td><input type="button" value="在线测试 URL" onclick="onlineTest()" />
 <div id="onlineTestDialog" title="在线测试 URL" style="display:none">
-目标 URL：<input type="text" id="onlineTestURL" style="width:100%" placeholder="http://g.cn/" /><br/>
-<a href="/profile/commands" target="_blank">命令策略</a>：<input style="float:right" value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /><input style="float:right" value="策略向导" type="button" onclick="createPolicyForOnlineTest()" /><input type="text" id="onlineTestPolicy" style="width:100%" placeholder="speed 100 # 留空则使用 profile 的策略"/><br/>
-<input type="button" value="测试" onclick="doOnlineTest()"/>
+<div class="commandGroup">目标 URL：<input type="text" id="onlineTestURL" size="50" placeholder="http://g.cn/" /></div>
+<div class="commandGroup"><a href="/profile/commands" target="_blank">命令策略</a>：<input type="text" id="onlineTestPolicy" size="50" placeholder="speed 100 # 留空则使用 profile 的策略" />
+<span style="text-align:right;display:block;margin-top:4px;"><input value="策略向导" type="button" onclick="createPolicyForOnlineTest()" /><input value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /></span>
+</div>
+<input type="button" value="测试" onclick="doOnlineTest()" />
 </div>
 {{if .NotOwner}}{{else}}
-<input type="button" value="命令策略向导" onclick="createPolicy()"/>
+<input type="button" value="命令策略向导" onclick="createPolicy()" />
 {{end}}
 <div id="createPolicyDialog" title="命令策略向导" style="display:none">
-<input type="button" value="生成 URL 命令策略" onclick="createURLPolicy()"/>
-<input type="button" value="生成 Domain 命令策略" onclick="createDomainPolicy()"/>
+<input type="button" value="生成 URL 命令策略" onclick="createURLPolicy(true)" />
+<input type="button" value="生成 Domain 命令策略" onclick="createDomainPolicy()" />
 </div>
 </td>
 </tr>
@@ -412,9 +468,9 @@ function createDomainPolicy() {
 <input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em"></select><input type="button" value="加载命令包" onclick="loadPack()" />
 <div id="packDialog" title="打包命令">
 <form id="packForm" action="/profile/{{.Path}}/pack" method="post">
-包名：<input type="text" name="name" size="30" placeholder="module.case.item"/><br/>
-作者：<input type="text" name="author" size="30" placeholder="your nickname"/><br/>
-介绍：<input type="text" name="comment" size="30" placeholder=""/><br/>
+包名：<input type="text" name="name" size="30" placeholder="module.case.item" /><br/>
+作者：<input type="text" name="author" size="30" placeholder="your nickname" /><br/>
+介绍：<input type="text" name="comment" size="30" placeholder="" /><br/>
 <input type="submit" value="打包如下命令：" /><br/>
 <textarea rows="5" cols="40" id="PackCommandBox" name="cmd"></textarea>
 </form>
@@ -435,7 +491,7 @@ function createDomainPolicy() {
 <table border="1">
 <tr>
 <td rowspan="12">url</td>
-<td rowspan="8">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('proxy', '');">[proxy]</button>: 使用代理</td><td rowspan="11">可选配置<br/><label><input id="do302" type="checkbox" />允许 302 跳转</label><br/><label><input id="disable304" type="checkbox" />禁止 304</label></td><td rowspan="12">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
+<td rowspan="8">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('proxy', '');">[proxy]</button>: 使用代理</td><td rowspan="11">可选配置<br/><label><input id="do302" type="checkbox" />允许 302 跳转</label><br/><label><input id="disable304" type="checkbox" />禁止 304</label></td><td rowspan="12">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option" /><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
 </tr>
 <tr>
 <td colspan="2"><button type="button" onclick="proxyCmd('cache', '');">cache</button>: 代理并缓存</td>
@@ -444,22 +500,22 @@ function createDomainPolicy() {
 <td colspan="2"><button type="button" onclick="proxyCmd('status', selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl', 'map 的第三方 URL '));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL"/></td>
+<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl', 'map 的第三方 URL '));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL" /></td>
 </tr>
 <tr>
 <td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl', 'redirect 的第三方 URL '));">redirect</button>: 302 跳转至第三方链接</td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td rowspan="2"><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
+<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td rowspan="2"><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本" /> <a href="/urlencoded" target="_blank">生成</a></td>
 </tr>
 <tr>
 <td><button type="button" onclick="proxyCmd('tcpwrite', readInput('RewriteContent', 'tcpwrite 的 url-encoded 文本'));">tcpwrite</button>: 直接以 TCP 返回指定内容</td>
 </tr>
 <tr>
-<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID', 'restore 的内容 store-id '));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id"/></td>
+<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID', 'restore 的内容 store-id '));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id" /></td>
 </tr>
 <tr>
-<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
+<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6" /><br/>如: 100ms, 5s, 1m</td>
 </tr>
 <tr>
 <td><button type="button" onclick="delayCmd('drop');">drop</button>: 前“时长”时间内都掉线</td>
@@ -477,7 +533,7 @@ function createDomainPolicy() {
 <div id="commandTabs-2">
 <table border="1">
 <tr>
-<td rowspan="5">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="4">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="5">域名: <input type="text" id="Domain"/><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
+<td rowspan="5">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="4">自定义 IP:<br/><input type="text" id="DomainRedirectIP" /></td><td rowspan="5">域名: <input type="text" id="Domain" /><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
 </tr>
 <tr>
 <td><button type="button" onclick="domainCmd('block', redirectOpt());">block</button>: 拦截且不返回</td>
@@ -521,6 +577,62 @@ function createDomainPolicy() {
 </div>
 
 {{end}} <!-- end of owner's command guide -->
+
+<!-- dialogs -->
+<div id="urlCommandDialog" title="URL 策略生成" style="display:none">
+<div id="urlDialogGroupURL" class="commandGroup">
+URL 目标：<input type="text" id="urlDlgURL" placeholder="http://*.domain/path?arg=value" />
+<input type="button" value="生成..." onclick="makeURL()" /><br/>
+</div>
+<div id="urlDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupDelay')" value="+"></span><b class="groupName">延时策略</b>
+<div class="toggleGroup" style="display:none">
+策略：<select><option value="">不处理</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select><br/>
+时长：<input type="text" id="domainDlgDuration" placeholder="默认：秒" /><input type="checkbox" id="domainDlgRandDelay" />随机<br/>
+</div>
+</div>
+<div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupContent')" value="+"></span><b class="groupName">内容策略</b>
+<div class="toggleGroup" style="display:none">
+<select>
+  <option value="proxy">[代理]</option>
+  <option value="cache">缓存</option>
+  <option value="map">映射内容</option>
+  <option value="redirect">重定向</option>
+  <option value="rewrite"></option>
+</select>
+</div>
+</div>
+<div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupOther')" value="+"></span><b class="groupName">其他设置</b>
+<div class="toggleGroup" style="display:none">
+<input type="checkbox" />302 透传<br/>
+<input type="checkbox" />304 禁止<br/>
+</div>
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onURLCommandDialogOK" />
+<input type="button" value="取消" onclick="closeDialog('urlCommandDialog')" />
+</div>
+</div>
+
+<div id="domainCommandDialog" title="Domain 策略生成" style="display:none">
+<div id="domainDialogGroupDomain" class="commandGroup">域名：<input type="text" id="domainDlgDomain" size="30" />
+</div>
+<div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('domainDialogGroupDNS')" value="+"></span><b class="groupName">解析设置</b>
+<div class="toggleGroup" style="display:none">
+<span>目标 IP：</span><input type="text" id="domainDlgIP" placeholder="[可选]解析 IP" style="margin-right:auto;"/><br/>
+解析策略：<select id="domainDlgPolicy"><option value="default">正常解析</option><option value="block">不返回</option><option value="null">返回空</option><option value="proxy">强制代理</option></select><br/>
+</div>
+</div>
+<div id="domainDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;border-width:10px;" onclick="toggleGroup('domainDialogGroupDelay')"></span><b class="groupName">延时设置</b>
+<div class="toggleGroup" style="display:none">
+延时时长：<input type="text" id="domainDlgDuration" placeholder="默认：秒" /><br/>
+<input type="checkbox" id="domainDlgRandDelay" />随机时长<br/>
+</div>
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onDomainCommandDialogOK()" />
+<input type="button" value="取消" onclick="closeDialog('domainCommandDialog')" />
+</div>
+</div>
 
 <script>
 
@@ -614,11 +726,33 @@ $( "#operatorDialog" ).dialog({
 
 $( "#onlineTestDialog" ).dialog({
   autoOpen: false,
-  width: 500
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
 });
 
 $( "#createPolicyDialog" ).dialog({
   autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#urlCommandDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#domainCommandDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
 });
 
 }); // end of document.ready
