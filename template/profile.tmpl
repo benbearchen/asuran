@@ -308,10 +308,14 @@ function openOperatorDialog() {
   $( "#operatorDialog" ).dialog("open");
 }
 
+function testIP(ip) {
+  var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
+  return re.test(ip);
+}
+
 function doOperator(op) {
   var ip = document.getElementById('operatorIP').value;
-  var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
-  if (!re.test(ip))
+  if (!testIP(ip))
   {
     alert("无效客户端 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
     return;
@@ -360,7 +364,50 @@ function createDomainPolicy() {
 }
 
 function onDomainCommandDialogOK() {
-  // TODO:
+  var d = $("#domainDlgDomain").val();
+  if (d == "") {
+    alert("域名不能为空");
+    return;
+  } else if (d.indexOf(" ") >= 0) {
+    alert("域名不能包含空格");
+    return;
+  }
+
+  var ip = $("#domainDlgIP").val();
+  if (ip != "" && !testIP(ip)) {
+    alert("无效 IP：" + ip);
+    return;
+  }
+
+  var duration = $("#domainDlgDuration").val();
+  if (duration != "" && (duration.indexOf(" ") >= 0)) {
+    alert("延时时长不能有空格呃……");
+    return;
+  }
+
+  var opt = $("#domainDlgPolicy").val();
+
+  var cmd = "domain";
+  if (opt != "") {
+    cmd += " " + opt;
+  }
+
+  if (duration != "") {
+    cmd += " delay";
+    if ($("#domainDlgRandDelay").prop("checked")) {
+      cmd += " rand";
+    }
+
+    cmd += " " + duration;
+  }
+
+  cmd += " " + d;
+  if (ip != "") {
+    cmd += " " + ip;
+  }
+
+  appendCmd(cmd);
+  $("#domainCommandDialog").dialog("close");
 }
 
 function toggleGroup(group) {
@@ -581,13 +628,13 @@ function closeDialog(dlg) {
 <!-- dialogs -->
 <div id="urlCommandDialog" title="URL 策略生成" style="display:none">
 <div id="urlDialogGroupURL" class="commandGroup">
-URL 目标：<input type="text" id="urlDlgURL" placeholder="http://*.domain/path?arg=value" />
+URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.domain/path?arg=value" />
 <input type="button" value="生成..." onclick="makeURL()" /><br/>
 </div>
 <div id="urlDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupDelay')" value="+"></span><b class="groupName">延时策略</b>
 <div class="toggleGroup" style="display:none">
-策略：<select><option value="">不处理</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select><br/>
-时长：<input type="text" id="domainDlgDuration" placeholder="默认：秒" /><input type="checkbox" id="domainDlgRandDelay" />随机<br/>
+策略：<select><option value="">[不处理]</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select><br/>
+时长：<input type="text" id="urlDlgDuration" placeholder="默认：秒" /><input type="checkbox" id="urlDlgRandDelay" />随机<br/>
 </div>
 </div>
 <div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupContent')" value="+"></span><b class="groupName">内容策略</b>
@@ -619,7 +666,7 @@ URL 目标：<input type="text" id="urlDlgURL" placeholder="http://*.domain/path
 <div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('domainDialogGroupDNS')" value="+"></span><b class="groupName">解析设置</b>
 <div class="toggleGroup" style="display:none">
 <span>目标 IP：</span><input type="text" id="domainDlgIP" placeholder="[可选]解析 IP" style="margin-right:auto;"/><br/>
-解析策略：<select id="domainDlgPolicy"><option value="default">正常解析</option><option value="block">不返回</option><option value="null">返回空</option><option value="proxy">强制代理</option></select><br/>
+解析策略：<select id="domainDlgPolicy"><option value="">[正常解析]</option><option value="block">不返回</option><option value="null">返回空</option><option value="proxy">强制代理</option></select><br/>
 </div>
 </div>
 <div id="domainDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;border-width:10px;" onclick="toggleGroup('domainDialogGroupDelay')"></span><b class="groupName">延时设置</b>
