@@ -102,7 +102,7 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		even = !even
 		act := d.p.Comment()
 		edit := d.p.Command() + "\n"
-		del := "domain delete " + d.TargetString() + "\n"
+		del := "domain delete " + d.p.Domain() + "\n"
 
 		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
