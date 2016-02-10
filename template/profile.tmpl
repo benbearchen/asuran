@@ -51,6 +51,7 @@
   //vertical-align:middle;
   text-align:center;
 }
+
 .commandGroup{
   border: 1px solid #cccccc;
   background: #f6f6f6 url("/res/js/images/ui-bg_glass_100_f6f6f6_1x400.png") 50% 50% repeat-x;
@@ -74,6 +75,12 @@
 .toggleGroup > div{
   margin-top: 4px;
 }
+
+.urlPolicyOpt{
+  display:none;
+  margin-left: 2em;
+}
+
 hr{
   clear:both;
 }
@@ -356,8 +363,31 @@ function createURLPolicy(showURL) {
     $("#urlDialogGroupURL").hide();
   }
 
+  urlDlgPolicyChanged();
   $("#urlCommandDialog").dialog("open");
   // TODO:
+}
+
+var urlOpts = ["urlDlgOptMap", "urlDlgOptContent", "urlDlgOptStore"];
+
+var urlOptsMap = {
+  map: 0,
+  redirect: 0,
+  rewrite: 1,
+  tcpwrite: 1,
+  restore: 2,
+};
+  
+function urlDlgPolicyChanged() {
+  var v = $("#urlDlgPolicy").val();
+  for (var i = 0; i < urlOpts.length; i++) {
+    $("#"+urlOpts[i]).hide();
+  }
+
+  if (urlOptsMap.hasOwnProperty(v)) {
+    var opt = urlOpts[urlOptsMap[v]];
+    $("#"+opt).show();
+  }
 }
 
 function onURLCommandDialogOK() {
@@ -637,31 +667,46 @@ function closeDialog(dlg) {
 <div id="urlCommandDialog" title="URL 策略生成" style="display:none">
 <div id="urlDialogGroupURL" class="commandGroup">
 URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.domain/path?arg=value" />
-<input type="button" value="生成..." onclick="makeURL()" /><br/>
+<input type="button" value="生成..." disabled="disabled" onclick="makeURL()" /><br/>
 </div>
-<div id="urlDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupDelay')" value="+"></span><b>延时策略</b>
+<div id="urlDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupDelay')"></span><b>延时策略</b>
 <div class="toggleGroup">
-<div>策略：<select><option value="">[不处理]</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select></div>
-<div>时长：<input type="text" id="urlDlgDuration" placeholder="默认：秒" /><input type="checkbox" id="urlDlgRandDelay" />随机</div>
+<div>策略：<select id="urlDlgDelay"><option value="">[不处理]</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select></div>
+<div>时长：<input type="text" id="urlDlgDuration" size="15" placeholder="默认：秒" /><input type="checkbox" id="urlDlgRandDelay" />随机</div>
+<div id="urlDialogGroupBodyDelay"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupBodyDelay')"></span><b style="margin-left:4px;">Body 延时策略</b>
+<div class="toggleGroup">
+<div>策略：<select id="urlDlgBodyDelay"><option value="">[不处理]</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select></div>
+<div>时长：<input type="text" id="urlDlgBodyDuration" size="15" placeholder="默认：秒" /><input type="checkbox" id="urlDlgBodyRandDelay" />随机</div>
 </div>
 </div>
-<div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupContent')" value="+"></span><b>内容策略</b>
+</div>
+</div>
+<div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupContent')"></span><b>内容策略</b>
 <div class="toggleGroup">
 <div>
-<select>
-  <option value="proxy">[代理]</option>
+<select id="urlDlgPolicy">
+  <option value="">[代理]</option>
   <option value="cache">缓存</option>
   <option value="map">映射内容</option>
   <option value="redirect">重定向</option>
-  <option value="rewrite"></option>
+  <option value="rewrite">返回指定内容</option>
+  <option value="tcpwrite">直接以 TCP 返回内容</option>
+  <option value="restore">返回预置内容</option>
 </select>
 </div>
+<div id="urlDlgOptMap" class="urlPolicyOpt">直接 URL：<input type="text" /></div>
+<div id="urlDlgOptContent" class="urlPolicyOpt">
+<div>编码内容：<input type="button" value="转换..." disabled="disabled" /></div>
+<textarea></textarea>
+</div>
+<div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select></select><input type="button" value="预览" /></div>
 </div>
 </div>
-<div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')" value="+"></span><b>其他设置</b>
+<div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')"></span><b>其他设置</b>
 <div class="toggleGroup">
-<div><input type="checkbox" />302 透传</div>
-<div><input type="checkbox" />304 禁止</div>
+<div><input type="checkbox" id="urlDlg302" />302 透传</div>
+<div><input type="checkbox" id="urlDlg304" />304 禁止</div>
+<div>host：<input type="text" id="urlDlgHost" size="22" placeholder="ip:port"/></div>
 </div>
 </div>
 <div style="width:100%;text-align:center;">
@@ -673,7 +718,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div id="domainCommandDialog" title="Domain 策略生成" style="display:none">
 <div id="domainDialogGroupDomain" class="commandGroup">域名：<input type="text" id="domainDlgDomain" size="30" />
 </div>
-<div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('domainDialogGroupDNS')" value="+"></span><b>解析设置</b>
+<div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('domainDialogGroupDNS')"></span><b>解析设置</b>
 <div class="toggleGroup">
 <div>目标 IP：<input type="text" id="domainDlgIP" placeholder="[可选]解析 IP" style="margin-right:auto;"/></div>
 <div>解析策略：<select id="domainDlgPolicy"><option value="">[正常解析]</option><option value="block">不返回</option><option value="null">返回空</option><option value="proxy">强制代理</option></select></div>
@@ -795,6 +840,8 @@ $( "#createPolicyDialog" ).dialog({
   height: 'auto',
   resizable: false,
 });
+
+$("#urlDlgPolicy").change(urlDlgPolicyChanged);
 
 $("#urlCommandDialog").dialog({
   autoOpen: false,
