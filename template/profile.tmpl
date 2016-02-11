@@ -399,6 +399,8 @@ function createURLPolicy(showURL) {
 
   urlDlgPolicyChanged();
   urlDlgStatusChanged();
+  urlDlgContentTypeChanged();
+  urlDlgChunkedChanged();
 
   $("#urlCommandDialog").dialog("open");
   // TODO:
@@ -432,6 +434,29 @@ function urlDlgStatusChanged() {
     $("#urlDlgStatusUser").show();
   } else {
     $("#urlDlgStatusUser").hide();
+  }
+}
+
+function urlDlgContentTypeChanged() {
+  var v = $("#urlDlgContentTypeDef").val();
+  if (v == "user") {
+    $("#urlDlgContentTypeUser").show();
+  } else {
+    $("#urlDlgContentTypeUser").hide();
+  }
+}
+
+function urlDlgChunkedChanged() {
+  var v = $("#urlDlgChunkedDef").val();
+  if (v == "block") {
+    $("#urlDlgChunkedBlockNum").show();
+    $("#urlDlgChunkedSize").hide();
+  } else if (v == "size") {
+    $("#urlDlgChunkedBlockNum").hide();
+    $("#urlDlgChunkedSize").show();
+  } else {
+    $("#urlDlgChunkedBlockNum").hide();
+    $("#urlDlgChunkedSize").hide();
   }
 }
 
@@ -518,6 +543,9 @@ function onURLCommandDialogOK() {
   var disable304 = "";
   var host = "";
   var status = "";
+  var contentType = "";
+  var chunked = "";
+
   if ($("#urlDlg302").prop("checked")) {
     do302 = "do302";
   }
@@ -551,7 +579,54 @@ function onURLCommandDialogOK() {
     status = "status " + status;
   }
 
-  var s = [delayOpt, bodyDelayOpt, policy, do302, disable304, host, status];
+  contentType = $("#urlDlgContentTypeDef").val();
+  if (contentType == "user") {
+    contentType = $("#urlDlgContentTypeUser").val();
+    if (contentType == "") {
+      contentType = "empty";
+    } else if (contentType.indexOf(" ") >= 0) {
+      alert("自定义 Content-Type 不能包含空格");
+      return;
+    } else if (contentType == "default" || contentType == "empty" || contentType == "remove") {
+      alert("自定义 Content-Type 不能是 " + contentType);
+      return;
+    }
+  }
+
+  if (contentType != "") {
+    contentType = "content-type " + contentType;
+  }
+
+  chunked = $("#urlDlgChunkedDef").val();
+  if (chunked == "block") {
+    var block = $("#urlDlgChunkedBlockNum").val();
+    if (block == "") {
+      alert("chunked 块数量不能为空");
+      return;
+    } else if (block.indexOf(" ") >= 0) {
+      alert("chunked 块数量不能包含空格");
+      return;
+    }
+
+    chunked += " " + block;
+  } else if (chunked == "size") {
+    var size = $("#urlDlgChunkedSize").val();
+    if (size == "") {
+      alert("chunked 块大小不能为空");
+      return;
+    } else if (size.indexOf(" ") >= 0) {
+      alert("chunked 块大小不能包含空格");
+      return;
+    }
+
+    chunked += " " + size;
+  }
+
+  if (chunked != "") {
+    chunked = "chunked " + chunked;
+  }
+
+  var s = [delayOpt, bodyDelayOpt, policy, do302, disable304, host, status, contentType, chunked];
   var cmd = "";
   for (var i = 0; i < s.length; i++) {
     if (s[i] != "") {
@@ -881,6 +956,8 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div><input type="checkbox" id="urlDlg304" />304 禁止（总是返回内容）</div>
 <div>指定连接服务器：<input type="text" id="urlDlgHost" size="22" placeholder="ip:port"/></div>
 <div>指定 StatusCode：<select id="urlDlgStatusDef"><option value="">[不设置]</option><option value="403">403</option><option value="404">404</option><option value="500">500</option><option value="502">502</option><option value="user">其它</option></select><input type="text" id="urlDlgStatusUser" size="4" style="display:none"/></div>
+<div>Content-Type：<select id="urlDlgContentTypeDef"><option value="">[默认]</option><option value="remove">移除</option><option value="empty">置空</option><option value="user">自定义</option></select><input type="text" id="urlDlgContentTypeUser" style="display:none;" /></div>
+<div>Chunked 设置：<select id="urlDlgChunkedDef"><option value="">[不设置]</option><option value="off">强制关闭</option><option value="on">强制开启</option><option value="block">指定块数量</option><option value="size">指定块大小</option></select><input type="text" id="urlDlgChunkedBlockNum" size="4" style="display:none;" /><input type="text" id="urlDlgChunkedSize" style="display:none;" placeholder="1024,456,0" /></div>
 </div>
 </div>
 <div style="width:100%;text-align:center;">
@@ -1018,6 +1095,10 @@ $( "#createPolicyDialog" ).dialog({
 $("#urlDlgPolicy").change(urlDlgPolicyChanged);
 
 $("#urlDlgStatusDef").change(urlDlgStatusChanged);
+
+$("#urlDlgContentTypeDef").change(urlDlgContentTypeChanged);
+
+$("#urlDlgChunkedDef").change(urlDlgChunkedChanged);
 
 $("#urlCommandDialog").dialog({
   autoOpen: false,
