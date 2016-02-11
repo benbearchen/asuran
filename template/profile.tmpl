@@ -320,7 +320,6 @@ function matchURLPolicy() {
 
 function createPolicyForOnlineTest() {
   createURLPolicy(false);
-  // TODO:
 }
 
 function openOperatorDialog() {
@@ -403,7 +402,6 @@ function createURLPolicy(showURL) {
   urlDlgChunkedChanged();
 
   $("#urlCommandDialog").dialog("open");
-  // TODO:
 }
 
 var urlOpts = ["urlDlgOptMap", "urlDlgOptContent", "urlDlgOptStore"];
@@ -723,6 +721,41 @@ function toggleGroup(group) {
   }
 }
 
+function openContentDialog() {
+  var c = $("#urlDlgRewriteContent").val();
+  if (c.length > 0) {
+    c = c.replace(/%0D/g, "");
+    c = c.replace(/%0d/g, "");
+  }
+
+  try {
+    c = decodeURIComponent(c)
+  } catch (e) {
+    alert("编码有问题？可能是 %xx 格式不正确？\n" + e);  // TODO:
+    return;
+  }
+
+  $("#dlgContent").val(c);
+
+  openDialog("contentDialog");
+}
+
+function onContentDialogOK() {
+  var c = $("#dlgContent").val();
+  c = encodeURIComponent(c);
+  if (c.length > 0) {
+    c = c.replace(/%0A/g, "%0D%0A");
+    c = c.replace(/%0a/g, "%0D%0A");
+  }
+
+  $("#urlDlgRewriteContent").val(c);
+  $("#contentDialog").dialog("close");
+}
+
+function openDialog(dlg) {
+  $("#"+dlg).dialog("open");
+}
+
 function closeDialog(dlg) {
   $("#"+dlg).dialog("close");
 }
@@ -958,7 +991,9 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 </div>
 <div id="urlDlgOptMap" class="urlPolicyOpt">目标 URL：<input type="text" id="urlDlgMapURL"/></div>
 <div id="urlDlgOptContent" class="urlPolicyOpt">
-<div>编码内容：<input type="text" id="urlDlgRewriteContent" /><input type="button" value="转换..." disabled="disabled" /></div>
+<div>编码内容：</div>
+<div><input type="text" id="urlDlgRewriteContent" size="50" /></div>
+<div style="text-align:right;"><input type="button" value="转换..." onclick="openContentDialog()" /></div>
 
 </div>
 <div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select id="urlDlgStoreID">{{if .Stores}}{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}{{else}}<option value="">无可用 ID</option>{{end}}</select><input type="button" value="预览" onclick="previewStore()" /><input type="button" value="新建" onclick="createStore()" /></div>
@@ -998,6 +1033,17 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div style="width:100%;text-align:center;">
 <input type="button" value="确定" onclick="onDomainCommandDialogOK()" />
 <input type="button" value="取消" onclick="closeDialog('domainCommandDialog')" />
+</div>
+</div>
+
+<div id="contentDialog" title="内容编辑" style="display:none">
+<div class="commandGroup">
+原始内容：<br/>
+<textarea id="dlgContent" rows="5" cols="50" placeholder="请输入原始内容，按“确定”返回编码后的内容"></textarea>
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onContentDialogOK()" />
+<input type="button" value="取消" onclick="closeDialog('contentDialog')" />
 </div>
 </div>
 
@@ -1123,6 +1169,14 @@ $("#urlCommandDialog").dialog({
 });
 
 $("#domainCommandDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#contentDialog").dialog({
   autoOpen: false,
   modal: true,
   width: 'auto',
