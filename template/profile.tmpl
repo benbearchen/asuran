@@ -38,21 +38,21 @@
 
 .ui-menu { width: 350px; }
 
-.btn{
+.btn {
   margin:10px;
   border-style: outset;
   border-width: 2px;
   float:left;
   padding:3px;
 }
-.btnToggle{
+.btnToggle {
   width:1.7em;
   height:1.7em;
   //vertical-align:middle;
   text-align:center;
 }
 
-.commandGroup{
+.commandGroup {
   border: 1px solid #cccccc;
   background: #f6f6f6 url("/res/js/images/ui-bg_glass_100_f6f6f6_1x400.png") 50% 50% repeat-x;
   //font-weight: bold;
@@ -67,21 +67,25 @@
   display:inline-block; 
 }
 
-.toggleGroup{
+.toggleGroup {
   margin-left:2em;
   color: #000000;
   display: none;
 }
-.toggleGroup > div{
+.toggleGroup > div {
   margin-top: 4px;
 }
+.toggleGroup input,
+.toggleGroup select {
+  margin-left: 4px;
+}
 
-.urlPolicyOpt{
+.urlPolicyOpt {
   display:none;
   margin-left: 2em;
 }
 
-hr{
+hr {
   clear:both;
 }
 </style>
@@ -876,7 +880,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div><input type="checkbox" id="urlDlg302" />302 透明（在服务器执行）</div>
 <div><input type="checkbox" id="urlDlg304" />304 禁止（总是返回内容）</div>
 <div>指定连接服务器：<input type="text" id="urlDlgHost" size="22" placeholder="ip:port"/></div>
-<div>指定 StatusCode：<select id="urlDlgStatusDef"><option value="">[不设置]</option><option value="403">403</option><option value="404">404</option><option value="500">500</option><option value="502">502</option><option value="user">其它</option></select><input type="text" id="urlDlgStatusUser" style="display:none"/></div>
+<div>指定 StatusCode：<select id="urlDlgStatusDef"><option value="">[不设置]</option><option value="403">403</option><option value="404">404</option><option value="500">500</option><option value="502">502</option><option value="user">其它</option></select><input type="text" id="urlDlgStatusUser" size="4" style="display:none"/></div>
 </div>
 </div>
 <div style="width:100%;text-align:center;">
