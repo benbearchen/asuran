@@ -422,9 +422,10 @@ type editStoreData struct {
 	Client         string
 	ID             string
 	EncodedContent string
+	View           bool
 }
 
-func formatEditStoreData(profileIP string, prof *profile.Profile, id string) editStoreData {
+func formatEditStoreData(profileIP string, prof *profile.Profile, id string, view bool) editStoreData {
 	encodedContent := ""
 	if len(id) > 0 {
 		c := prof.Restore(id)
@@ -433,12 +434,12 @@ func formatEditStoreData(profileIP string, prof *profile.Profile, id string) edi
 		}
 	}
 
-	return editStoreData{profileIP, id, encodedContent}
+	return editStoreData{profileIP, id, encodedContent, view}
 }
 
-func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string) {
+func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string, view bool) {
 	t, err := template.ParseFiles("template/store-edit.tmpl")
-	err = t.Execute(w, formatEditStoreData(profileIP, prof, id))
+	err = t.Execute(w, formatEditStoreData(profileIP, prof, id, view))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

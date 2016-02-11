@@ -26,18 +26,17 @@ function decodeContent() {
 <!-- http://blog.csdn.net/daizhen256/article/details/8452623 -->
 <hr/>
 需保存的 url-encoded 后内容：<br/>
-<textarea rows="10" cols="80" id="EncodedContent" name="content">{{.EncodedContent}}</textarea>
+<textarea rows="10" cols="80" id="EncodedContent" name="content" {{if .View}}readonly{{else}}placeholder="可以在下方输入原始内容，或者在这里输入 URL Encode 编码后的内容"{{end}}>{{.EncodedContent}}</textarea>
 <button type="button" onclick="decodeContent();">decode</button><br/>
 
-<input type="submit" value="提交上方内容"/>
+<input type="submit" value="提交上方内容" {{if .View}}disabled="disabled"{{end}} />
 </form>
 
 <hr/>
 
-原始<b>文本内容</b>临时编辑框<br/>
-（修改原始内容后，请 url-encode 到上方）<br/>
-<textarea rows="10" cols="80" id="Source" name="cmd"></textarea>
-<button type="button" onclick="convertContent();">url-encode</button><br/>
+原始<b>文本内容</b>临时编辑框：<br/>
+<textarea rows="10" cols="80" id="Source" name="cmd" placeholder="修改原始内容后，请 url-encode 到上方"></textarea>
+<button type="button" onclick="convertContent();" {{if .View}}disabled="disabled"{{end}}>url-encode</button><br/>
 
 </body>
 </html>

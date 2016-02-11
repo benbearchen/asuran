@@ -811,26 +811,29 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		if len(pages) >= 4 {
 			k := pages[3]
 			switch k {
-			case "edit":
+			case "edit", "view":
 				id := ""
 				if len(pages) >= 5 {
 					id = pages[4]
 				}
-				r.ParseForm()
-				if v, ok := r.Form["id"]; ok && len(v) > 0 {
-					id = strings.TrimSpace(v[0])
-					if space := strings.Index(id, " "); space >= 0 {
-						id = id[:space]
+
+				if k == "edit" {
+					r.ParseForm()
+					if v, ok := r.Form["id"]; ok && len(v) > 0 {
+						id = strings.TrimSpace(v[0])
+						if space := strings.Index(id, " "); space >= 0 {
+							id = id[:space]
+						}
+					}
+
+					if v, ok := r.Form["content"]; ok && len(v) > 0 {
+						if c, err := url.QueryUnescape(v[0]); err == nil {
+							f.Store(id, []byte(c))
+						}
 					}
 				}
 
-				if v, ok := r.Form["content"]; ok && len(v) > 0 {
-					if c, err := url.QueryUnescape(v[0]); err == nil {
-						f.Store(id, []byte(c))
-					}
-				}
-
-				p.writeEditStore(w, profileIP, f, id)
+				p.writeEditStore(w, profileIP, f, id, k == "view")
 			case "delete":
 				if len(pages) >= 5 {
 					id := pages[4]

@@ -460,6 +460,20 @@ function urlDlgChunkedChanged() {
   }
 }
 
+function previewStore() {
+  var v = $("#urlDlgStoreID").val();
+  if (v == "") {
+    alert("StoreID 为空");
+    return;
+  }
+
+  window.open("/profile/{{.IP}}/stores/view/" + v, "_blank");
+}
+
+function createStore() {
+  window.open("/profile/{{.IP}}/stores/edit/", "_blank");
+}
+
 var callbackUrlDlg = function(cmd) {
   alert("/" + cmd + "/");
   return false;
@@ -947,7 +961,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div>编码内容：<input type="text" id="urlDlgRewriteContent" /><input type="button" value="转换..." disabled="disabled" /></div>
 
 </div>
-<div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select id="urlDlgStoreID"><option value="">无可用 ID</option></select><input type="button" value="预览" disabled="disabled" onclick="previewStore()" /></div>
+<div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select id="urlDlgStoreID">{{if .Stores}}{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}{{else}}<option value="">无可用 ID</option>{{end}}</select><input type="button" value="预览" onclick="previewStore()" /><input type="button" value="新建" onclick="createStore()" /></div>
 </div>
 </div>
 <div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')"></span><b>其他设置</b>
