@@ -354,16 +354,48 @@ function createPolicy() {
   $("#createPolicyDialog").dialog("open");
 }
 
+function cmdToAppend(cmd) {
+  var url = $("#urlDlgURL").val();
+  if (url == "") {
+    alert("URL 不能为空");
+    return false;
+  } else if (url.indexOf(" ") >= 0) {
+    alert("URL 不能包含空格");
+    return false;
+  }
+
+  var full = "url";
+  if (cmd != "") {
+    full += " " + cmd;
+  }
+
+  if (url != "") {
+    full += " " + url;
+  }
+
+  appendCmd(full);
+  return true;
+}
+
+function cmdToTest(cmd) {
+  $("#onlineTestPolicy").val(cmd);
+  return true;
+}
+
 function createURLPolicy(showURL) {
   $("#createPolicyDialog").dialog("close");
 
   if (showURL) {
     $("#urlDialogGroupURL").show();
+    callbackUrlDlg = cmdToAppend;
   } else {
     $("#urlDialogGroupURL").hide();
+    callbackUrlDlg = cmdToTest;
   }
 
   urlDlgPolicyChanged();
+  urlDlgStatusChanged();
+
   $("#urlCommandDialog").dialog("open");
   // TODO:
 }
@@ -390,15 +422,152 @@ function urlDlgPolicyChanged() {
   }
 }
 
+function urlDlgStatusChanged() {
+  var v = $("#urlDlgStatusDef").val();
+  if (v == "user") {
+    $("#urlDlgStatusUser").show();
+  } else {
+    $("#urlDlgStatusUser").hide();
+  }
+}
+
+var callbackUrlDlg = function(cmd) {
+  alert("/" + cmd + "/");
+  return false;
+};
+
 function onURLCommandDialogOK() {
-  // TODO:
+  var delayOpt = $("#urlDlgDelay").val();
+  if (delayOpt != "") {
+    var d = $("#urlDlgDuration").val();
+    if (d == "") {
+      alert("延时时长不能为空");
+      return;
+    } else if (d.indexOf(" ") >= 0) {
+      alert("延时时长不能包括空格");
+      return;
+    }
+
+    if ($("#urlDlgRandDelay").prop("checked")) {
+      delayOpt += " rand";
+    }
+
+    delayOpt += " " + d;
+  }
+
+  var bodyDelayOpt = $("#urlDlgBodyDelay").val();
+  if (bodyDelayOpt != "") {
+    bodyDelayOpt += " body";
+    var d = $("#urlDlgBodyDuration").val();
+    if (d == "") {
+      alert("Body 延时时长不能为空");
+      return;
+    } else if (d.indexOf(" ") >= 0) {
+      alert("Body 延时时长不能包括空格");
+      return;
+    }
+
+    if ($("#urlDlgBodyRandDelay").prop("checked")) {
+      bodyDelayOpt += " rand";
+    }
+
+    bodyDelayOpt += " " + d;
+  }
+
+  var policy = $("#urlDlgPolicy").val();
+  if (policy == "map" || policy == "redirect") {
+    var url = $("#urlDlgMapURL").val();
+    if (url == "") {
+      alert("map/redirect URL 不能为空");
+      return;
+    } else if (url.indexOf(" ") >= 0) {
+      alert("map/redirect URL 不能包含空格");
+      return;
+    }
+
+    policy += " " + url;
+  } else if (policy == "rewrite" || policy == "tcpwrite") {
+    var content = $("#urlDlgRewriteContent").val();
+    if (content == "") {
+      alert("rewrite/tcpwrite 编码内容不能为空");
+      return;
+    } else if (content.indexOf(" ") >= 0) {
+      alert("rewrite/tcpwrite 编码内容不能包含空格");
+      return;
+    }
+
+    policy += " " + content;
+  } else if (policy == "restore") {
+    var store = $("#urlDlgStoreID").val();
+    if (store == "" || store == null) {
+      alert("预置 ID 不能为空");
+      return;
+    } else if (store.indexOf(" ") >= 0) {
+      alert("预置 ID 不能包含空格");
+      return;
+    }
+
+    policy += " " + store;
+  }
+
+  var do302 = "";
+  var disable304 = "";
+  var host = "";
+  var status = "";
+  if ($("#urlDlg302").prop("checked")) {
+    do302 = "do302";
+  }
+
+  if ($("#urlDlg304").prop("checked")) {
+    disable304 = "disable304";
+  }
+
+  host = $("#urlDlgHost").val();
+  if (host != "" && host.indexOf(" ") >= 0) {
+    alert("指定服务器不能包含空格");
+    return;
+  }
+
+  if (host != "") {
+    host = "host " + host;
+  }
+
+  status = $("#urlDlgStatusDef").val();
+  if (status == "user") {
+    status = $("#urlDlgStatusUser").val();
+    if (status != "") {
+      if (status.indexOf(" ") >= 0 || status.length != 3) {
+        alert("StatusCode 应三位数字");
+        return;
+      }
+    }
+  }
+
+  if (status != "") {
+    status = "status " + status;
+  }
+
+  var s = [delayOpt, bodyDelayOpt, policy, do302, disable304, host, status];
+  var cmd = "";
+  for (var i = 0; i < s.length; i++) {
+    if (s[i] != "") {
+      if (cmd != "") {
+        cmd += " ";
+      }
+
+      cmd += s[i];
+    }
+  }
+
+  if (callbackUrlDlg(cmd)) {
+    $("#urlCommandDialog").dialog("close");
+  }
 }
 
 function createDomainPolicy() {
   $("#createPolicyDialog").dialog("close");
 
   $("#domainCommandDialog").dialog("open");
-  // TODO:
 }
 
 function onDomainCommandDialogOK() {
@@ -694,19 +863,20 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
   <option value="restore">返回预置内容</option>
 </select>
 </div>
-<div id="urlDlgOptMap" class="urlPolicyOpt">直接 URL：<input type="text" /></div>
+<div id="urlDlgOptMap" class="urlPolicyOpt">目标 URL：<input type="text" id="urlDlgMapURL"/></div>
 <div id="urlDlgOptContent" class="urlPolicyOpt">
-<div>编码内容：<input type="button" value="转换..." disabled="disabled" /></div>
-<textarea></textarea>
+<div>编码内容：<input type="text" id="urlDlgRewriteContent" /><input type="button" value="转换..." disabled="disabled" /></div>
+
 </div>
-<div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select></select><input type="button" value="预览" /></div>
+<div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select id="urlDlgStoreID"><option value="">无可用 ID</option></select><input type="button" value="预览" disabled="disabled" onclick="previewStore()" /></div>
 </div>
 </div>
 <div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')"></span><b>其他设置</b>
 <div class="toggleGroup">
-<div><input type="checkbox" id="urlDlg302" />302 透传</div>
-<div><input type="checkbox" id="urlDlg304" />304 禁止</div>
-<div>host：<input type="text" id="urlDlgHost" size="22" placeholder="ip:port"/></div>
+<div><input type="checkbox" id="urlDlg302" />302 透明（在服务器执行）</div>
+<div><input type="checkbox" id="urlDlg304" />304 禁止（总是返回内容）</div>
+<div>指定连接服务器：<input type="text" id="urlDlgHost" size="22" placeholder="ip:port"/></div>
+<div>指定 StatusCode：<select id="urlDlgStatusDef"><option value="">[不设置]</option><option value="403">403</option><option value="404">404</option><option value="500">500</option><option value="502">502</option><option value="user">其它</option></select><input type="text" id="urlDlgStatusUser" style="display:none"/></div>
 </div>
 </div>
 <div style="width:100%;text-align:center;">
@@ -842,6 +1012,8 @@ $( "#createPolicyDialog" ).dialog({
 });
 
 $("#urlDlgPolicy").change(urlDlgPolicyChanged);
+
+$("#urlDlgStatusDef").change(urlDlgStatusChanged);
 
 $("#urlCommandDialog").dialog({
   autoOpen: false,
