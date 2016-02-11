@@ -943,8 +943,8 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 </div>
 </div>
 </div>
-<div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupContent')"></span><b>内容策略</b>
-<div class="toggleGroup">
+<div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-minusthick" onclick="toggleGroup('urlDialogGroupContent')"></span><b>内容策略</b>
+<div class="toggleGroup" style="display:block">
 <div>
 <select id="urlDlgPolicy">
   <option value="">[代理]</option>
@@ -964,7 +964,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select id="urlDlgStoreID">{{if .Stores}}{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}{{else}}<option value="">无可用 ID</option>{{end}}</select><input type="button" value="预览" onclick="previewStore()" /><input type="button" value="新建" onclick="createStore()" /></div>
 </div>
 </div>
-<div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')"></span><b>其他设置</b>
+<div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')"></span><b>其他策略</b>
 <div class="toggleGroup">
 <div><input type="checkbox" id="urlDlg302" />302 透明（在服务器执行）</div>
 <div><input type="checkbox" id="urlDlg304" />304 禁止（总是返回内容）</div>
