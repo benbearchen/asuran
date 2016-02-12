@@ -934,6 +934,9 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		}
 
 		return
+	} else if op == "pattern" {
+		p.patternProc(w, r)
+		return
 	} else if op == "pack" {
 		p.packCommand(w, r)
 		return
@@ -1290,4 +1293,48 @@ func (p *Proxy) dealPacks(w http.ResponseWriter, r *http.Request, page string) {
 	}
 
 	w.WriteHeader(404)
+}
+
+func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	op := r.Form.Get("op")
+	if op != "test" {
+		w.WriteHeader(404)
+		fmt.Fprintln(w, "unknown operation: "+op)
+		return
+	}
+
+	t := r.Form.Get("t")
+	p := r.Form.Get("pattern")
+	v := r.Form.Get("v")
+
+	var err error
+	match := false
+	switch t {
+	case "domain":
+		match = profile.NewDomainPattern(p).Match(v)
+	case "path":
+		match = profile.NewPathPattern(p).Match(v)
+	case "args":
+		match = profile.NewArgsPattern(p).MatchArgs(v)
+	case "url":
+		match = profile.NewUrlPattern(p).MatchUrl(v)
+	default:
+		w.WriteHeader(404)
+		fmt.Fprintln(w, "unknown pattern type: "+r.Form.Get("t"))
+		return
+	}
+
+	if err != nil {
+		w.WriteHeader(404)
+		fmt.Fprintf(w, "err: %v", err)
+		return
+	}
+
+	result := "成功"
+	if !match {
+		result = "失败"
+	}
+
+	fmt.Fprintf(w, "%s", result)
 }

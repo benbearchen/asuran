@@ -190,12 +190,32 @@ func (p *PathPattern) MatchScore(path string) uint8 {
 	return 0
 }
 
+type ArgsPattern struct {
+	args map[string]string
+}
+
+func NewArgsPattern(args string) *ArgsPattern {
+	return &ArgsPattern{parseQuery(args)}
+}
+
+func (p *ArgsPattern) MatchArgs(args string) bool {
+	return p.Match(parseQuery(args))
+}
+
+func (p *ArgsPattern) Match(args map[string]string) bool {
+	return matchQuery(p.args, args)
+}
+
+func (p *ArgsPattern) MatchScore(args map[string]string) uint8 {
+	return matchQueryScore(p.args, args)
+}
+
 type UrlPattern struct {
 	pattern string
 	domain  *DomainPattern
 	port    string
 	path    *PathPattern
-	query   map[string]string
+	query   *ArgsPattern
 }
 
 type UrlSection struct {
@@ -216,7 +236,7 @@ func NewUrlPattern(pattern string) *UrlPattern {
 
 	u.port = s[1]
 	u.path = NewPathPattern(s[2])
-	u.query = parseQuery(s[3])
+	u.query = NewArgsPattern(s[3])
 	return u
 }
 
@@ -235,8 +255,12 @@ func (p *UrlPattern) Match(url *UrlSection) bool {
 	domainMatch := p.domain == nil || p.domain.Match(url.domain)
 	portMatch := p.port == url.port
 	pathMatch := p.path.Match(url.path)
-	queryMatch := matchQuery(p.query, url.query)
+	queryMatch := p.query.Match(url.query)
 	return domainMatch && portMatch && pathMatch && queryMatch
+}
+
+func (p *UrlPattern) MatchUrl(url string) bool {
+	return p.Match(parseUrlSection(url))
 }
 
 func (p *UrlPattern) MatchScore(url *UrlSection) uint32 {
@@ -261,7 +285,7 @@ func (p *UrlPattern) MatchScore(url *UrlSection) uint32 {
 		return 0
 	}
 
-	queryScore := matchQueryScore(p.query, url.query)
+	queryScore := p.query.MatchScore(url.query)
 	if queryScore == 0 {
 		return 0
 	}
