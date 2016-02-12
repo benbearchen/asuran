@@ -106,124 +106,6 @@ function appendCmd(cmd) {
   }
 }
 
-function selectOpt(id) {
-  var s = document.getElementById(id);
-  return s.value;
-}
-
-function readInput(id, argName) {
-  var i = document.getElementById(id);
-  if (i.value == "") {
-    alert(argName + '不能为空');
-    return;
-  }
-
-  if (i.value.indexOf(" ") >= 0) {
-    alert(argName + '不能有空格');
-    return;
-  }
-
-  return i.value;
-}
-
-function readOptionInput(optid, id, argName) {
-  var opt = document.getElementById(optid);
-  if (opt.value != "") {
-    return opt.value;
-  }
-
-  return readInput(id, argName);
-}
-
-function proxyCmd(act, opt) {
-  if (opt === undefined) {
-    return;
-  }
-
-  var u = document.getElementById('ProxyUrl');
-  if (u.value == "") {
-    alert('proxy 操作的 URL 不能为空');
-    return;
-  }
-
-  if (opt != "") {
-    act = act + " " + opt;
-  }
-
-  var s = document.getElementById('do302');
-  if (s.checked) {
-    act = act + " " + "do302";
-  }
-
-  s = document.getElementById('disable304');
-  if (s.checked) {
-    act = act + " " + "disable304";
-  }
-
-  appendCmd('url ' + act + ' ' + u.value);
-}
-
-function delayCmd(act) {
-  var d = document.getElementById('DelayDuration');
-  if (d.value == "") {
-    alert('delay 操作的时长不能为空');
-    return;
-  }
-
-  var u = document.getElementById('ProxyUrl');
-  if (u.value == "") {
-    alert('proxy 操作的 URL 不能为空');
-    return;
-  }
-
-  r = selectOpt('RandOption');
-  if (r != "") {
-    act = act + " " + r;
-  }
-
-  appendCmd('url ' + act + ' ' + d.value + ' ' + u.value);
-}
-
-function deleteCmd() {
-  var u = document.getElementById('ProxyUrl');
-  if (u.value == "") {
-    alert('delete 操作的 URL 不能为空');
-    return;
-  }
-
-  appendCmd('url delete ' + u.value);
-}
-
-function redirectOpt() {
-  var ip = document.getElementById('DomainRedirectIP');
-  if (ip.value == "") {
-    return "";
-  }
-
-  var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
-  if (!re.test(ip.value))
-  {
-    alert("无效 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
-    return;
-  }
-
-  return " " + ip.value;
-}
-
-function domainCmd(act, opt) {
-  if (opt === undefined) {
-    return;
-  }
-
-  var d = document.getElementById('Domain');
-  if (d.value == "") {
-    alert('doman 操作的域名不能为空');
-    return;
-  }
-
-  appendCmd('domain ' + act + ' ' + d.value + opt);
-}
-
 function openPack() {
   var cmdBox = document.getElementById('CommandBoxId');
   var packBox = document.getElementById('packDlgCommandBox');
@@ -896,7 +778,7 @@ function closeDialog(dlg) {
 <td>{{.Settings}}</td>
 </tr>
 {{end}}
-<tr><td colspan="5" style="text-align:center;background:#C0D986;"><input type="button" value="新建 URL 策略" onclick="createURLPolicy(true)" /></td></tr>
+<tr><td colspan="5" style="text-align:center;background:#C0D986;"><input type="button" value="新建 URL 策略" onclick="createURLPolicy(true)" /><input type="button" value="在线测试 URL" style="margin-left:10px;" onclick="onlineTest()" /></td></tr>
 </table>
 <hr/>
 
@@ -922,15 +804,6 @@ function closeDialog(dlg) {
 <form action="/profile/{{.Path}}" method="post">
 <table width="600"><tr>
 <td><b>命令：</b></td><td><input type="submit" value="执行命令" /></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
-<td><input type="button" value="在线测试 URL" onclick="onlineTest()" />
-<div id="onlineTestDialog" title="在线测试 URL" style="display:none">
-<div class="commandGroup">目标 URL：<input type="text" id="onlineTestURL" size="50" placeholder="http://g.cn/" /></div>
-<div class="commandGroup"><a href="/profile/commands" target="_blank">命令策略</a>：<input type="text" id="onlineTestPolicy" size="50" placeholder="speed 100 # 留空则使用 profile 的策略" />
-<span style="text-align:right;display:block;margin-top:4px;"><input value="策略向导" type="button" onclick="createPolicyForOnlineTest()" /><input value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /></span>
-</div>
-<input type="button" value="测试" onclick="doOnlineTest()" />
-</div>
-</td>
 </tr>
 </table>
 <textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea>
@@ -942,74 +815,10 @@ function closeDialog(dlg) {
 {{if .NotOwner}}{{else}}
 <div id="commandTabs" style="margin-top:5px;">
 <ul style="display:none;" id="ulCommandTabs">
-<li><a href="#commandTabs-4">命令包</a></li>
-<li><a href="#commandTabs-3">神秘功能</a></li>
-<li><a href="#commandTabs-1">URL 命令</a></li>
-<li><a href="#commandTabs-2">Domain 命令</a></li>
+<li><a href="#commandTabs-1">常用命令</a></li>
+<li><a href="#commandTabs-2">命令包</a></li>
 </ul>
-<div id="commandTabs-1">
-<table border="1">
-<tr>
-<td rowspan="12">url</td>
-<td rowspan="8">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('proxy', '');">[proxy]</button>: 使用代理</td><td rowspan="11">可选配置<br/><label><input id="do302" type="checkbox" />允许 302 跳转</label><br/><label><input id="disable304" type="checkbox" />禁止 304</label></td><td rowspan="12">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option" /><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
-</tr>
-<tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('cache', '');">cache</button>: 代理并缓存</td>
-</tr>
-<tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('status', selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl', 'map 的第三方 URL '));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL" /></td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl', 'redirect 的第三方 URL '));">redirect</button>: 302 跳转至第三方链接</td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td rowspan="2"><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本" /> <a href="/urlencoded" target="_blank">生成</a></td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('tcpwrite', readInput('RewriteContent', 'tcpwrite 的 url-encoded 文本'));">tcpwrite</button>: 直接以 TCP 返回指定内容</td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID', 'restore 的内容 store-id '));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id" /></td>
-</tr>
-<tr>
-<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6" /><br/>如: 100ms, 5s, 1m</td>
-</tr>
-<tr>
-<td><button type="button" onclick="delayCmd('drop');">drop</button>: 前“时长”时间内都掉线</td>
-</tr>
-<tr>
-<td><button type="button" onclick="delayCmd('timeout');">timeout</button>: 等待“时长”后掉线</td>
-</tr>
-<tr>
-<td colspan="4"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>
-</tr>
-</table>
-
-<p>注: 任何对 URL 的代理行为，均要求域名重定向到代理服务器。如域名还没有配置，则会自动添加</p>
-</div>
-<div id="commandTabs-2">
-<table border="1">
-<tr>
-<td rowspan="5">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="4">自定义 IP:<br/><input type="text" id="DomainRedirectIP" /></td><td rowspan="5">域名: <input type="text" id="Domain" /><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
-</tr>
-<tr>
-<td><button type="button" onclick="domainCmd('block', redirectOpt());">block</button>: 拦截且不返回</td>
-</tr>
-<tr>
-<td><button type="button" onclick="domainCmd('null', redirectOpt());">null</button>: 返回空结果</td>
-</tr>
-<tr>
-<td><button type="button" onclick="domainCmd('proxy', redirectOpt());">proxy</button>: 代理</td>
-</tr>
-<tr>
-<td colspan="2"><button type="button" onclick="domainCmd('delete', '');">delete</button>: 删除域名配置</td>
-</tr>
-</table>
-</div>
-<div style="display:none;" id="commandTabs-3">
+<div id="commandTabs-1" style="display:none;">
 请选择您想要的操作：
 <ul style="width:200px;" id="menu">
 	<li>对 URL 操作
@@ -1034,7 +843,7 @@ function closeDialog(dlg) {
 	</li>
 </ul>
 </div>
-<div id="commandTabs-4" style="display:none;">
+<div id="commandTabs-2" style="display:none;">
 <input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em;margin-left:4px;margin-right:4px;"></select><input type="button" value="加载命令包" onclick="loadPack()" />
 </div>
 
@@ -1170,6 +979,15 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div>命令：<textarea rows="5" cols="40" id="packDlgCommandBox" style="vertical-align:middle;"></textarea></div>
 <div style="width:100%;text-align:center;"><input type="button" value="打包" onclick="doPackCommand()"/></div>
 </div>
+
+<div id="onlineTestDialog" title="在线测试 URL" style="display:none">
+<div class="commandGroup">目标 URL：<input type="text" id="onlineTestURL" size="50" placeholder="http://g.cn/" /></div>
+<div class="commandGroup"><a href="/profile/commands" target="_blank">命令策略</a>：<input type="text" id="onlineTestPolicy" size="50" placeholder="speed 100 # 留空则使用 profile 的策略" />
+<span style="text-align:right;display:block;margin-top:4px;"><input value="策略向导" type="button" onclick="createPolicyForOnlineTest()" /><input value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /></span>
+</div>
+<input type="button" value="测试" onclick="doOnlineTest()" />
+</div>
+
 
 <script>
 
