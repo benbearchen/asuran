@@ -736,15 +736,16 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		return
 	} else if op == "restart" {
 		if !canOperate {
+			w.WriteHeader(403)
 			fmt.Fprintln(w, "没有操作权限")
 		} else if f := p.lives.OpenExists(profileIP); f != nil {
 			f.Restart()
-			fmt.Fprintln(w, profileIP+" 已经重新初始化")
+			fmt.Fprintf(w, "restarted")
 		} else {
+			w.WriteHeader(404)
 			fmt.Fprintln(w, profileIP+" 不存在")
 		}
 
-		fmt.Fprintln(w, "# 关了这个窗口吧 #")
 		return
 	} else if op == "history" {
 		if f := p.lives.OpenExists(profileIP); f != nil {

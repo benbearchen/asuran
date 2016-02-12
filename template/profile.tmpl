@@ -38,14 +38,6 @@
 
 .ui-menu { width: 350px; }
 
-.btn {
-  margin:10px;
-  border-style: outset;
-  border-width: 2px;
-  float:left;
-  padding:3px;
-}
-
 .commandGroup {
   border: 1px solid #cccccc;
   background: #f6f6f6 url("/res/js/images/ui-bg_glass_100_f6f6f6_1x400.png") 50% 50% repeat-x;
@@ -97,14 +89,36 @@ hr {
 function appendCmd(cmd) {
 {{if .NotOwner}}
   return;
-{{end}}
+{{else}}
   var cmdBox = document.getElementById('CommandBoxId');
   if (cmdBox.value == "" || cmdBox.value.slice(-1) == "\n") {
     cmdBox.value = cmdBox.value + cmd + "\n";
   } else {
     cmdBox.value = cmdBox.value + "\n" + cmd + "\n";
   }
+
+  $("#CommandBoxId").effect("shake", {distance: 2, times: 2});
+{{end}}
 }
+
+{{if .NotOwner}}{{else}}
+function restart() {
+  var cmd = $.ajax({
+    url : "/profile/{{.Path}}/restart",
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("加载失败：" + cmd.responseText);
+  } else {
+    if (cmd.responseText == "restarted") {
+      alert("重启成功！！！\n\n会产生以下影响：\n访问历史被清空，缓存被清空，计时器取消");
+    } else {
+      alert("重启失败：\n" + cmd.responseText);
+    }
+  }
+}
+{{end}}
 
 function openPack() {
   var cmdBox = document.getElementById('CommandBoxId');
@@ -753,12 +767,6 @@ function closeDialog(dlg) {
 </div>
 {{end}}
 </div>
-<hr style="margin-bottom: 0" />
-{{if .NotOwner}}{{else}}
-<div class="btn" style="color:#FF0000;"><a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">！重启客户端状态！</a></div>
-{{end}}
-<div class="btn"><a href="/profile/{{.IP}}/history" target="_blank" title="查看域名查询、HTTP 访问等日志">查看日志</a></div>
-<div class="btn"><a href="/profile/{{.IP}}/stores" target="_blank" title="">查看当前保存的内容列表</a></div>
 <hr/>
 
 <table id="profile">
@@ -778,7 +786,7 @@ function closeDialog(dlg) {
 <td>{{.Settings}}</td>
 </tr>
 {{end}}
-<tr><td colspan="5" style="text-align:center;background:#C0D986;"><input type="button" value="新建 URL 策略" onclick="createURLPolicy(true)" /><input type="button" value="在线测试 URL" style="margin-left:10px;" onclick="onlineTest()" /></td></tr>
+<tr><td colspan="5" style="text-align:center;background:#C0D986;">{{if .NotOwner}}{{else}}<input type="button" value="新建 URL 策略" onclick="createURLPolicy(true)" />{{end}}<input type="button" value="在线测试 URL" style="margin-left:10px;" onclick="onlineTest()" /></td></tr>
 </table>
 <hr/>
 
@@ -797,13 +805,15 @@ function closeDialog(dlg) {
 <td>{{.IP}}</td>
 </tr>
 {{end}}
+{{if .NotOwner}}{{else}}
 <tr><td colspan="4" style="text-align:center;{{if .Domains}}background:#C0D986;{{end}}"><input type="button" value="新建 Domain 策略" onclick="createDomainPolicy()" /></td></tr>
+{{end}}
 </table>
 <hr/>
 
 <form action="/profile/{{.Path}}" method="post">
 <table width="600"><tr>
-<td><b>命令：</b></td><td><input type="submit" value="执行命令" /></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
+<td><b>命令：</b></td><td>{{if .NotOwner}}{{else}}<input type="submit" value="执行命令" />{{end}}</td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
 <textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea>
@@ -817,7 +827,13 @@ function closeDialog(dlg) {
 <ul style="display:none;" id="ulCommandTabs">
 <li><a href="#commandTabs-1">常用命令</a></li>
 <li><a href="#commandTabs-2">命令包</a></li>
+<li><a href="#commandTabs-3">预存内容</a></li>
+<li><a href="#commandTabs-4">访问日志</a></li>
+{{if .NotOwner}}{{else}}
+<li><a href="#commandTabs-5">状态管理</a></li>
+{{end}}
 </ul>
+
 <div id="commandTabs-1" style="display:none;">
 请选择您想要的操作：
 <ul style="width:200px;" id="menu">
@@ -843,9 +859,25 @@ function closeDialog(dlg) {
 	</li>
 </ul>
 </div>
+
 <div id="commandTabs-2" style="display:none;">
 <input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em;margin-left:4px;margin-right:4px;"></select><input type="button" value="加载命令包" onclick="loadPack()" />
 </div>
+
+<div id="commandTabs-3" style="display:none;">
+<input type="button" value="创建新的预存内容" onclick="createStore()" />
+<input type="button" value="查看所有预存内容" onclick="window.open('/profile/{{.Path}}/stores', '_blank')" />
+</div>
+
+<div id="commandTabs-4" style="display:none;">
+<div><input type="button" value="查看所有日志" onclick="window.open('/profile/{{.IP}}/history', '_blank')" /></div>
+</div>
+
+{{if .NotOwner}}{{else}}
+<div id="commandTabs-5" style="display:none;">
+<div><input type="button" value="！重启客户端状态！" onclick="restart()" /></div>
+</div>
+{{end}}
 
 </div> <!-- end of tabs -->
 
@@ -983,7 +1015,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div id="onlineTestDialog" title="在线测试 URL" style="display:none">
 <div class="commandGroup">目标 URL：<input type="text" id="onlineTestURL" size="50" placeholder="http://g.cn/" /></div>
 <div class="commandGroup"><a href="/profile/commands" target="_blank">命令策略</a>：<input type="text" id="onlineTestPolicy" size="50" placeholder="speed 100 # 留空则使用 profile 的策略" />
-<span style="text-align:right;display:block;margin-top:4px;"><input value="策略向导" type="button" onclick="createPolicyForOnlineTest()" /><input value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /></span>
+<span style="text-align:right;display:block;margin-top:4px;">{{if .NotOwner}}{{else}}<input value="策略向导" type="button" onclick="createPolicyForOnlineTest()" />{{end}}<input value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /></span>
 </div>
 <input type="button" value="测试" onclick="doOnlineTest()" />
 </div>
@@ -991,9 +1023,9 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 
 <script>
 
-{{if .NotOwner}}{{else}}
-
 $(document).ready(function() {
+
+{{if .NotOwner}}{{else}}
 
 $("#packDialog").dialog({
   autoOpen: false,
@@ -1067,13 +1099,6 @@ $( "#operatorDialog" ).dialog({
   width: 400
 });
 
-$( "#onlineTestDialog" ).dialog({
-  autoOpen: false,
-  width: 'auto',
-  height: 'auto',
-  resizable: false,
-});
-
 $("#urlDlgPolicy").change(urlDlgPolicyChanged);
 
 $("#urlDlgStatusDef").change(urlDlgStatusChanged);
@@ -1114,9 +1139,16 @@ $("#urlPatternDialog").dialog({
   resizable: false,
 });
 
-}); // end of document.ready
+{{end}} // end of owner's js init
 
-{{end}} <!-- end of owner's command guide -->
+$( "#onlineTestDialog" ).dialog({
+  autoOpen: false,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+}); // end of document.ready
 
 </script>
 </body>
