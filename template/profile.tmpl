@@ -45,12 +45,6 @@
   float:left;
   padding:3px;
 }
-.btnToggle {
-  width:1.7em;
-  height:1.7em;
-  //vertical-align:middle;
-  text-align:center;
-}
 
 .commandGroup {
   border: 1px solid #cccccc;
@@ -863,9 +857,10 @@ function closeDialog(dlg) {
 <div class="btn"><a href="/profile/{{.IP}}/history" target="_blank" title="查看域名查询、HTTP 访问等日志">查看日志</a></div>
 <div class="btn"><a href="/profile/{{.IP}}/stores" target="_blank" title="">查看当前保存的内容列表</a></div>
 <hr/>
+
 <table id="profile">
 <tr>
-<th>编辑命令</th>
+<th>编辑操作</th>
 <th>URL 匹配模式</th>
 <th>代理行为</th>
 <th>延时设定</th>
@@ -880,12 +875,13 @@ function closeDialog(dlg) {
 <td>{{.Settings}}</td>
 </tr>
 {{end}}
+<tr><td colspan="5" style="text-align:center;background:#C0D986;"><input type="button" value="新建 URL 策略" onclick="createURLPolicy(true)" /></td></tr>
 </table>
 <hr/>
 
 <table id="profile">
 <tr>
-<th>编辑命令</th>
+<th>编辑操作</th>
 <th>域名</th>
 <th>查询行为</th>
 <th>目标 IP</th>
@@ -898,6 +894,7 @@ function closeDialog(dlg) {
 <td>{{.IP}}</td>
 </tr>
 {{end}}
+<tr><td colspan="4" style="text-align:center;background:#C0D986;"><input type="button" value="新建 Domain 策略" onclick="createDomainPolicy()" /></td></tr>
 </table>
 <hr/>
 
