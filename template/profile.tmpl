@@ -80,6 +80,10 @@
   margin-left: 2em;
 }
 
+#packDialog div {
+  margin-top: 4px;
+}
+
 hr {
   clear:both;
 }
@@ -87,7 +91,6 @@ hr {
 
 <script src="/res/js/external/jquery/jquery.js"></script>
 <script src="/res/js/jquery-ui.js"></script>
-<script src="/res/js/jquery.form.js"></script>
 
 <script type="text/javascript">
 
@@ -223,9 +226,9 @@ function domainCmd(act, opt) {
 
 function openPack() {
   var cmdBox = document.getElementById('CommandBoxId');
-  var packBox = document.getElementById('PackCommandBox');
+  var packBox = document.getElementById('packDlgCommandBox');
   packBox.value = cmdBox.value;
-  $( "#packDialog" ).dialog( "open" );
+  $("#packDialog").dialog("open");
 }
 
 function reloadPack() {
@@ -257,6 +260,31 @@ function loadPack() {
   } else {
     appendCmd(cmd.responseText);
   }
+}
+
+function doPackCommand() {
+  var name = $("#packDlgName").val();
+  var author = $("#packDlgAuthor").val();
+  var comment = $("#packDlgComment").val();
+  var cmd = $("#packDlgCommandBox").val();
+
+  $.ajax({
+    type: "POST",
+    url: "/profile/{{.Path}}/pack",
+    data: {name: name, author: author, comment: comment, cmd: cmd},
+    success: function(data) {
+      if (data == "saved") {
+        reloadPack();
+        alert("已保存");
+      } else {
+        alert("保存失败：" + data);
+      }
+    },
+    error: function() {
+      alert("访问失败");
+    },
+    async: false
+  });
 }
 
 function onlineTest() {
@@ -348,10 +376,6 @@ function doOperator(op) {
   }
 }
 
-function createPolicy() {
-  $("#createPolicyDialog").dialog("open");
-}
-
 function cmdToAppend(cmd) {
   var url = $("#urlDlgURL").val();
   if (url == "") {
@@ -381,8 +405,6 @@ function cmdToTest(cmd) {
 }
 
 function createURLPolicy(showURL) {
-  $("#createPolicyDialog").dialog("close");
-
   if (showURL) {
     $("#urlDialogGroupURL").show();
     callbackUrlDlg = cmdToAppend;
@@ -651,8 +673,6 @@ function onURLCommandDialogOK() {
 }
 
 function createDomainPolicy() {
-  $("#createPolicyDialog").dialog("close");
-
   $("#domainCommandDialog").dialog("open");
 }
 
@@ -895,7 +915,7 @@ function closeDialog(dlg) {
 <td>{{.IP}}</td>
 </tr>
 {{end}}
-<tr><td colspan="4" style="text-align:center;background:#C0D986;"><input type="button" value="新建 Domain 策略" onclick="createDomainPolicy()" /></td></tr>
+<tr><td colspan="4" style="text-align:center;{{if .Domains}}background:#C0D986;{{end}}"><input type="button" value="新建 Domain 策略" onclick="createDomainPolicy()" /></td></tr>
 </table>
 <hr/>
 
@@ -910,42 +930,22 @@ function closeDialog(dlg) {
 </div>
 <input type="button" value="测试" onclick="doOnlineTest()" />
 </div>
-{{if .NotOwner}}{{else}}
-<input type="button" value="命令策略向导" onclick="createPolicy()" />
-{{end}}
-<div id="createPolicyDialog" title="命令策略向导" style="display:none">
-<input type="button" value="生成 URL 命令策略" onclick="createURLPolicy(true)" />
-<input type="button" value="生成 Domain 命令策略" onclick="createDomainPolicy()" />
-</div>
 </td>
 </tr>
 </table>
 <textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea>
 </form>
 
-<div id="packButton" style="display:none;">
-<hr/>
-<input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em"></select><input type="button" value="加载命令包" onclick="loadPack()" />
-<div id="packDialog" title="打包命令">
-<form id="packForm" action="/profile/{{.Path}}/pack" method="post">
-包名：<input type="text" name="name" size="30" placeholder="module.case.item" /><br/>
-作者：<input type="text" name="author" size="30" placeholder="your nickname" /><br/>
-介绍：<input type="text" name="comment" size="30" placeholder="" /><br/>
-<input type="submit" value="打包如下命令：" /><br/>
-<textarea rows="5" cols="40" id="PackCommandBox" name="cmd"></textarea>
-</form>
-</div>
-</div>
-
 <hr/>
 
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
 {{if .NotOwner}}{{else}}
-<div id="commandTabs">
+<div id="commandTabs" style="margin-top:5px;">
 <ul style="display:none;" id="ulCommandTabs">
+<li><a href="#commandTabs-4">命令包</a></li>
+<li><a href="#commandTabs-3">神秘功能</a></li>
 <li><a href="#commandTabs-1">URL 命令</a></li>
 <li><a href="#commandTabs-2">Domain 命令</a></li>
-<li><a href="#commandTabs-3">神秘功能</a></li>
 </ul>
 <div id="commandTabs-1">
 <table border="1">
@@ -1034,7 +1034,11 @@ function closeDialog(dlg) {
 	</li>
 </ul>
 </div>
+<div id="commandTabs-4" style="display:none;">
+<input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em;margin-left:4px;margin-right:4px;"></select><input type="button" value="加载命令包" onclick="loadPack()" />
 </div>
+
+</div> <!-- end of tabs -->
 
 {{end}} <!-- end of owner's command guide -->
 
@@ -1159,29 +1163,25 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 </div>
 </div>
 
+<div id="packDialog" title="打包命令" style="display:none">
+<div>包名：<input type="text" id="packDlgName" size="40" placeholder="module.case.item" /></div>
+<div>作者：<input type="text" id="packDlgAuthor" size="40" placeholder="your nickname" /></div>
+<div>介绍：<input type="text" id="packDlgComment" size="40" placeholder="" /></div>
+<div>命令：<textarea rows="5" cols="40" id="packDlgCommandBox" style="vertical-align:middle;"></textarea></div>
+<div style="width:100%;text-align:center;"><input type="button" value="打包" onclick="doPackCommand()"/></div>
+</div>
+
 <script>
 
 {{if .NotOwner}}{{else}}
 
 $(document).ready(function() {
 
-$( "#packForm" ).ajaxForm({
-  success: function(data) {
-    if (data == "saved") {
-      reloadPack();
-      alert("已保存");
-    } else {
-      alert("保存失败：" + data);
-    }
-  },
-  error: function() {
-    alert("访问失败");
-  }
-});
-
-$( "#packDialog" ).dialog({
+$("#packDialog").dialog({
   autoOpen: false,
-  width: 400
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
 });
 
 $( "#packButton" ).show();
@@ -1251,14 +1251,6 @@ $( "#operatorDialog" ).dialog({
 
 $( "#onlineTestDialog" ).dialog({
   autoOpen: false,
-  width: 'auto',
-  height: 'auto',
-  resizable: false,
-});
-
-$( "#createPolicyDialog" ).dialog({
-  autoOpen: false,
-  modal: true,
   width: 'auto',
   height: 'auto',
   resizable: false,
