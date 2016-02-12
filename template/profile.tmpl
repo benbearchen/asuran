@@ -66,7 +66,8 @@
   color: #000000;
   display: none;
 }
-.toggleGroup > div {
+.toggleGroup > div,
+.urlPolicyOpt > div {
   margin-top: 4px;
 }
 .toggleGroup input,
@@ -1071,7 +1072,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div id="urlDlgOptMap" class="urlPolicyOpt">目标 URL：<input type="text" id="urlDlgMapURL"/></div>
 <div id="urlDlgOptContent" class="urlPolicyOpt">
 <div>编码内容：</div>
-<div><input type="text" id="urlDlgRewriteContent" size="50" /></div>
+<div><input type="text" id="urlDlgRewriteContent" size="50" style="margin-left:0;" /></div>
 <div style="text-align:right;"><input type="button" value="转换..." onclick="openContentDialog()" /></div>
 
 </div>
