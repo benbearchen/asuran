@@ -313,6 +313,7 @@ function createURLPolicy(showURL) {
   urlDlgStatusChanged();
   urlDlgContentTypeChanged();
   urlDlgChunkedChanged();
+  urlDlgMapURLChanged();
 
   $("#urlCommandDialog").dialog("open");
 }
@@ -368,6 +369,17 @@ function urlDlgChunkedChanged() {
   } else {
     $("#urlDlgChunkedBlockNum").hide();
     $("#urlDlgChunkedSize").hide();
+  }
+}
+
+function urlDlgMapURLChanged() {
+  var v = $("#urlDlgMapURLSelect").val();
+  if (v == "url") {
+    $("#urlDlgGroupMapURL").show();
+    $("#urlDlgGroupReplaceURL").hide();
+  } else {
+    $("#urlDlgGroupMapURL").hide();
+    $("#urlDlgGroupReplaceURL").show();
   }
 }
 
@@ -430,16 +442,31 @@ function onURLCommandDialogOK() {
 
   var policy = $("#urlDlgPolicy").val();
   if (policy == "map" || policy == "redirect") {
-    var url = $("#urlDlgMapURL").val();
-    if (url == "") {
-      alert("map/redirect URL 不能为空");
-      return;
-    } else if (url.indexOf(" ") >= 0) {
-      alert("map/redirect URL 不能包含空格");
+    var t = $("#urlDlgMapURLSelect").val();
+    if (t == "url") {
+      var url = $("#urlDlgMapURL").val();
+      if (url == "") {
+        alert("map/redirect URL 不能为空");
+        return;
+      } else if (url.indexOf(" ") >= 0) {
+        alert("map/redirect URL 不能包含空格");
+        return;
+      }
+
+      policy += " " + url;
+    } else if (t == "replace") {
+      var r = $("#urlDlgReplaceRegex").val();
+      var v = $("#urlDlgReplaceValue").val();
+      if (r == "") {
+        alert("map/redirect 正则不能为空");
+        return;
+      }
+
+      policy += " replace /" + r + "/" + v + "/";
+    } else {
+      alert("map/redirect 无效的目标模式？");
       return;
     }
-
-    policy += " " + url;
   } else if (policy == "rewrite" || policy == "tcpwrite") {
     var content = $("#urlDlgRewriteContent").val();
     if (content == "") {
@@ -914,7 +941,10 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
   <option value="restore">返回预置内容</option>
 </select>
 </div>
-<div id="urlDlgOptMap" class="urlPolicyOpt">目标 URL：<input type="text" id="urlDlgMapURL"/></div>
+<div id="urlDlgOptMap" class="urlPolicyOpt">重定向目标方式：<select id="urlDlgMapURLSelect"><option value="url">直接指定 URL</option><option value="replace">源 URL 正则替换</option></select>
+<div id="urlDlgGroupMapURL">URL：<input type="text" id="urlDlgMapURL" size="28" /></div>
+<div id="urlDlgGroupReplaceURL" style="display:none;">正则<input type="text" id="urlDlgReplaceRegex" placeholder="匹配源 URL 的正则" /><span style="margin-left:4px;">替换为</span><input type="text" id="urlDlgReplaceValue" placeholder="普通字符串或捕获串" /><span class="ui-icon ui-icon-lightbulb" style="display:inline-block;" onclick="window.open('/profile/commands', '_blank')"></span></div>
+</div>
 <div id="urlDlgOptContent" class="urlPolicyOpt">
 <div>编码内容：</div>
 <div><input type="text" id="urlDlgRewriteContent" size="50" style="margin-left:0;" /></div>
@@ -1106,6 +1136,8 @@ $("#urlDlgStatusDef").change(urlDlgStatusChanged);
 $("#urlDlgContentTypeDef").change(urlDlgContentTypeChanged);
 
 $("#urlDlgChunkedDef").change(urlDlgChunkedChanged);
+
+$("#urlDlgMapURLSelect").change(urlDlgMapURLChanged);
 
 $("#urlCommandDialog").dialog({
   autoOpen: false,
