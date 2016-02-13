@@ -102,6 +102,10 @@ function appendCmd(cmd) {
 }
 
 {{if .NotOwner}}{{else}}
+function openRestartDialog() {
+  $("#restartDialog").dialog("open");
+}
+
 function restart() {
   var cmd = $.ajax({
     url : "/profile/{{.Path}}/restart",
@@ -902,7 +906,7 @@ function closeDialog(dlg) {
 
 {{if .NotOwner}}{{else}}
 <div id="commandTabs-5" style="display:none;">
-<div><input type="button" value="！重启客户端状态！" onclick="restart()" /></div>
+<div><input type="button" value="！重启客户端状态！" onclick="openRestartDialog()" /></div>
 </div>
 {{end}}
 
@@ -1050,6 +1054,9 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <input type="button" value="测试" onclick="doOnlineTest()" />
 </div>
 
+<div id="restartDialog" title="重启状态">
+<span>确定重启 profile 状态？</span>
+</div>
 
 <script>
 
@@ -1169,6 +1176,29 @@ $("#urlPatternDialog").dialog({
   width: 'auto',
   height: 'auto',
   resizable: false,
+});
+
+$("#restartDialog").dialog({
+  autoOpen: false,
+  width: 300,
+  height: 'auto',
+  resizable: false,
+  modal: true,
+  buttons: [
+    {
+      text: "确定",
+      click: function() {
+        $(this).dialog("close");
+        restart();
+      }
+    },
+    {
+      text: "放弃",
+      click: function() {
+        $(this).dialog("close");
+      }
+    }
+  ]
 });
 
 {{end}} // end of owner's js init
