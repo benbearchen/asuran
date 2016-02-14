@@ -809,7 +809,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		fmt.Fprintf(w, "<html><body>无效请求。返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
 		return
 	} else if op == "stores" {
-		if len(pages) >= 4 {
+		if len(pages) >= 4 && pages[3] != "" {
 			k := pages[3]
 			switch k {
 			case "edit", "view":
@@ -818,23 +818,45 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 					id = pages[4]
 				}
 
-				if k == "edit" {
-					r.ParseForm()
-					if v, ok := r.Form["id"]; ok && len(v) > 0 {
-						id = strings.TrimSpace(v[0])
-						if space := strings.Index(id, " "); space >= 0 {
-							id = id[:space]
-						}
-					}
+				p.writeEditStore(w, profileIP, f, id, k == "view")
+			case "commit":
+				if !canOperate {
+					w.WriteHeader(403)
+					fmt.Fprintln(w, "无权操作")
+					return
+				}
 
-					if v, ok := r.Form["content"]; ok && len(v) > 0 {
-						if c, err := url.QueryUnescape(v[0]); err == nil {
-							f.Store(id, []byte(c))
-						}
+				id := ""
+
+				r.ParseForm()
+				if v, ok := r.Form["id"]; ok && len(v) > 0 {
+					id = strings.TrimSpace(v[0])
+					if space := strings.Index(id, " "); space >= 0 {
+						id = id[:space]
 					}
 				}
 
-				p.writeEditStore(w, profileIP, f, id, k == "view")
+				if id == "" {
+					w.WriteHeader(404)
+					fmt.Fprintln(w, "empty id")
+					return
+				}
+
+				if v, ok := r.Form["content"]; ok && len(v) > 0 {
+					c, err := url.QueryUnescape(v[0])
+					if err == nil {
+						f.Store(id, []byte(c))
+						fmt.Fprintf(w, "保存成功")
+					} else {
+						w.WriteHeader(404)
+						fmt.Fprintf(w, "错误:", err)
+					}
+
+					return
+				}
+
+				w.WriteHeader(404)
+				fmt.Fprintln(w, "empty content")
 			case "delete":
 				if len(pages) >= 5 {
 					id := pages[4]
