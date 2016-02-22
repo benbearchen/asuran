@@ -30,7 +30,7 @@ For Windows:
     \> go build asuran.go
     \> asuran
 
-Run asuran in other palce?  Just copy executable asuran\[.exe\] and dir ./template.
+Run asuran in other place?  Just copy executable asuran\[.exe\] and dir ./template.
 ### Firewall
 Asuran needs udp port 53(for DNS server), tcp port 80(for asuran HTTP server), and other HTTP ports. Maybe you should open UDP port 53 and TCP port 80 in firewall.
 ### Runtime usage
