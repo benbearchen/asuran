@@ -173,13 +173,9 @@ func formatProfileDNSData(p *Profile, host string) profileDNSData {
 	even := true
 	for _, d := range p.Domains {
 		even = !even
-		act := "正常通行"
+		act := d.p.Comment()
 		edit := d.p.Command() + "\n"
-		del := "domain delete " + d.TargetString() + "\n"
-
-		if a := d.p.Action(); a != nil {
-			act = a.Comment()
-		}
+		del := "domain delete " + d.p.Domain() + "\n"
 
 		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
