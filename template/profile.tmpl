@@ -977,14 +977,14 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div id="domainCommandDialog" title="Domain 策略生成" style="display:none">
 <div id="domainDialogGroupDomain" class="commandGroup">域名：<input type="text" id="domainDlgDomain" size="30" />
 </div>
-<div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('domainDialogGroupDNS')"></span><b>解析设置</b>
-<div class="toggleGroup">
+<div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-minusthick" onclick="toggleGroup('domainDialogGroupDNS')"></span><b>解析设置</b>
+<div class="toggleGroup" style="display:block">
 <div>目标 IP：<input type="text" id="domainDlgIP" placeholder="[可选]解析 IP" style="margin-right:auto;"/></div>
 <div>解析策略：<select id="domainDlgPolicy"><option value="">[正常解析]</option><option value="block">不返回</option><option value="null">返回空</option><option value="proxy">强制代理</option></select></div>
 </div>
 </div>
-<div id="domainDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('domainDialogGroupDelay')"></span><b>延时设置</b>
-<div class="toggleGroup">
+<div id="domainDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-minusthick" onclick="toggleGroup('domainDialogGroupDelay')"></span><b>延时设置</b>
+<div class="toggleGroup" style="display:block">
 <div>延时时长：<input type="text" id="domainDlgDuration" placeholder="默认：秒" /></div>
 <div><input type="checkbox" id="domainDlgRandDelay" />随机时长</div>
 </div>
