@@ -783,6 +783,37 @@ function openDialog(dlg) {
 function closeDialog(dlg) {
   $("#"+dlg).dialog("close");
 }
+
+// http://stackoverflow.com/questions/499126/jquery-set-cursor-position-in-text-area
+
+function setSelectionRange(input, selectionStart, selectionEnd) {
+  if (input.setSelectionRange) {
+    input.focus();
+    input.setSelectionRange(selectionStart, selectionEnd);
+  } else if (input.createTextRange) {
+    var range = input.createTextRange();
+    range.collapse(true);
+    range.moveEnd('character', selectionEnd);
+    range.moveStart('character', selectionStart);
+    range.select();
+  }
+}
+
+function setCaretToPos (input, pos) {
+  setSelectionRange(input, pos, pos);
+}
+
+function moveCaretToEnd(input) {
+  var len = input.value.length;
+  setSelectionRange(input, len, len);
+}
+
+function hintCopyHosts() {
+  var hint = "# 请把 /etc/hosts 格式的“IP 域名”配置拷贝到 v下面v，然后点^上面^的“执行命令”\n";
+  appendCmd(hint);
+  moveCaretToEnd(document.getElementById('CommandBoxId'));
+}
+
 </script>
 </head>
 
@@ -817,7 +848,7 @@ function closeDialog(dlg) {
 <td>{{.Settings}}</td>
 </tr>
 {{end}}
-<tr><td colspan="5" style="text-align:center;background:#C0D986;">{{if .NotOwner}}{{else}}<input type="button" value="新建 URL 策略" onclick="createURLPolicy(true)" />{{end}}<input type="button" value="在线测试 URL" style="margin-left:10px;" onclick="onlineTest()" /></td></tr>
+<tr><td colspan="5" style="text-align:center;background:#C0D986;">{{if .NotOwner}}{{else}}<input type="button" value="新建 URL 策略" style="margin-right:10px;" onclick="createURLPolicy(true)" />{{end}}<input type="button" value="在线测试 URL" onclick="onlineTest()" /></td></tr>
 </table>
 <hr/>
 
@@ -837,7 +868,7 @@ function closeDialog(dlg) {
 </tr>
 {{end}}
 {{if .NotOwner}}{{else}}
-<tr><td colspan="4" style="text-align:center;{{if .Domains}}background:#C0D986;{{end}}"><input type="button" value="新建 Domain 策略" onclick="createDomainPolicy()" /></td></tr>
+<tr><td colspan="4" style="text-align:center;{{if .Domains}}background:#C0D986;{{end}}"><input type="button" value="新建 Domain 策略" style="margin-right:10px;" onclick="createDomainPolicy()" /><input type="button" value="新建 /etc/hosts 格式定义" onclick="hintCopyHosts()" /></td></tr>
 {{end}}
 </table>
 <hr/>
@@ -1016,9 +1047,9 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 </div>
 </div>
 <div id="urlPatternGroupPath" class="commandGroup">
-<span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlPatternGroupPath')"></span><b>路径</b>：<br/><input type="text" id="urlPatternDlgPath" size="50" style="margin-left:2em;margin-top:4px;" placeholder="/path/to/*/*.html" />
+<span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlPatternGroupPath')"></span><b>路径</b>：<br/><input type="text" id="urlPatternDlgPath" size="50" style="margin-left:2em;margin-top:4px;" placeholder="/path/to/*/*.html" value="/*" />
 <div class="toggleGroup">
-<div style="width:400px;">路径匹配模式，支持通配符，比如 /v3/*/query 可以匹配 /v3/ping/pong/query</div>
+<div style="width:400px;">路径匹配模式，支持通配符，比如 /v3/*/query 可以匹配 /v3/ping/pong/query。默认 /* 可匹配所有路径</div>
 <div>被测路径：<input type="text" id="testPath" /><input type="button" value="测试" onclick="testPattern('path')" /></div>
 </div>
 </div>
