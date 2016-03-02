@@ -31,11 +31,12 @@ type DomainOperator interface {
 }
 
 func (d *DomainAction) TargetString() string {
-	if d.p.IP() == "" {
-		return "真实地址"
-	} else {
-		return d.p.IP()
+	t := d.p.TargetString()
+	if t == "" {
+		t = "真实地址"
 	}
+
+	return t
 }
 
 type Store struct {

@@ -34,7 +34,7 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 
 	a := p.op.Action(clientIP, pureDomain)
 	if a == nil {
-		return passDomain(domain, "")
+		return passDomain(domain, []string{})
 	}
 
 	if d := a.Delay(); d != nil {
@@ -43,7 +43,7 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	}
 
 	if a.Action() == nil {
-		return passDomain(domain, a.IP())
+		return passDomain(domain, a.IPs())
 	}
 
 	//fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
@@ -51,17 +51,22 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	case *policy.BlockPolicy:
 		return domain, nil
 	case *policy.ProxyPolicy:
-		return passDomain(domain, a.IP())
+		return passDomain(domain, a.IPs())
 	case *policy.NullPolicy:
 		return domain, []net.IP{}
 	default:
-		return passDomain(domain, a.IP())
+		return passDomain(domain, a.IPs())
 	}
 }
 
-func passDomain(domain, ip string) (string, []net.IP) {
-	if len(ip) > 0 {
-		return domain, []net.IP{net.ParseIP(ip)}
+func passDomain(domain string, ips []string) (string, []net.IP) {
+	if len(ips) > 0 {
+		netIPs := make([]net.IP, 0, len(ips))
+		for _, ip := range ips {
+			netIPs = append(netIPs, net.ParseIP(ip))
+		}
+
+		return domain, netIPs
 	} else {
 		ips, err := querySystemDns(domain)
 		if err != nil {

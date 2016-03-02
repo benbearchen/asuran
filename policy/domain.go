@@ -27,7 +27,7 @@ type DomainPolicy struct {
 	target string
 	act    Policy
 	delay  *DelayPolicy
-	ip     string
+	ips    []string
 }
 
 type domainPolicyFactory struct {
@@ -75,25 +75,32 @@ func (*domainPolicyFactory) Build(args []string) (Policy, []string, error) {
 	}
 
 	target := args[0]
-	var ip = ""
+	ips := make([]string, 0)
 	if len(args) > 1 {
-		addr := net.ParseIP(args[1])
-		if addr == nil {
-			return nil, nil, fmt.Errorf("invalid ip: %v", args[1])
-		} else {
-			ip = addr.String()
+		for _, address := range strings.Split(args[1], ",") {
+			address = strings.TrimSpace(address)
+			if address == "" {
+				continue
+			}
+
+			addr := net.ParseIP(address)
+			if addr == nil {
+				return nil, nil, fmt.Errorf("invalid ip: %v", args[1])
+			} else {
+				ips = append(ips, addr.String())
+			}
 		}
 	}
 
-	return newDomainPolicy(target, act, delay, ip), nil, nil
+	return newDomainPolicy(target, act, delay, ips), nil, nil
 }
 
-func newDomainPolicy(domain string, act Policy, delay *DelayPolicy, ip string) *DomainPolicy {
-	return &DomainPolicy{domain, act, delay, ip}
+func newDomainPolicy(domain string, act Policy, delay *DelayPolicy, ips []string) *DomainPolicy {
+	return &DomainPolicy{domain, act, delay, ips}
 }
 
 func NewStaticDomainPolicy(domain, ip string) *DomainPolicy {
-	return &DomainPolicy{domain, nil, nil, ip}
+	return &DomainPolicy{domain, nil, nil, []string{ip}}
 }
 
 func (d *DomainPolicy) Keyword() string {
@@ -114,8 +121,8 @@ func (d *DomainPolicy) Command() string {
 	}
 
 	cmd = append(cmd, d.target)
-	if len(d.ip) > 0 {
-		cmd = append(cmd, d.ip)
+	if len(d.ips) > 0 {
+		cmd = append(cmd, strings.Join(d.ips, ","))
 	}
 
 	return strings.Join(cmd, " ")
@@ -150,7 +157,7 @@ func (d *DomainPolicy) Update(p Policy) error {
 	case *DomainPolicy:
 		d.act = p.act
 		d.delay = p.delay
-		d.ip = p.ip
+		d.ips = p.ips
 	case *DefaultPolicy, *ProxyPolicy, *BlockPolicy, *NullPolicy:
 		d.act = p
 	case *DelayPolicy:
@@ -188,5 +195,21 @@ func (d *DomainPolicy) Delay() *DelayPolicy {
 }
 
 func (d *DomainPolicy) IP() string {
-	return d.ip
+	if len(d.ips) > 0 {
+		return d.ips[0]
+	} else {
+		return ""
+	}
+}
+
+func (d *DomainPolicy) IPs() []string {
+	return d.ips
+}
+
+func (d *DomainPolicy) TargetString() string {
+	if len(d.ips) == 0 {
+		return ""
+	} else {
+		return strings.Join(d.ips, ",")
+	}
 }
