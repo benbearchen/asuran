@@ -115,6 +115,10 @@ type PathPattern struct {
 func NewPathPattern(pattern string) *PathPattern {
 	p := new(PathPattern)
 	p.pattern = pattern
+	if pattern == "" {
+		pattern = "/*"
+	}
+
 	if strings.Index(pattern, "*") >= 0 {
 		regex := pathPattern2Regex(pattern)
 		r, err := regexp.Compile(regex)
@@ -322,7 +326,7 @@ func parseUrlAsPattern(url string) [4]string {
 	} else if s >= 0 {
 		return [4]string{host, port, url[s:], ""}
 	} else {
-		return [4]string{host, port, "/", ""}
+		return [4]string{host, port, "", ""}
 	}
 }
 

@@ -713,7 +713,7 @@ function testPattern(t) {
     v = $("#testDomain").val();
   } else if (t == "path") {
     p = $("#urlPatternDlgPath").val();
-    if (p == "" || p[0] != "/") {
+    if (p != "" && p[0] != "/") {
       p = "/" + p;
       $("#urlPatternDlgPath").val(p);
     }
@@ -1049,7 +1049,7 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div id="urlPatternGroupPath" class="commandGroup">
 <span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlPatternGroupPath')"></span><b>路径</b>：<br/><input type="text" id="urlPatternDlgPath" size="50" style="margin-left:2em;margin-top:4px;" placeholder="/path/to/*/*.html" value="/*" />
 <div class="toggleGroup">
-<div style="width:400px;">路径匹配模式，支持通配符，比如 /v3/*/query 可以匹配 /v3/ping/pong/query。默认 /* 可匹配所有路径</div>
+<div style="width:400px;">路径匹配模式，支持通配符，比如 /v3/*/query 可以匹配 /v3/ping/pong/query。留空或者 “/*” 可匹配所有路径</div>
 <div>被测路径：<input type="text" id="testPath" /><input type="button" value="测试" onclick="testPattern('path')" /></div>
 </div>
 </div>
