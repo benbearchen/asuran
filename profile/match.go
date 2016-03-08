@@ -175,6 +175,10 @@ func pathPattern2Regex(pattern string) string {
 }
 
 func (p *PathPattern) Match(path string) bool {
+	if path == "" {
+		path = "/"
+	}
+
 	if p.regex != nil {
 		return p.regex.MatchString(path)
 	} else {
@@ -183,6 +187,10 @@ func (p *PathPattern) Match(path string) bool {
 }
 
 func (p *PathPattern) MatchScore(path string) uint8 {
+	if path == "" {
+		path = "/"
+	}
+
 	if p.regex != nil {
 		if p.regex.MatchString(path) {
 			return 1
