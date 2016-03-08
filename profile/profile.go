@@ -400,7 +400,12 @@ func (p *Profile) Clear() {
 }
 
 func getHostOfUrlPattern(urlPattern string) string {
-	p := strings.Index(urlPattern, "/")
+	p := strings.Index(urlPattern, "://")
+	if p >= 0 {
+		urlPattern = urlPattern[p+3:]
+	}
+
+	p = strings.Index(urlPattern, "/")
 	if p == 0 {
 		return ""
 	} else if p < 0 {
