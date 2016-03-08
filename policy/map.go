@@ -3,6 +3,7 @@ package policy
 import (
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 const mapKeyword = "map"
@@ -76,9 +77,39 @@ func checkURL(rawurl string) (string, error) {
 	}
 }
 
+func makeNewURL(source, newly string) string {
+	if len(newly) == 0 {
+		return newly
+	}
+
+	if strings.HasPrefix(newly, "http://") || strings.HasPrefix(newly, "https://") {
+		return newly
+	}
+
+	if newly[0] != '/' {
+		return "http://" + newly
+	}
+
+	scheme := "://"
+	p := strings.Index(source, scheme)
+	if p > 0 {
+		path := source[p+len(scheme):]
+		h := strings.IndexByte(path, '/')
+		if h < 0 {
+			h = len(path)
+		}
+
+		if h > 0 {
+			return source[:p+len(scheme)+h] + newly
+		}
+	}
+
+	return newly
+}
+
 func (p *MapPolicy) URL(source string) string {
 	if p.replacer == nil {
-		return p.str
+		return makeNewURL(source, p.str)
 	} else {
 		return p.replacer.Replace(source)
 	}
@@ -86,7 +117,7 @@ func (p *MapPolicy) URL(source string) string {
 
 func (p *RedirectPolicy) URL(source string) string {
 	if p.replacer == nil {
-		return p.str
+		return makeNewURL(source, p.str)
 	} else {
 		return p.replacer.Replace(source)
 	}

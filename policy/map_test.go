@@ -85,3 +85,24 @@ func TestRedirectPolicy(t *testing.T) {
 		t.Errorf(`Factory("%s") without err: %v`, cmd, p)
 	}
 }
+
+func TestMapFunc(t *testing.T) {
+	checkMakeNewURL := func(s, n, v string) {
+		r := makeNewURL(s, n)
+		if r != v {
+			t.Errorf("makeNewURL(%s, %s) => %s != %s", s, n, r, v)
+		}
+	}
+
+	checkMakeNewURL("http://g.cn", "", "")
+	checkMakeNewURL("http://g.cn", "http://gmail.com", "http://gmail.com")
+	checkMakeNewURL("http://g.cn", "https://gmail.com", "https://gmail.com")
+	checkMakeNewURL("http://g.cn", "gmail.com", "http://gmail.com")
+	checkMakeNewURL("http://g.cn/", "gmail.com", "http://gmail.com")
+	checkMakeNewURL("http://g.cn", "/wxyz/", "http://g.cn/wxyz/")
+	checkMakeNewURL("http://g.cn/", "/wxyz/", "http://g.cn/wxyz/")
+	checkMakeNewURL("http://g.cn/a", "/", "http://g.cn/")
+	checkMakeNewURL("http://g.cn/a/html", "/wxyz/", "http://g.cn/wxyz/")
+	checkMakeNewURL("http:///a/html", "/", "/")
+	checkMakeNewURL("http:/a/html", "/wxyz/", "/wxyz/")
+}
