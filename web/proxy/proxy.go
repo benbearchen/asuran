@@ -780,7 +780,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "redirect":
 				if len(pages) >= 5 {
 					domain := pages[4]
-					dp, _ := policy.Factory("domain proxy " + profile.UrlToPattern(domain))
+					dp, _ := policy.Factory("domain proxy " + domain)
 					f.SetDomainPolicy(dp.(*policy.DomainPolicy))
 					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
 					return
