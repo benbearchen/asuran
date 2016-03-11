@@ -144,6 +144,7 @@ func (p *Profile) MatchUrl(url string) *urlAction {
 	for _, u := range p.Urls {
 		score := u.pattern.MatchScore(us)
 		if score > high {
+			high = score
 			highUrl = u
 		}
 	}
