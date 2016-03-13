@@ -38,9 +38,10 @@ type profileData struct {
 	Urls      []urlActionData
 	Domains   []domainData
 	Stores    []string
+	Errors    []string
 }
 
-func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData {
+func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []string) profileData {
 	name := p.Name
 	ip := p.Ip
 	owner := p.Owner
@@ -107,12 +108,12 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
 
-	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs}
+	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs, errors}
 }
 
-func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool) {
+func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool, errors []string) {
 	t, err := template.ParseFiles("template/profile.tmpl")
-	err = t.Execute(w, p.formatViewData(savedIDs, realOwner))
+	err = t.Execute(w, p.formatViewData(savedIDs, realOwner, errors))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

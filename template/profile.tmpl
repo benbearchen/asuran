@@ -878,7 +878,8 @@ function hintCopyHosts() {
 <td><b>命令：</b></td><td>{{if .NotOwner}}{{else}}<input type="submit" value="执行命令" />{{end}}</td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
-<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea>
+<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea><pre style="{{if .Errors}}display:block;vertical-align:top;padding:3px;border:1px solid red;{{else}}display:none;{{end}}">##	错误：
+{{range .Errors}}{{. | html}}{{end}}</pre>
 </form>
 
 <hr/>

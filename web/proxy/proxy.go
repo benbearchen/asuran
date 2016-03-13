@@ -970,16 +970,17 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	}
 
 	r.ParseForm()
+	errors := []string{}
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
 		if canOperate {
 			for _, cmd := range v {
-				p.Command(cmd, f, p.lives.Open(profileIP))
+				errors = p.Command(cmd, f, p.lives.Open(profileIP))
 			}
 		}
 	}
 
 	savedIDs := f.ListStoreIDs()
-	f.WriteHtml(w, savedIDs, canOperate)
+	f.WriteHtml(w, savedIDs, canOperate, errors)
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {

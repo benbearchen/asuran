@@ -6,11 +6,13 @@ import (
 	"github.com/benbearchen/asuran/util/cmd"
 	"github.com/benbearchen/asuran/web/proxy/life"
 
+	"fmt"
 	"net"
 	"strings"
 )
 
-func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
+func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) []string {
+	errors := make([]string, 0)
 	commandLines := strings.Split(commands, "\n")
 	for _, line := range commandLines {
 		line = strings.TrimSpace(line)
@@ -24,6 +26,7 @@ func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 			if ip, domain, ok := parseIPDomain(c, rest); ok {
 				p = policy.NewStaticDomainPolicy(domain, ip)
 			} else {
+				errors = append(errors, fmt.Sprintf("%s\n##\t%v\n", line, err))
 				continue
 			}
 		}
@@ -42,6 +45,8 @@ func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 		default:
 		}
 	}
+
+	return errors
 }
 
 func parseIPDomain(c, rest string) (string, string, bool) {

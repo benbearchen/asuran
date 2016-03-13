@@ -20,7 +20,7 @@ func (s *stringPolicyFactory) Keyword() string {
 
 func (s *stringPolicyFactory) Build(args []string) (Policy, []string, error) {
 	if len(args) == 0 {
-		return nil, args, fmt.Errorf(`%d need an arg "%s"`, s.keyword, s.argName)
+		return nil, args, fmt.Errorf(`%s need an arg "%s"`, s.keyword, s.argName)
 	}
 
 	p, err := s.create(args[0])
