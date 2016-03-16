@@ -32,6 +32,7 @@ func init() {
 		allow304Keyword,
 		contentTypeKeyword,
 		hostKeyword,
+		pluginKeyword,
 		removeKeyword,
 		deleteKeyword,
 	)
@@ -393,6 +394,18 @@ func (u *UrlPolicy) Chunked() *ChunkedPolicy {
 		c, ok := p.(*ChunkedPolicy)
 		if ok {
 			return c
+		}
+	}
+
+	return nil
+}
+
+func (u *UrlPolicy) Plugin() *PluginPolicy {
+	p := u.subKeyDef(pluginKeyword)
+	if p != nil {
+		pp, ok := p.(*PluginPolicy)
+		if ok {
+			return pp
 		}
 	}
 

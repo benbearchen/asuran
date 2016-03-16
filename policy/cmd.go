@@ -17,6 +17,7 @@ settings... ::=
       [(disable304|allow304)]
       [content-type (default|remove|empty|<content-type>)]
       [host <ip:port>]
+      [plugin <plugin-name>]
 
 url remove <setting-keyword> [<url-pattern>|all]
 
@@ -144,6 +145,10 @@ url command:
     host <ip:port>
               指定实际连接的服务器地址
 
+
+    plugin <plugin-name>
+              以插件 <plugin-name> 处理请求。
+              因为全权委托插件处理，所以其它 url 设定可能都无效。
 
     remove <setting-keyword>
               移除 url 下关键字为 <setting-keyword> 的子策略。

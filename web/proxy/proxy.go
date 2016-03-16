@@ -9,6 +9,8 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 	"github.com/benbearchen/asuran/web/proxy/pack"
+	_ "github.com/benbearchen/asuran/web/proxy/plugin"
+	"github.com/benbearchen/asuran/web/proxy/plugin/api"
 
 	"encoding/json"
 	"fmt"
@@ -292,6 +294,11 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 }
 
 func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request, up *policy.UrlPolicy) {
+	if up != nil && up.Plugin() != nil {
+		p.plugin(up.Plugin().Name(), target, w, r)
+		return
+	}
+
 	needCache := false
 
 	fullUrl := target
@@ -1361,4 +1368,8 @@ func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "%s", result)
+}
+
+func (p *Proxy) plugin(pluginName, target string, w http.ResponseWriter, r *http.Request) {
+	api.Call(pluginName, target, w, r)
 }
