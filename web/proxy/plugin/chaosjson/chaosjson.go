@@ -12,7 +12,7 @@ func init() {
 	api.RegisterHandler("chaosjson", "change json by Diablo", chaosjson)
 }
 
-func chaosjson(targetURI string, w http.ResponseWriter, r *http.Request) {
+func chaosjson(context *api.Context, targetURI string, w http.ResponseWriter, r *http.Request) {
 	response, _, _, err := helper.NewHttp(targetURI, r, nil, false)
 	if err != nil {
 		w.WriteHeader(502)

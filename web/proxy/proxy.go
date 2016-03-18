@@ -295,7 +295,7 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 
 func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request, up *policy.UrlPolicy) {
 	if up != nil && up.Plugin() != nil {
-		p.plugin(up.Plugin().Name(), target, w, r)
+		p.plugin(remoteIP, up.Plugin(), target, w, r)
 		return
 	}
 
@@ -1370,6 +1370,7 @@ func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", result)
 }
 
-func (p *Proxy) plugin(pluginName, target string, w http.ResponseWriter, r *http.Request) {
-	api.Call(pluginName, target, w, r)
+func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, target string, w http.ResponseWriter, r *http.Request) {
+	context := &api.Context{profileIP, pluginPolicy}
+	api.Call(context, pluginPolicy.Name(), target, w, r)
 }

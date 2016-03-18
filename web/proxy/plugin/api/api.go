@@ -1,15 +1,22 @@
 package api
 
 import (
+	"github.com/benbearchen/asuran/policy"
+
 	"fmt"
 	"net/http"
 	"sync"
 )
 
+type Context struct {
+	ProfileIP string // may be empty.
+	Policy    *policy.PluginPolicy
+}
+
 type API interface {
 	Name() string
 	Intro() string
-	Call(targetURI string, w http.ResponseWriter, r *http.Request)
+	Call(context *Context, targetURI string, w http.ResponseWriter, r *http.Request)
 }
 
 var (
@@ -27,10 +34,10 @@ func Register(plugin API) {
 type apiHandler struct {
 	name    string
 	intro   string
-	handler func(targetURI string, w http.ResponseWriter, r *http.Request)
+	handler func(context *Context, targetURI string, w http.ResponseWriter, r *http.Request)
 }
 
-func RegisterHandler(name, intro string, handler func(targetURI string, w http.ResponseWriter, r *http.Request)) {
+func RegisterHandler(name, intro string, handler func(context *Context, targetURI string, w http.ResponseWriter, r *http.Request)) {
 	Register(&apiHandler{name, intro, handler})
 }
 
@@ -47,13 +54,13 @@ func All() []string {
 	return names
 }
 
-func Call(name string, targetURI string, w http.ResponseWriter, r *http.Request) {
+func Call(context *Context, name string, targetURI string, w http.ResponseWriter, r *http.Request) {
 	lock.RLock()
 	defer lock.RUnlock()
 
 	plugin, ok := plugins[name]
 	if ok {
-		plugin.Call(targetURI, w, r)
+		plugin.Call(context, targetURI, w, r)
 	} else {
 		w.WriteHeader(500)
 		fmt.Fprintln(w, "miss plugin: "+name)
@@ -80,6 +87,6 @@ func (h *apiHandler) Intro() string {
 	return h.intro
 }
 
-func (h *apiHandler) Call(targetURI string, w http.ResponseWriter, r *http.Request) {
-	h.handler(targetURI, w, r)
+func (h *apiHandler) Call(context *Context, targetURI string, w http.ResponseWriter, r *http.Request) {
+	h.handler(context, targetURI, w, r)
 }
