@@ -220,6 +220,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		p.res(w, r, urlPath)
 	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
 		p.dealPacks(w, r, page)
+	} else if page, m := httpd.MatchPath(urlPath, "/plugins"); m {
+		p.dealPlugins(w, r, page)
 	} else if urlPath == "/" {
 		ip := func() string {
 			if p.isSelfAddr(remoteIP) {
@@ -1320,6 +1322,32 @@ func (p *Proxy) dealPacks(w http.ResponseWriter, r *http.Request, page string) {
 			w.WriteHeader(404)
 			fmt.Fprintln(w, "invalid name or pack is empty")
 		}
+		return
+	}
+
+	w.WriteHeader(404)
+}
+
+func (p *Proxy) dealPlugins(w http.ResponseWriter, r *http.Request, page string) {
+	if len(page) <= 1 {
+		p.writePlugins(w)
+		return
+	}
+
+	switch page[1:] {
+	case "names.json":
+		bytes, err := json.Marshal(api.All())
+		if err == nil {
+			w.Write(bytes)
+		} else {
+			w.WriteHeader(502)
+			fmt.Fprintf(w, "error: %v", err)
+		}
+		return
+	case "intro":
+		r.ParseForm()
+		intro := api.Intro(r.Form.Get("name"))
+		fmt.Fprintf(w, "%s", intro)
 		return
 	}
 

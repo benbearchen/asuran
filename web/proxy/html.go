@@ -5,6 +5,7 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 	"github.com/benbearchen/asuran/web/proxy/pack"
+	"github.com/benbearchen/asuran/web/proxy/plugin/api"
 
 	"fmt"
 	"html/template"
@@ -487,6 +488,35 @@ func formatPacksData(packs *pack.Dir) packsData {
 func (p *Proxy) writePacks(w http.ResponseWriter) {
 	t, err := template.ParseFiles("template/packs-list.tmpl")
 	err = t.Execute(w, formatPacksData(p.packs))
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type pluginData struct {
+	Even  bool
+	Name  string
+	Intro string
+}
+
+type pluginsData struct {
+	Plugins []pluginData
+}
+
+func formatPluginsData() pluginsData {
+	names := api.All()
+	datas := make([]pluginData, 0, len(names))
+	for i, name := range names {
+		intro := api.Intro(name)
+		datas = append(datas, pluginData{i%2 == 1, name, intro})
+	}
+
+	return pluginsData{datas}
+}
+
+func (p *Proxy) writePlugins(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/plugins-list.tmpl")
+	err = t.Execute(w, formatPluginsData())
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
