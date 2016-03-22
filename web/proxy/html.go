@@ -244,6 +244,32 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			} else {
 				d.URLBody = url
 			}
+		} else if len(s) >= 4 && s[0] == "plugin" {
+			d.HttpStatus = "插件 " + s[3]
+
+			url := s[1]
+			d.URL = url
+
+			if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
+				d.URLID = s[2]
+				h := f.LookHistoryByID(uint32(id))
+				if h != nil {
+					status := h.Method
+					if h.ResponseCode >= 0 {
+						status += " " + strconv.Itoa(h.ResponseCode)
+					} else {
+						status += " 出错"
+					}
+
+					d.HttpStatus += ", " + status
+				}
+			}
+
+			if strings.HasPrefix(url, "http://") {
+				d.URLBody = url[7:]
+			} else {
+				d.URLBody = url
+			}
 		} else {
 			d.EventString = e.String
 		}

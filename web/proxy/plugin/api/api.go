@@ -11,6 +11,7 @@ import (
 type Context struct {
 	ProfileIP string // may be empty.
 	Policy    *policy.PluginPolicy
+	Log       func(statusCode int, postBody, content []byte, err error)
 }
 
 type API interface {

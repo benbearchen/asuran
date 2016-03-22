@@ -338,7 +338,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	if up != nil && up.Plugin() != nil {
-		p.plugin(remoteIP, up.Plugin(), target, w, r)
+		p.plugin(remoteIP, up.Plugin(), target, w, r, f)
 		return
 	}
 
@@ -1401,7 +1401,21 @@ func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", result)
 }
 
-func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, target string, w http.ResponseWriter, r *http.Request) {
-	context := &api.Context{profileIP, pluginPolicy}
+func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, target string, w http.ResponseWriter, r *http.Request, f *life.Life) {
+	start := time.Now()
+	log := func(statusCode int, postBody, content []byte, err error) {
+		go func() {
+			c := cache.NewUrlCache(target, r, postBody, nil, "plugin " + pluginPolicy.Name(), content, "", start, time.Now(), err)
+			c.ResponseCode = statusCode
+
+			id := f.SaveContentToCache(c, false)
+
+			info := "plugin " + target + " " + strconv.FormatUint(uint64(id), 10) + " " + pluginPolicy.Name()
+
+			f.Log(info)
+		}()
+	}
+
+	context := &api.Context{profileIP, pluginPolicy, log}
 	api.Call(context, pluginPolicy.Name(), target, w, r)
 }
