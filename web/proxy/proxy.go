@@ -299,11 +299,6 @@ func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) 
 }
 
 func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request, up *policy.UrlPolicy) {
-	if up != nil && up.Plugin() != nil {
-		p.plugin(remoteIP, up.Plugin(), target, w, r)
-		return
-	}
-
 	needCache := false
 
 	fullUrl := target
@@ -340,6 +335,11 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 		} else if p.urlOp != nil {
 			up = p.urlOp.Action(remoteIP, fullUrl)
 		}
+	}
+
+	if up != nil && up.Plugin() != nil {
+		p.plugin(remoteIP, up.Plugin(), target, w, r)
+		return
 	}
 
 	if up != nil {
