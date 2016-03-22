@@ -20,10 +20,16 @@ func init() {
 }
 
 func chaosjson(context *api.Context, targetURI string, w http.ResponseWriter, r *http.Request) {
+	failHandler := func(statusCode int, err error) {
+		w.WriteHeader(statusCode)
+		fmt.Fprintln(w, err)
+
+		context.Log(statusCode, nil, nil, err)
+	}
+
 	response, _, _, err := helper.NewHttp(targetURI, r, nil, false)
 	if err != nil {
-		w.WriteHeader(502)
-		fmt.Fprintln(w, err)
+		failHandler(502, err)
 		return
 	}
 
@@ -35,12 +41,13 @@ func chaosjson(context *api.Context, targetURI string, w http.ResponseWriter, r 
 	}
 
 	if err != nil {
-		w.WriteHeader(502)
-		fmt.Fprintln(w, err)
+		failHandler(502, err)
 		return
 	}
 
 	w.Write(bytes)
+
+	context.Log(200, nil, bytes, nil)
 }
 
 func dealJson(setting string, bytes []byte) ([]byte, error) {
