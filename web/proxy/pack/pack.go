@@ -68,7 +68,7 @@ func (p *Pack) load(path string) error {
 			if titled && !titleOver {
 				titleOver = true // an empty line is needed after titles
 			} else {
-				cmd += cmd + line + "\n"
+				cmd += line + "\n"
 			}
 
 			continue
