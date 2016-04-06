@@ -5,6 +5,7 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 	"github.com/benbearchen/asuran/web/proxy/pack"
+	"github.com/benbearchen/asuran/web/proxy/plugin/api"
 
 	"fmt"
 	"html/template"
@@ -236,6 +237,32 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			d.URL = url
 			if len(s) > 2 {
 				d.URL += " " + s[2]
+			}
+
+			if strings.HasPrefix(url, "http://") {
+				d.URLBody = url[7:]
+			} else {
+				d.URLBody = url
+			}
+		} else if len(s) >= 4 && s[0] == "plugin" {
+			d.HttpStatus = "插件 " + s[3]
+
+			url := s[1]
+			d.URL = url
+
+			if id, err := strconv.ParseInt(s[2], 10, 32); err == nil {
+				d.URLID = s[2]
+				h := f.LookHistoryByID(uint32(id))
+				if h != nil {
+					status := h.Method
+					if h.ResponseCode >= 0 {
+						status += " " + strconv.Itoa(h.ResponseCode)
+					} else {
+						status += " 出错"
+					}
+
+					d.HttpStatus += ", " + status
+				}
 			}
 
 			if strings.HasPrefix(url, "http://") {
@@ -488,6 +515,35 @@ func formatPacksData(packs *pack.Dir) packsData {
 func (p *Proxy) writePacks(w http.ResponseWriter) {
 	t, err := template.ParseFiles("template/packs-list.tmpl")
 	err = t.Execute(w, formatPacksData(p.packs))
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type pluginData struct {
+	Even  bool
+	Name  string
+	Intro string
+}
+
+type pluginsData struct {
+	Plugins []pluginData
+}
+
+func formatPluginsData() pluginsData {
+	names := api.All()
+	datas := make([]pluginData, 0, len(names))
+	for i, name := range names {
+		intro := api.Intro(name)
+		datas = append(datas, pluginData{i%2 == 1, name, intro})
+	}
+
+	return pluginsData{datas}
+}
+
+func (p *Proxy) writePlugins(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/plugins-list.tmpl")
+	err = t.Execute(w, formatPluginsData())
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

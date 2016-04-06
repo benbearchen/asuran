@@ -9,6 +9,8 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
 	"github.com/benbearchen/asuran/web/proxy/pack"
+	_ "github.com/benbearchen/asuran/web/proxy/plugin"
+	"github.com/benbearchen/asuran/web/proxy/plugin/api"
 
 	"encoding/json"
 	"fmt"
@@ -221,6 +223,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		p.res(w, r, urlPath)
 	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
 		p.dealPacks(w, r, page)
+	} else if page, m := httpd.MatchPath(urlPath, "/plugins"); m {
+		p.dealPlugins(w, r, page)
 	} else if urlPath == "/" {
 		ip := func() string {
 			if p.isSelfAddr(remoteIP) {
@@ -331,6 +335,11 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 		} else if p.urlOp != nil {
 			up = p.urlOp.Action(remoteIP, fullUrl)
 		}
+	}
+
+	if up != nil && up.Plugin() != nil {
+		p.plugin(remoteIP, up.Plugin(), target, w, r, f)
+		return
 	}
 
 	if up != nil {
@@ -1322,6 +1331,32 @@ func (p *Proxy) dealPacks(w http.ResponseWriter, r *http.Request, page string) {
 	w.WriteHeader(404)
 }
 
+func (p *Proxy) dealPlugins(w http.ResponseWriter, r *http.Request, page string) {
+	if len(page) <= 1 {
+		p.writePlugins(w)
+		return
+	}
+
+	switch page[1:] {
+	case "names.json":
+		bytes, err := json.Marshal(api.All())
+		if err == nil {
+			w.Write(bytes)
+		} else {
+			w.WriteHeader(502)
+			fmt.Fprintf(w, "error: %v", err)
+		}
+		return
+	case "intro":
+		r.ParseForm()
+		intro := api.Intro(r.Form.Get("name"))
+		fmt.Fprintf(w, "%s", intro)
+		return
+	}
+
+	w.WriteHeader(404)
+}
+
 func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	op := r.Form.Get("op")
@@ -1364,4 +1399,23 @@ func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "%s", result)
+}
+
+func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, target string, w http.ResponseWriter, r *http.Request, f *life.Life) {
+	start := time.Now()
+	log := func(statusCode int, postBody, content []byte, err error) {
+		go func() {
+			c := cache.NewUrlCache(target, r, postBody, nil, "plugin " + pluginPolicy.Name(), content, "", start, time.Now(), err)
+			c.ResponseCode = statusCode
+
+			id := f.SaveContentToCache(c, false)
+
+			info := "plugin " + target + " " + strconv.FormatUint(uint64(id), 10) + " " + pluginPolicy.Name()
+
+			f.Log(info)
+		}()
+	}
+
+	context := &api.Context{profileIP, pluginPolicy, log}
+	api.Call(context, pluginPolicy.Name(), target, w, r)
 }

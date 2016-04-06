@@ -162,6 +162,25 @@ function loadPack() {
   }
 }
 
+function reloadPlugins() {
+  $.ajax({
+    url: "/plugins/names.json",
+    dataType: "json",
+    success: function(names) {
+      var s = $("#urlDlgPluginDef");
+      var name = s.val()
+      s.empty();
+      $('<option value="">[不使用]</option>').appendTo("#urlDlgPluginDef");
+      for (var i = 0; i != names.length; i++) {
+        $('<option value="' + names[i] + '">' + names[i] + '</option>').appendTo("#urlDlgPluginDef");
+        if (name == names[i]) {
+          s[0].selectedIndex = i+1;
+        }
+      }
+    }
+  });
+}
+
 function doPackCommand() {
   var name = $("#packDlgName").val();
   var author = $("#packDlgAuthor").val();
@@ -318,6 +337,8 @@ function createURLPolicy(showURL) {
   urlDlgContentTypeChanged();
   urlDlgChunkedChanged();
   urlDlgMapURLChanged();
+
+  reloadPlugins();
 
   $("#urlCommandDialog").dialog("open");
 }
@@ -582,7 +603,28 @@ function onURLCommandDialogOK() {
     chunked = "chunked " + chunked;
   }
 
-  var s = [delayOpt, bodyDelayOpt, policy, do302, disable304, host, status, contentType, chunked];
+  var plugin = $("#urlDlgPluginDef").val();
+  if (plugin != "") {
+    var ps = [];
+    ps.push("plugin");
+
+    var pluginSetting = $("#urlDlgPluginSetting").val();
+    if (pluginSetting != "" && pluginSetting.indexOf(" ") >= 0) {
+      alert("插件的设置不能包含空格！");
+      return;
+    }
+
+    if (pluginSetting != "") {
+      ps.push("setting");
+      ps.push(pluginSetting);
+    }
+
+    ps.push(plugin);
+
+    plugin = ps.join(" ");
+  }
+
+  var s = [delayOpt, bodyDelayOpt, policy, do302, disable304, host, status, contentType, chunked, plugin];
   var cmd = "";
   for (var i = 0; i < s.length; i++) {
     if (s[i] != "") {
@@ -998,6 +1040,12 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 <div>指定 StatusCode：<select id="urlDlgStatusDef"><option value="">[不设置]</option><option value="403">403</option><option value="404">404</option><option value="500">500</option><option value="502">502</option><option value="user">其它</option></select><input type="text" id="urlDlgStatusUser" size="4" style="display:none"/></div>
 <div>Content-Type：<select id="urlDlgContentTypeDef"><option value="">[默认]</option><option value="remove">移除</option><option value="empty">置空</option><option value="user">自定义</option></select><input type="text" id="urlDlgContentTypeUser" style="display:none;" /></div>
 <div>Chunked 设置：<select id="urlDlgChunkedDef"><option value="">[不设置]</option><option value="off">强制关闭</option><option value="on">强制开启</option><option value="block">指定块数量</option><option value="size">指定块大小</option></select><input type="text" id="urlDlgChunkedBlockNum" size="4" style="display:none;" /><input type="text" id="urlDlgChunkedSize" style="display:none;" placeholder="1024,456,0" /></div>
+</div>
+</div>
+<div id="urlDialogGroupPlugin" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupPlugin')"></span><b>插件处理</b>
+<div class="toggleGroup">
+<div><span>名字：</span><select id="urlDlgPluginDef"></select></div>
+<div><span>设置：</span><input type="text" id="urlDlgPluginSetting" /><input type="button" value="向导…" disabled="disabled" /></div>
 </div>
 </div>
 <div style="width:100%;text-align:center;">
