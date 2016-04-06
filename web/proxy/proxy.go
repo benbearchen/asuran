@@ -463,7 +463,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	if up != nil {
 		dont302 = up.Dont302()
 		settingContentType = up.ContentType()
-		if up.Disable304() {
+		if up.Disable304() && requestR != nil {
 			p.disable304FromHeader(requestR.Header)
 		}
 
@@ -471,7 +471,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	httpStart := time.Now()
-	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP, hostPolicy), dont302)
+	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(requestUrl, remoteIP, hostPolicy), dont302)
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
