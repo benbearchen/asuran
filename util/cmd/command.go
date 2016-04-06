@@ -54,3 +54,19 @@ func TakeFirstArg(cmd string) (string, string) {
 
 	return cmd[1:], ""
 }
+
+func SplitCommand(cmd string) []string {
+	args := make([]string, 0)
+	// TODO: 优化
+	for len(cmd) > 0 {
+		a, b := TakeFirstArg(cmd)
+		if len(a) > 0 {
+			args = append(args, a)
+			cmd = b
+		} else {
+			break
+		}
+	}
+
+	return args
+}

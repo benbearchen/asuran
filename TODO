@@ -1,12 +1,22 @@
 features pool
 =============
-* `cache` with range
-
-
-ver 0.3
-=========
-* Support saving and loading profile's commands pack
+* `cache` with merge range to entire content
 * Record and replay certain commands packs
+
+
+ver 0.3  fatcow
+=========
+* Support saving and loading commands pack
+* Profile's default url policy
+* Refact, remove UrlOperator
+* Using HTTP Mux?
+* More test
+* Policy in HTTP Header
+* New policy test entry, such as 'http://localhost/profile/192.168.1.2/policy/timeout 1/g.cn'
+* Can force chunked on/off, even size for each chunk
+* `url map|redirect` support sed style replacement, "url map replace /g.cn/www.google.cn/"
+* Range response by splitting complete `cache`
+* `url remove <keyword>` can remove many policy
 
 
 ver 0.2.4

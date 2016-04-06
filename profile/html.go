@@ -1,9 +1,12 @@
 package profile
 
 import (
+	"github.com/benbearchen/asuran/policy"
+
 	"fmt"
 	"html/template"
 	"io"
+	"sort"
 )
 
 type urlActionData struct {
@@ -35,9 +38,10 @@ type profileData struct {
 	Urls      []urlActionData
 	Domains   []domainData
 	Stores    []string
+	Errors    []string
 }
 
-func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData {
+func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []string) profileData {
 	name := p.Name
 	ip := p.Ip
 	owner := p.Owner
@@ -55,29 +59,61 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool) profileData
 		}
 	}
 
+	keys := make([]string, 0, len(p.Urls)+1)
+	keys = append(keys, "")
+	for k, _ := range p.Urls {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys[1:])
 	even := true
-	for _, u := range p.Urls {
+	for _, k := range keys {
 		even = !even
-		extra := u.Speed.String()
-		if len(extra) > 0 {
-			extra = ", " + extra
+		target := ""
+		edit := ""
+		del := ""
+		var up *policy.UrlPolicy
+		if k == "" {
+			up = p.UrlDefault
+			target = "[缺省目标]"
+		} else {
+			up = p.Urls[k].p
+			target = up.Target()
+			del = "url delete " + target + "\n"
 		}
 
-		urls = append(urls, urlActionData{u.UrlPattern, u.Act.String(), u.Delay.String() + extra, u.Settings.String(), u.EditCommand(), u.DeleteCommand(), even})
+		act := up.ContentComment()
+		delay := up.DelayComment()
+		other := up.OtherComment()
+
+		edit = up.Command() + "\n"
+
+		urls = append(urls, urlActionData{target, act, delay, other, edit, del, even})
 	}
 
+	keys = make([]string, 0, len(p.Domains))
+	for k, _ := range p.Domains {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
 	even = true
-	for _, d := range p.Domains {
+	for _, k := range keys {
+		d := p.Domains[k]
 		even = !even
-		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
+		act := d.p.Comment()
+		edit := d.p.Command() + "\n"
+		del := "domain delete " + d.p.Domain() + "\n"
+
+		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
 
-	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs}
+	return profileData{name, ip, owner, notOwner, operators, path, urls, domains, savedIDs, errors}
 }
 
-func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool) {
+func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool, errors []string) {
 	t, err := template.ParseFiles("template/profile.tmpl")
-	err = t.Execute(w, p.formatViewData(savedIDs, realOwner))
+	err = t.Execute(w, p.formatViewData(savedIDs, realOwner, errors))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
@@ -85,7 +121,7 @@ func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool) {
 
 func WriteCommandUsage(w io.Writer) {
 	t, err := template.New("profile-command-usage").Parse(`<html><body><pre>{{.}}</pre></body><html>`)
-	err = t.Execute(w, CommandUsage())
+	err = t.Execute(w, policy.CommandUsage())
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
@@ -138,7 +174,11 @@ func formatProfileDNSData(p *Profile, host string) profileDNSData {
 	even := true
 	for _, d := range p.Domains {
 		even = !even
-		domains = append(domains, domainData{d.Domain, d.Act.String(), d.TargetString(), d.EditCommand(), d.DeleteCommand(), even})
+		act := d.p.Comment()
+		edit := d.p.Command() + "\n"
+		del := "domain delete " + d.p.Domain() + "\n"
+
+		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
 
 	return profileDNSData{p.Name, host, domains}

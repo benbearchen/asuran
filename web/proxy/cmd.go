@@ -1,15 +1,18 @@
 package proxy
 
 import (
+	"github.com/benbearchen/asuran/policy"
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/util/cmd"
 	"github.com/benbearchen/asuran/web/proxy/life"
 
+	"fmt"
 	"net"
 	"strings"
 )
 
-func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
+func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) []string {
+	errors := make([]string, 0)
 	commandLines := strings.Split(commands, "\n")
 	for _, line := range commandLines {
 		line = strings.TrimSpace(line)
@@ -17,29 +20,33 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) {
 			continue
 		}
 
-		c, rest := cmd.TakeFirstArg(line)
-		switch c {
-		case "restart":
+		p, err := policy.Factory(line)
+		if err != nil {
+			c, rest := cmd.TakeFirstArg(line)
+			if ip, domain, ok := parseIPDomain(c, rest); ok {
+				p = policy.NewStaticDomainPolicy(domain, ip)
+			} else {
+				errors = append(errors, fmt.Sprintf("%s\n##\t%v\n", line, err))
+				continue
+			}
+		}
+
+		switch p := p.(type) {
+		case *policy.RestartPolicy:
 			if v != nil {
 				v.Restart()
 			}
-		case "clear":
+		case *policy.ClearPolicy:
 			f.Clear()
-		case "domain":
-			f.CommandDomain(rest)
-		case "url":
-			f.CommandUrl(rest)
-		case "host":
-			c, rest = cmd.TakeFirstArg(rest)
-			if ip, domain, ok := parseIPDomain(c, rest); ok {
-				f.CommandDomain(domain + " " + ip)
-			}
+		case *policy.DomainPolicy:
+			f.SetDomainPolicy(p)
+		case *policy.UrlPolicy:
+			f.SetUrlPolicy(p)
 		default:
-			if ip, domain, ok := parseIPDomain(c, rest); ok {
-				f.CommandDomain(domain + " " + ip)
-			}
 		}
 	}
+
+	return errors
 }
 
 func parseIPDomain(c, rest string) (string, string, bool) {

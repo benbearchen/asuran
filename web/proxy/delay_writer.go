@@ -2,7 +2,7 @@ package proxy
 
 import (
 	gonet "github.com/benbearchen/asuran/net"
-	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/policy"
 
 	"bufio"
 	"fmt"
@@ -14,23 +14,29 @@ import (
 )
 
 type delayWriter struct {
-	delay      profile.DelayAction
+	delay      policy.Policy
 	w          io.Writer
 	d          time.Duration
 	start      time.Time
 	hasDelayed bool
 	r          *rand.Rand
 	first      bool
+	canSubPkg  bool
 }
 
-func newDelayWriter(delayAction profile.DelayAction, w io.Writer, r *rand.Rand) io.Writer {
+type delayInterface interface {
+	RandDuration(r *rand.Rand) time.Duration
+}
+
+func newDelayWriter(delayAction policy.Policy, w io.Writer, r *rand.Rand, canSubPackage bool) io.Writer {
 	d := new(delayWriter)
 	d.delay = delayAction
 	d.w = w
-	d.d = delayAction.RandDuration(r)
+	d.d = delayAction.(delayInterface).RandDuration(r)
 	d.start = time.Now()
 	d.r = r
 	d.first = true
+	d.canSubPkg = canSubPackage
 	return d
 }
 
@@ -44,19 +50,22 @@ func (d *delayWriter) Write(p []byte) (n int, err error) {
 		d.Flush()
 	}
 
-	switch d.delay.Act {
-	case profile.DelayActDelayEach:
+	switch d.delay.(type) {
+	case *policy.DelayPolicy:
 		if !d.hasDelayed {
 			d.hasDelayed = true
 			<-time.NewTimer(d.d).C
 		}
-	case profile.DelayActTimeout:
-		once := len(p) / 1024
+	case *policy.TimeoutPolicy:
+		once := len(p)
 		sum := 0
-		if once < 1 {
-			once = 1
-		} else if once > 10*1024 {
-			once = 10 * 1024
+		if d.canSubPkg {
+			once /= 1024
+			if once < 1 {
+				once = 1
+			} else if once > 10*1024 {
+				once = 10 * 1024
+			}
 		}
 
 		i := 0

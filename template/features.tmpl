@@ -1,0 +1,47 @@
+<html>
+<head><title>Feature -- asuran</title></head>
+<body>
+
+asuran {{.Version}} 当前支持特性：
+<hr/>
+<ul>
+<li>每个客户端一个配置，可独立定义过滤、代理的域名、URL
+<li>支持拦截域名解析或者将域名重定向到 asuran 以实现代理服务
+<li>支持按域名、URL 路径、查询参数匹配 URL，并对 URL 实现以下操作：
+<ul>
+<li>延时、或按时阻止 URL
+<li>指定 HTTP 内容返回的速度
+<li>缓存 URL 内容，可原样或修改后给以后的请求返回
+</ul>
+<li>HTTP 特性：<ul>
+  <li>支持代理 GET，且可缓存
+  <li>支持代理 POST，但不可缓存
+  <li>代理支持 Range 判断，不搞错同 URL 不同 Range 请求；支持完整缓存匹配 Range 请求
+  <li>代理对一般 HTTP Header 原样返回（Transfer-Encoding/chunked 可能就不行了）
+  <li>可以设置是否使 302 透回给客户端
+  <li>强制返回指定 TCP 内容而不是 HTTP 协议内容
+  <li>可以设置是否主动禁止 304 请求
+  <li>设定 HTTP 回复 body 的传输掉线时长
+  <li>修改或删除 Content-Type
+</ul>
+<li>DNS 特性：<ul>
+  <li>返回指定 IP
+  <li>返回空结果
+  <li>无任何回复
+  <li>延时返回结果
+</ul>
+<li>客户端行为历史记录<ul>
+  <li>记录域名查询
+  <li>记录 HTTP 请求，可查看每一次请求的详情，如请求时间，HTTP Headers，POST 内容和返回内容等
+</ul>
+<li>添加、删除配置的操作员，允许更多操作入口
+<li>对一批命令打包，方便重复利用
+</ul>
+<hr/>
+当前不支持：
+<ul>
+<li>HTTPS
+</ul>
+
+</body>
+</html>

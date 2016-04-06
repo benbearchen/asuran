@@ -1,7 +1,6 @@
 package life
 
 import (
-	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 
 	"time"
@@ -13,9 +12,6 @@ type Event struct {
 
 type UrlEvent struct {
 	Event
-
-	DelayAct profile.DelayActType
-	ProxyAct profile.UrlProxyAction
 }
 
 type UrlState struct {
@@ -38,7 +34,7 @@ func (u *UrlState) DropUntil(duration time.Duration) bool {
 type DomainEvent struct {
 	Event
 
-	Act profile.DomainAct
+	Act string
 	IP  string
 }
 

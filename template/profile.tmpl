@@ -1,5 +1,8 @@
+<!doctype html>
 <html>
 <head>
+<meta charset="utf-8" />
+<link href="/res/js/jquery-ui.css" rel="stylesheet" />
 <title>{{.IP}}'s profile</title>
 <style type="text/css">
 /* copy from http://www.w3school.com.cn/tiy/t.asp?f=csse_table_fancy */
@@ -32,155 +35,805 @@
   color:#000000;
   background-color:#EAF2D3;
   }
+
+.ui-menu { width: 350px; }
+
+.commandGroup {
+  border: 1px solid #cccccc;
+  background: #f6f6f6 url("/res/js/images/ui-bg_glass_100_f6f6f6_1x400.png") 50% 50% repeat-x;
+  //font-weight: bold;
+  color: #1c94c4;
+  padding: 4px;
+  margin-bottom: 5px;
+}
+.commandGroup > b {
+  margin-left:4px;
+}
+.commandGroup > span {
+  display:inline-block; 
+}
+
+.toggleGroup {
+  margin-left:2em;
+  color: #000000;
+  display: none;
+}
+.toggleGroup > div,
+.urlPolicyOpt > div {
+  margin-top: 4px;
+}
+.toggleGroup input,
+.toggleGroup select {
+  margin-left: 4px;
+}
+
+.urlPolicyOpt {
+  display:none;
+  margin-left: 2em;
+}
+
+#packDialog div {
+  margin-top: 4px;
+}
+
+hr {
+  clear:both;
+}
 </style>
+
+<script src="/res/js/external/jquery/jquery.js"></script>
+<script src="/res/js/jquery-ui.js"></script>
 
 <script type="text/javascript">
 
 function appendCmd(cmd) {
+{{if .NotOwner}}
+  return;
+{{else}}
   var cmdBox = document.getElementById('CommandBoxId');
   if (cmdBox.value == "" || cmdBox.value.slice(-1) == "\n") {
     cmdBox.value = cmdBox.value + cmd + "\n";
   } else {
     cmdBox.value = cmdBox.value + "\n" + cmd + "\n";
   }
+
+  $("#CommandBoxId").effect("shake", {distance: 2, times: 2});
+{{end}}
 }
 
-function selectOpt(id) {
-  var s = document.getElementById(id);
-  return s.value;
+{{if .NotOwner}}{{else}}
+function openRestartDialog() {
+  $("#restartDialog").dialog("open");
 }
 
-function readInput(id, argName) {
-  var i = document.getElementById(id);
-  if (i.value == "") {
-    alert(argName + '不能为空');
+function restart() {
+  var cmd = $.ajax({
+    url : "/profile/{{.Path}}/restart",
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("加载失败：" + cmd.responseText);
+  } else {
+    if (cmd.responseText == "restarted") {
+      alert("重启成功！！！\n\n会产生以下影响：\n访问历史被清空，缓存被清空，计时器取消");
+    } else {
+      alert("重启失败：\n" + cmd.responseText);
+    }
+  }
+}
+{{end}}
+
+function openPack() {
+  var cmdBox = document.getElementById('CommandBoxId');
+  var packBox = document.getElementById('packDlgCommandBox');
+  packBox.value = cmdBox.value;
+  $("#packDialog").dialog("open");
+}
+
+function reloadPack() {
+  $.ajax({
+    url: "/packs/names.json",
+    dataType: "json",
+    success: function(names) {
+      var name = document.getElementById('packNameOptions').value;
+      $( "#packNameOptions" ).empty();
+      for (var i = 0; i < names.length; i++) {
+        $( '<option value="' + names[i] + '">' + names[i] + '</option>' ).appendTo( "#packNameOptions" );
+        if (name == names[i]) {
+          $( "#packNameOptions" )[0].selectedIndex = i;
+        }
+      }
+    }
+  });
+}
+
+function loadPack() {
+  var name = document.getElementById('packNameOptions').value;
+  var cmd = $.ajax({
+    url : "/packs/get?name=" + encodeURIComponent(name),
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("加载失败：" + cmd.responseText);
+  } else {
+    appendCmd(cmd.responseText);
+  }
+}
+
+function doPackCommand() {
+  var name = $("#packDlgName").val();
+  var author = $("#packDlgAuthor").val();
+  var comment = $("#packDlgComment").val();
+  var cmd = $("#packDlgCommandBox").val();
+
+  $.ajax({
+    type: "POST",
+    url: "/profile/{{.Path}}/pack",
+    data: {name: name, author: author, comment: comment, cmd: cmd},
+    success: function(data) {
+      if (data == "saved") {
+        reloadPack();
+        alert("已保存");
+      } else {
+        alert("保存失败：" + data);
+      }
+    },
+    error: function() {
+      alert("访问失败");
+    },
+    async: false
+  });
+}
+
+function onlineTest() {
+  $( "#onlineTestDialog" ).dialog( "open" );
+}
+
+function doOnlineTest() {
+  var policy = $("#onlineTestPolicy").val();
+  var url = $("#onlineTestURL").val();
+  if(!String.prototype.startsWith){
+    String.prototype.startsWith = function (str) {
+      return !this.indexOf(str);
+    }
+  }
+
+  if (url.startsWith("http://")) {
+    url = url.substring(7);
+  } else if (url.startsWith("https://")) {
+    url = url.substring(8);
+  }
+
+  if (url == "") {
+    alert("无效 URL");
     return;
   }
 
-  if (i.value.indexOf(" ") >= 0) {
-    alert(argName + '不能有空格');
-    return;
+  if (policy == "") {
+    window.open("/profile/{{.IP}}/to/" + url, "_blank");
+  } else {
+    window.open("/profile/{{.IP}}/policy/" + encodeURIComponent(policy) + "/" + url, "_blank");
   }
 
-  return i.value;
+  $("#onlineTestDialog").dialog("close");
 }
 
-function readOptionInput(optid, id, argName) {
-  var opt = document.getElementById(optid);
-  if (opt.value != "") {
-    return opt.value;
+function matchURLPolicy() {
+  var url = $("#onlineTestURL").val();
+  if (url == "") {
+    alert("无效 URL");
+    return;
   }
 
-  return readInput(id, argName);
+  var cmd = $.ajax({
+    type: "POST",
+    url: "/profile/{{.IP}}/match",
+    data: {url: url},
+    success: function(data) {
+      $("#onlineTestPolicy").val(data);
+    },
+    error: function(data) {
+      alert("失败：" + data);
+    },
+    async: false
+  });
 }
 
-function proxyCmd(act, opt) {
-  if (opt === undefined) {
-    return;
-  }
-
-  var u = document.getElementById('ProxyUrl');
-  if (u.value == "") {
-    alert('proxy 操作的 URL 不能为空');
-    return;
-  }
-
-  if (opt != "") {
-    act = act + " " + opt;
-  }
-
-  var s = document.getElementById('do302');
-  if (s.checked) {
-    act = act + " " + "do302";
-  }
-
-  s = document.getElementById('disable304');
-  if (s.checked) {
-    act = act + " " + "disable304";
-  }
-
-  appendCmd('url ' + act + ' ' + u.value);
+function createPolicyForOnlineTest() {
+  createURLPolicy(false);
 }
 
-function delayCmd(act) {
-  var d = document.getElementById('DelayDuration');
-  if (d.value == "") {
-    alert('delay 操作的时长不能为空');
-    return;
-  }
-
-  var u = document.getElementById('ProxyUrl');
-  if (u.value == "") {
-    alert('proxy 操作的 URL 不能为空');
-    return;
-  }
-
-  r = selectOpt('RandOption');
-  if (r != "") {
-    act = act + " " + r;
-  }
-
-  appendCmd('url ' + act + ' ' + d.value + ' ' + u.value);
+function openOperatorDialog() {
+  $( "#operatorDialog" ).dialog("open");
 }
 
-function deleteCmd() {
-  var u = document.getElementById('ProxyUrl');
-  if (u.value == "") {
-    alert('delete 操作的 URL 不能为空');
-    return;
-  }
-
-  appendCmd('url delete ' + u.value);
-}
-
-function redirectOpt() {
-  var ip = document.getElementById('DomainRedirectIP');
-  if (ip.value == "") {
-    return "";
-  }
-
+function testIP(ip) {
   var re=/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/;
-  if (!re.test(ip.value))
-  {
-    alert("无效 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
-    return;
-  }
-
-  return " " + ip.value;
+  return re.test(ip);
 }
 
-function domainCmd(act, opt) {
-  if (opt === undefined) {
+function doOperator(op) {
+  var ip = document.getElementById('operatorIP').value;
+  if (!testIP(ip))
+  {
+    alert("无效客户端 IP（应为四段数字“xxx.xx.xxx.xx”且数字介于 0~255 之间）");
     return;
   }
 
-  var d = document.getElementById('Domain');
-  if (d.value == "") {
-    alert('doman 操作的域名不能为空');
+  var cmd = $.ajax({
+    url : "/profile/{{.IP}}/operator/" + op + "/" + ip,
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("操作失败：" + cmd.responseText);
+  } else {
+    $( "#operatorList" ).text(cmd.responseText);
+    alert("操作成功")
+    $( "#operatorDialog" ).dialog( "close" );
+  }
+}
+
+function cmdToAppend(cmd) {
+  var url = $("#urlDlgURL").val();
+  if (url == "") {
+    alert("URL 不能为空");
+    return false;
+  } else if (url.indexOf(" ") >= 0) {
+    alert("URL 不能包含空格");
+    return false;
+  }
+
+  var full = "url";
+  if (cmd != "") {
+    full += " " + cmd;
+  }
+
+  if (url != "") {
+    full += " " + url;
+  }
+
+  appendCmd(full);
+  return true;
+}
+
+function cmdToTest(cmd) {
+  $("#onlineTestPolicy").val(cmd);
+  return true;
+}
+
+function createURLPolicy(showURL) {
+  if (showURL) {
+    $("#urlDialogGroupURL").show();
+    callbackUrlDlg = cmdToAppend;
+  } else {
+    $("#urlDialogGroupURL").hide();
+    callbackUrlDlg = cmdToTest;
+  }
+
+  urlDlgPolicyChanged();
+  urlDlgStatusChanged();
+  urlDlgContentTypeChanged();
+  urlDlgChunkedChanged();
+  urlDlgMapURLChanged();
+
+  $("#urlCommandDialog").dialog("open");
+}
+
+var urlOpts = ["urlDlgOptMap", "urlDlgOptContent", "urlDlgOptStore"];
+
+var urlOptsMap = {
+  map: 0,
+  redirect: 0,
+  rewrite: 1,
+  tcpwrite: 1,
+  restore: 2,
+};
+  
+function urlDlgPolicyChanged() {
+  var v = $("#urlDlgPolicy").val();
+  for (var i = 0; i < urlOpts.length; i++) {
+    $("#"+urlOpts[i]).hide();
+  }
+
+  if (urlOptsMap.hasOwnProperty(v)) {
+    var opt = urlOpts[urlOptsMap[v]];
+    $("#"+opt).show();
+  }
+}
+
+function urlDlgStatusChanged() {
+  var v = $("#urlDlgStatusDef").val();
+  if (v == "user") {
+    $("#urlDlgStatusUser").show();
+  } else {
+    $("#urlDlgStatusUser").hide();
+  }
+}
+
+function urlDlgContentTypeChanged() {
+  var v = $("#urlDlgContentTypeDef").val();
+  if (v == "user") {
+    $("#urlDlgContentTypeUser").show();
+  } else {
+    $("#urlDlgContentTypeUser").hide();
+  }
+}
+
+function urlDlgChunkedChanged() {
+  var v = $("#urlDlgChunkedDef").val();
+  if (v == "block") {
+    $("#urlDlgChunkedBlockNum").show();
+    $("#urlDlgChunkedSize").hide();
+  } else if (v == "size") {
+    $("#urlDlgChunkedBlockNum").hide();
+    $("#urlDlgChunkedSize").show();
+  } else {
+    $("#urlDlgChunkedBlockNum").hide();
+    $("#urlDlgChunkedSize").hide();
+  }
+}
+
+function urlDlgMapURLChanged() {
+  var v = $("#urlDlgMapURLSelect").val();
+  if (v == "url") {
+    $("#urlDlgGroupMapURL").show();
+    $("#urlDlgGroupReplaceURL").hide();
+  } else {
+    $("#urlDlgGroupMapURL").hide();
+    $("#urlDlgGroupReplaceURL").show();
+  }
+}
+
+function previewStore() {
+  var v = $("#urlDlgStoreID").val();
+  if (v == "") {
+    alert("StoreID 为空");
     return;
   }
 
-  appendCmd('domain ' + act + ' ' + d.value + opt);
+  window.open("/profile/{{.IP}}/stores/view/" + v, "_blank");
+}
+
+function createStore() {
+  window.open("/profile/{{.IP}}/stores/edit/", "_blank");
+}
+
+var callbackUrlDlg = function(cmd) {
+  alert("/" + cmd + "/");
+  return false;
+};
+
+function onURLCommandDialogOK() {
+  var delayOpt = $("#urlDlgDelay").val();
+  if (delayOpt != "") {
+    var d = $("#urlDlgDuration").val();
+    if (d == "") {
+      alert("延时时长不能为空");
+      return;
+    } else if (d.indexOf(" ") >= 0) {
+      alert("延时时长不能包括空格");
+      return;
+    }
+
+    if ($("#urlDlgRandDelay").prop("checked")) {
+      delayOpt += " rand";
+    }
+
+    delayOpt += " " + d;
+  }
+
+  var bodyDelayOpt = $("#urlDlgBodyDelay").val();
+  if (bodyDelayOpt != "") {
+    bodyDelayOpt += " body";
+    var d = $("#urlDlgBodyDuration").val();
+    if (d == "") {
+      alert("Body 延时时长不能为空");
+      return;
+    } else if (d.indexOf(" ") >= 0) {
+      alert("Body 延时时长不能包括空格");
+      return;
+    }
+
+    if ($("#urlDlgBodyRandDelay").prop("checked")) {
+      bodyDelayOpt += " rand";
+    }
+
+    bodyDelayOpt += " " + d;
+  }
+
+  var policy = $("#urlDlgPolicy").val();
+  if (policy == "map" || policy == "redirect") {
+    var t = $("#urlDlgMapURLSelect").val();
+    if (t == "url") {
+      var url = $("#urlDlgMapURL").val();
+      if (url == "") {
+        alert("map/redirect URL 不能为空");
+        return;
+      } else if (url.indexOf(" ") >= 0) {
+        alert("map/redirect URL 不能包含空格");
+        return;
+      }
+
+      policy += " " + url;
+    } else if (t == "replace") {
+      var r = $("#urlDlgReplaceRegex").val();
+      var v = $("#urlDlgReplaceValue").val();
+      if (r == "") {
+        alert("map/redirect 正则不能为空");
+        return;
+      }
+
+      policy += " replace /" + r + "/" + v + "/";
+    } else {
+      alert("map/redirect 无效的目标模式？");
+      return;
+    }
+  } else if (policy == "rewrite" || policy == "tcpwrite") {
+    var content = $("#urlDlgRewriteContent").val();
+    if (content == "") {
+      alert("rewrite/tcpwrite 编码内容不能为空");
+      return;
+    } else if (content.indexOf(" ") >= 0) {
+      alert("rewrite/tcpwrite 编码内容不能包含空格");
+      return;
+    }
+
+    policy += " " + content;
+  } else if (policy == "restore") {
+    var store = $("#urlDlgStoreID").val();
+    if (store == "" || store == null) {
+      alert("预置 ID 不能为空");
+      return;
+    } else if (store.indexOf(" ") >= 0) {
+      alert("预置 ID 不能包含空格");
+      return;
+    }
+
+    policy += " " + store;
+  }
+
+  var do302 = "";
+  var disable304 = "";
+  var host = "";
+  var status = "";
+  var contentType = "";
+  var chunked = "";
+
+  if ($("#urlDlg302").prop("checked")) {
+    do302 = "do302";
+  }
+
+  if ($("#urlDlg304").prop("checked")) {
+    disable304 = "disable304";
+  }
+
+  host = $("#urlDlgHost").val();
+  if (host != "" && host.indexOf(" ") >= 0) {
+    alert("指定服务器不能包含空格");
+    return;
+  }
+
+  if (host != "") {
+    host = "host " + host;
+  }
+
+  status = $("#urlDlgStatusDef").val();
+  if (status == "user") {
+    status = $("#urlDlgStatusUser").val();
+    if (status != "") {
+      if (status.indexOf(" ") >= 0 || status.length != 3) {
+        alert("StatusCode 应三位数字");
+        return;
+      }
+    }
+  }
+
+  if (status != "") {
+    status = "status " + status;
+  }
+
+  contentType = $("#urlDlgContentTypeDef").val();
+  if (contentType == "user") {
+    contentType = $("#urlDlgContentTypeUser").val();
+    if (contentType == "") {
+      contentType = "empty";
+    } else if (contentType.indexOf(" ") >= 0) {
+      alert("自定义 Content-Type 不能包含空格");
+      return;
+    } else if (contentType == "default" || contentType == "empty" || contentType == "remove") {
+      alert("自定义 Content-Type 不能是 " + contentType);
+      return;
+    }
+  }
+
+  if (contentType != "") {
+    contentType = "content-type " + contentType;
+  }
+
+  chunked = $("#urlDlgChunkedDef").val();
+  if (chunked == "block") {
+    var block = $("#urlDlgChunkedBlockNum").val();
+    if (block == "") {
+      alert("chunked 块数量不能为空");
+      return;
+    } else if (block.indexOf(" ") >= 0) {
+      alert("chunked 块数量不能包含空格");
+      return;
+    }
+
+    chunked += " " + block;
+  } else if (chunked == "size") {
+    var size = $("#urlDlgChunkedSize").val();
+    if (size == "") {
+      alert("chunked 块大小不能为空");
+      return;
+    } else if (size.indexOf(" ") >= 0) {
+      alert("chunked 块大小不能包含空格");
+      return;
+    }
+
+    chunked += " " + size;
+  }
+
+  if (chunked != "") {
+    chunked = "chunked " + chunked;
+  }
+
+  var s = [delayOpt, bodyDelayOpt, policy, do302, disable304, host, status, contentType, chunked];
+  var cmd = "";
+  for (var i = 0; i < s.length; i++) {
+    if (s[i] != "") {
+      if (cmd != "") {
+        cmd += " ";
+      }
+
+      cmd += s[i];
+    }
+  }
+
+  if (callbackUrlDlg(cmd)) {
+    $("#urlCommandDialog").dialog("close");
+  }
+}
+
+function createDomainPolicy() {
+  $("#domainCommandDialog").dialog("open");
+}
+
+function onDomainCommandDialogOK() {
+  var d = $("#domainDlgDomain").val();
+  if (d == "") {
+    alert("域名不能为空");
+    return;
+  } else if (d.indexOf(" ") >= 0) {
+    alert("域名不能包含空格");
+    return;
+  }
+
+  var ip = $("#domainDlgIP").val();
+  if (ip != "" && !testIP(ip)) {
+    alert("无效 IP：" + ip);
+    return;
+  }
+
+  var duration = $("#domainDlgDuration").val();
+  if (duration != "" && (duration.indexOf(" ") >= 0)) {
+    alert("延时时长不能有空格呃……");
+    return;
+  }
+
+  var opt = $("#domainDlgPolicy").val();
+
+  var cmd = "domain";
+  if (opt != "") {
+    cmd += " " + opt;
+  }
+
+  if (duration != "") {
+    cmd += " delay";
+    if ($("#domainDlgRandDelay").prop("checked")) {
+      cmd += " rand";
+    }
+
+    cmd += " " + duration;
+  }
+
+  cmd += " " + d;
+  if (ip != "") {
+    cmd += " " + ip;
+  }
+
+  appendCmd(cmd);
+  $("#domainCommandDialog").dialog("close");
+}
+
+function toggleGroup(group) {
+  var g = $("#"+group);
+  var s = g.children("span");
+  var d = g.children("div");
+  if (s.hasClass("ui-icon ui-icon-minusthick")) {
+    d.hide();
+    s.removeClass("ui-icon ui-icon-minusthick").addClass("ui-icon ui-icon-plusthick");
+  } else {
+    d.show();
+    s.removeClass("ui-icon ui-icon-plusthick").addClass("ui-icon ui-icon-minusthick");
+  }
+}
+
+function makeURL() {
+  openDialog("urlPatternDialog");
+}
+
+function mergeURLPattern() {
+  var d = $("#urlPatternDlgDomain").val();
+  var p = $("#urlPatternDlgPath").val();
+  var a = $("#urlPatternDlgArgs").val();
+
+  var url = "";
+  if (d != "") {
+    url = "http://" + d;
+  }
+
+  if (p != "") {
+    if (p[0] != "/") {
+      url += "/";
+    }
+
+    url += p;
+  }
+
+  if (a != "") {
+    if (a[0] != "?") {
+      url += "?";
+    }
+
+    url += a;
+  }
+
+  return url;
+}
+
+function onURLPatternDialogOK() {
+  var url = mergeURLPattern();
+  $("#urlDlgURL").val(url);
+  closeDialog("urlPatternDialog");
+}
+
+function testPattern(t) {
+  var p = "";
+  var v = "";
+  if (t == "url") {
+    p = mergeURLPattern();
+    v = $("#testURL").val();
+  } else if (t == "domain") {
+    p = $("#urlPatternDlgDomain").val();
+    v = $("#testDomain").val();
+  } else if (t == "path") {
+    p = $("#urlPatternDlgPath").val();
+    if (p != "" && p[0] != "/") {
+      p = "/" + p;
+      $("#urlPatternDlgPath").val(p);
+    }
+
+    v = $("#testPath").val();
+    if (v == "" || v[0] != "/") {
+      v = "/" + v;
+      $("#testPath").val(v);
+    }
+  } else if (t == "args") {
+    p = $("#urlPatternDlgArgs").val();
+    v = $("#testArgs").val();
+  } else {
+    alert("？？哪里不对。。。");
+    return;
+  }
+
+  $.ajax({
+    type: "POST",
+    url: "/profile/{{.IP}}/pattern",
+    data: {op: "test", t: t, pattern: p, v: v},
+    success: function(data) {
+      alert("测试结果：\n" + data);
+    },
+    error: function(data) {
+      alert("测试过程失败：\n" + data);
+    },
+    async: false
+  });
+}
+
+function openContentDialog() {
+  var c = $("#urlDlgRewriteContent").val();
+  if (c.length > 0) {
+    c = c.replace(/%0D/g, "");
+    c = c.replace(/%0d/g, "");
+  }
+
+  try {
+    c = decodeURIComponent(c)
+  } catch (e) {
+    alert("编码有问题？可能是 %xx 格式不正确？\n" + e);  // TODO:
+    return;
+  }
+
+  $("#dlgContent").val(c);
+
+  openDialog("contentDialog");
+}
+
+function onContentDialogOK() {
+  var c = $("#dlgContent").val();
+  c = encodeURIComponent(c);
+  if (c.length > 0) {
+    c = c.replace(/%0A/g, "%0D%0A");
+    c = c.replace(/%0a/g, "%0D%0A");
+  }
+
+  $("#urlDlgRewriteContent").val(c);
+  $("#contentDialog").dialog("close");
+}
+
+function openDialog(dlg) {
+  $("#"+dlg).dialog("open");
+}
+
+function closeDialog(dlg) {
+  $("#"+dlg).dialog("close");
+}
+
+// http://stackoverflow.com/questions/499126/jquery-set-cursor-position-in-text-area
+
+function setSelectionRange(input, selectionStart, selectionEnd) {
+  if (input.setSelectionRange) {
+    input.focus();
+    input.setSelectionRange(selectionStart, selectionEnd);
+  } else if (input.createTextRange) {
+    var range = input.createTextRange();
+    range.collapse(true);
+    range.moveEnd('character', selectionEnd);
+    range.moveStart('character', selectionStart);
+    range.select();
+  }
+}
+
+function setCaretToPos (input, pos) {
+  setSelectionRange(input, pos, pos);
+}
+
+function moveCaretToEnd(input) {
+  var len = input.value.length;
+  setSelectionRange(input, len, len);
+}
+
+function hintCopyHosts() {
+  var hint = "# 请把 /etc/hosts 格式的“IP 域名”配置拷贝到 v下面v，然后点^上面^的“执行命令”\n";
+  appendCmd(hint);
+  moveCaretToEnd(document.getElementById('CommandBoxId'));
 }
 
 </script>
 </head>
 
 <body>
-<p>配置名字：{{.Name}}</p>
-<p>当前作用 IP：{{.IP}}</p>
-<p>拥有者 IP：{{.Owner}}</p>
-<p>操作员 IP：{{.Operators}}</p>
+<div>配置名字：{{.Name}}</div>
+<div>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}</div>
+<div>操作员 IP：<u id="operatorList">{{.Operators}}</u>{{if .NotOwner}}（你不能操作此配置）{{else}}
+<input id="operatorButton" type="button" value="增删操作员" onclick="openOperatorDialog()" style="display:none" />
+<div id="operatorDialog" title="操作员" style="display:none">
+操作者 IP：<input type="text" id="operatorIP" size="16" /><br/>
+<input type="button" value="添加" onclick="doOperator('add')" />
+<input type="button" value="删除" onclick="doOperator('remove')" />
+</div>
+{{end}}
+</div>
 <hr/>
-<a href="/profile/{{.IP}}/restart" target="_blank" title="清除超时、缓存等">重启客户端状态</a>
-<hr/>
-<a href="/profile/{{.IP}}/history" target="_blank" title="查看域名查询、HTTP 访问等日志">查看日志</a>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="/profile/{{.IP}}/stores" target="_blank" title="">查看当前保存的内容列表</a>
-<hr/>
+
 <table id="profile">
 <tr>
-<th>编辑命令</th>
+<th>编辑操作</th>
 <th>URL 匹配模式</th>
 <th>代理行为</th>
 <th>延时设定</th>
@@ -188,107 +841,409 @@ function domainCmd(act, opt) {
 </tr>
 {{range .Urls}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');"/>&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');"/></td>
+<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');" />{{if .Delete}}&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');" />{{end}}</td>
 <td style="min-width:500px;">{{.Pattern}}</td>
 <td>{{.Action}}</td>
 <td>{{.Delay}}</td>
 <td>{{.Settings}}</td>
 </tr>
 {{end}}
+<tr><td colspan="5" style="text-align:center;background:#C0D986;">{{if .NotOwner}}{{else}}<input type="button" value="新建 URL 策略" style="margin-right:10px;" onclick="createURLPolicy(true)" />{{end}}<input type="button" value="在线测试 URL" onclick="onlineTest()" /></td></tr>
 </table>
 <hr/>
 
 <table id="profile">
 <tr>
-<th>编辑命令</th>
+<th>编辑操作</th>
 <th>域名</th>
 <th>查询行为</th>
 <th>目标 IP</th>
 </tr>
 {{range .Domains}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');"/>&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');"/></td>
+<td><input type="button" value="修改" onclick="appendCmd('{{.Edit}}');" />&nbsp;<input type="button" value="删除" onclick="appendCmd('{{.Delete}}');" /></td>
 <td style="min-width:500px;">{{.Domain}}</td>
 <td>{{.Action}}</td>
 <td>{{.IP}}</td>
 </tr>
 {{end}}
+{{if .NotOwner}}{{else}}
+<tr><td colspan="4" style="text-align:center;{{if .Domains}}background:#C0D986;{{end}}"><input type="button" value="新建 Domain 策略" style="margin-right:10px;" onclick="createDomainPolicy()" /><input type="button" value="新建 /etc/hosts 格式定义" onclick="hintCopyHosts()" /></td></tr>
+{{end}}
 </table>
 <hr/>
 
 <form action="/profile/{{.Path}}" method="post">
-<table width="500"><tr>
-<td><b>命令：</b></td><td><input type="submit" value="执行命令"/></td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
+<table width="600"><tr>
+<td><b>命令：</b></td><td>{{if .NotOwner}}{{else}}<input type="submit" value="执行命令" />{{end}}</td><td>（<a href="/profile/{{.Path}}/export" target="_blank">导出上述配置的命令</a>）</td>
 </tr>
 </table>
-<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 或设备上操作"{{end}}></textarea>
+<textarea rows="10" cols="80" id="CommandBoxId" name="cmd" {{if .NotOwner}}readonly="readonly" placeholder="# sorry，您的 IP 无权操作、修改 profile，请从 {{.Owner}}{{if .Operators}}, {{.Operators}}{{end}} 等设备上添加你的 IP 为操作员，然后再操作"{{end}}></textarea><pre style="{{if .Errors}}display:block;vertical-align:top;padding:3px;border:1px solid red;{{else}}display:none;{{end}}">##	错误：
+{{range .Errors}}{{. | html}}{{end}}</pre>
 </form>
-
 
 <hr/>
 
 <b>命令导航：</b>（<a href="/profile/commands" target="_blank">命令规范</a>）
 {{if .NotOwner}}{{else}}
-<table border="1">
-<tr>
-<td rowspan="12">url</td>
-<td rowspan="8">代理行为</td><td colspan="2"><button type="button" onclick="proxyCmd('proxy', '');">[proxy]</button>: 使用代理</td><td rowspan="11">可选配置<br/><label><input id="do302" type="checkbox" />允许 302 跳转</label><br/><label><input id="disable304" type="checkbox" />禁止 304</label></td><td rowspan="12">URL: <br/><input type="text" id="ProxyUrl" size="40" placeholder="domain.com/path/of/page?query=option"/><br/>URL 格式如下：<br/>[domain[:port]]/[path][?query=option]<br/>域名和路径支持通配符 *<br/>特殊地，all 可以操作所有已配置 URL</td>
-</tr>
-<tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('cache', '');">cache</button>: 代理并缓存</td>
-</tr>
-<tr>
-<td colspan="2"><button type="button" onclick="proxyCmd('status', selectOpt('StatusOption'));">status</button> <select id="StatusOption"><option value="404">404</option><option value="502">502</option></select>: 仅以状态码返回</td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('map', readInput('MapUrl', 'map 的第三方 URL '));">map</button>: 获取第三方链接的内容返回</td><td rowspan="2"><input type="text" id="MapUrl" size="30" placeholder="第三方 URL"/></td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('redirect', readInput('MapUrl', 'redirect 的第三方 URL '));">redirect</button>: 302 跳转至第三方链接</td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('rewrite', readInput('RewriteContent', 'rewrite 的 url-encoded 文本'));">rewrite</button>: 返回指定内容</td><td rowspan="2"><input type="text" id="RewriteContent" size="35" placeholder="url-encoded 文本"/> <a href="/urlencoded" target="_blank">生成</a></td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('tcpwrite', readInput('RewriteContent', 'tcpwrite 的 url-encoded 文本'));">tcpwrite</button>: 直接以 TCP 返回指定内容</td>
-</tr>
-<tr>
-<td><button type="button" onclick="proxyCmd('restore', readOptionInput('StoresOption', 'StoreID', 'restore 的内容 store-id '));">restore</button>: 以预定义内容 ID 返回内容</td><td><select id="StoresOption"><option value="">输入: </option><optgroup label="或选择已有：">{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}</optgroup></select><input type="text" id="StoreID" placeholder="store-id"/></td>
-</tr>
-<tr>
-<td rowspan="3">延时操作</td><td><button type="button" onclick="delayCmd('delay');">delay</button>: 每次请求延时</td><td rowspan="3">随机：<select id="RandOption"><option value="">否</option><option value="rand">是</option></select><br/>时长: <input type="text" id="DelayDuration" size="6"/><br/>如: 100ms, 5s, 1m</td>
-</tr>
-<tr>
-<td><button type="button" onclick="delayCmd('drop');">drop</button>: 前“时长”时间内都掉线</td>
-</tr>
-<tr>
-<td><button type="button" onclick="delayCmd('timeout');">timeout</button>: 等待“时长”后掉线</td>
-</tr>
-<tr>
-<td colspan="4"><button type="button" onclick="deleteCmd();">delete</button>: 删除 URL 配置</td>
-</tr>
-</table>
+<div id="commandTabs" style="margin-top:5px;">
+<ul style="display:none;" id="ulCommandTabs">
+<li><a href="#commandTabs-1">常用命令</a></li>
+<li><a href="#commandTabs-2">命令包</a></li>
+<li><a href="#commandTabs-3">预存内容</a></li>
+<li><a href="#commandTabs-4">访问日志</a></li>
+{{if .NotOwner}}{{else}}
+<li><a href="#commandTabs-5">状态管理</a></li>
+{{end}}
+</ul>
 
-<p>注: 任何对 URL 的代理行为，均要求域名重定向到代理服务器。如域名还没有配置，则会自动添加</p>
+<div id="commandTabs-1" style="display:none;">
+请选择您想要的操作：
+<ul style="width:200px;" id="menu">
+	<li>对 URL 操作
+		<ul>
+			<li id="menu-url-proxy">对 URL 进行代理，可查看访问历史</li>
+			<li id="menu-url-timeout">阻塞一定时长后掉线</li>
+			<li id="menu-url-drop-in">从第一次访问的某时间段内均掉线</li>
+			<li id="menu-url-rewrite">对 URL 返回指定内容</li>
+			<li id="menu-url-speed">对 URL （返回内容）限速</li>
+			<li id="menu-url-status">返回特殊 HTTP 状态码（以模拟出错等）</li>
+			<li id="menu-url-redirect">302 到另一个 URL</li>
+			<li id="menu-url-map">以另一个 URL 内容返回</li>
+		</ul>
+	</li>
+	<li>对域名操作
+		<ul>
+			<li id="menu-domain-default">解析到某个 IP</li>
+			<li id="menu-domain-block">解析超时</li>
+			<li id="menu-domain-null">解析有返回，但没有 IP</li>
+			<li id="menu-domain-proxy">强制代理域名下 URL（限 80 端口）</li>
+		</ul>
+	</li>
+</ul>
+</div>
 
-<table border="1">
-<tr>
-<td rowspan="5">domain</td><td><button type="button" onclick="domainCmd('default', redirectOpt());">[default]</button>: 默认返回正常 IP</td><td rowspan="4">自定义 IP:<br/><input type="text" id="DomainRedirectIP"/></td><td rowspan="5">域名: <input type="text" id="Domain"/><br/>支持通配符 *，如 *.domain.com <br/>特殊地，all 可以操作所有已配置域名</td>
-</tr>
-<tr>
-<td><button type="button" onclick="domainCmd('block', redirectOpt());">block</button>: 拦截且不返回</td>
-</tr>
-<tr>
-<td><button type="button" onclick="domainCmd('null', redirectOpt());">null</button>: 返回空结果</td>
-</tr>
-<tr>
-<td><button type="button" onclick="domainCmd('proxy', redirectOpt());">proxy</button>: 代理</td>
-</tr>
-<tr>
-<td colspan="2"><button type="button" onclick="domainCmd('delete', '');">delete</button>: 删除域名配置</td>
-</tr>
-</table>
+<div id="commandTabs-2" style="display:none;">
+<input type="button" value="打包命令" onclick="openPack()" /> --&gt; <a href="/packs" target="_blank">已有命令列表</a>：<select id="packNameOptions" style="width:20em;margin-left:4px;margin-right:4px;"></select><input type="button" value="加载命令包" onclick="loadPack()" />
+</div>
+
+<div id="commandTabs-3" style="display:none;">
+<input type="button" value="创建新的预存内容" onclick="createStore()" />
+<input type="button" value="查看所有预存内容" onclick="window.open('/profile/{{.Path}}/stores', '_blank')" />
+</div>
+
+<div id="commandTabs-4" style="display:none;">
+<div><input type="button" value="查看所有日志" onclick="window.open('/profile/{{.IP}}/history', '_blank')" /></div>
+</div>
+
+{{if .NotOwner}}{{else}}
+<div id="commandTabs-5" style="display:none;">
+<div><input type="button" value="！重启客户端状态！" onclick="openRestartDialog()" /></div>
+</div>
+{{end}}
+
+</div> <!-- end of tabs -->
 
 {{end}} <!-- end of owner's command guide -->
+
+<!-- dialogs -->
+<div id="urlCommandDialog" title="URL 策略生成" style="display:none">
+<div id="urlDialogGroupURL" class="commandGroup">
+URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.domain/path?arg=value" />
+<input type="button" value="生成..." onclick="makeURL()" /><br/>
+</div>
+<div id="urlDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupDelay')"></span><b>延时策略</b>
+<div class="toggleGroup">
+<div>策略：<select id="urlDlgDelay"><option value="">[不处理]</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select></div>
+<div>时长：<input type="text" id="urlDlgDuration" size="15" placeholder="默认：秒" /><input type="checkbox" id="urlDlgRandDelay" />随机</div>
+<div id="urlDialogGroupBodyDelay"><span class="ui-icon ui-icon-plusthick" style="display:inline-block;" onclick="toggleGroup('urlDialogGroupBodyDelay')"></span><b style="margin-left:4px;">Body 延时策略</b>
+<div class="toggleGroup">
+<div>策略：<select id="urlDlgBodyDelay"><option value="">[不处理]</option><option value="delay">延时后继续</option><option value="timeout">等待后掉线</option><option value="drop">前“时长”时间内都掉线</option></select></div>
+<div>时长：<input type="text" id="urlDlgBodyDuration" size="15" placeholder="默认：秒" /><input type="checkbox" id="urlDlgBodyRandDelay" />随机</div>
+</div>
+</div>
+</div>
+</div>
+<div id="urlDialogGroupContent" class="commandGroup"><span class="ui-icon ui-icon-minusthick" onclick="toggleGroup('urlDialogGroupContent')"></span><b>内容策略</b>
+<div class="toggleGroup" style="display:block">
+<div>
+<select id="urlDlgPolicy">
+  <option value="">[代理]</option>
+  <option value="cache">缓存</option>
+  <option value="map">映射内容</option>
+  <option value="redirect">重定向</option>
+  <option value="rewrite">返回指定内容</option>
+  <option value="tcpwrite">直接以 TCP 返回内容</option>
+  <option value="restore">返回预置内容</option>
+</select>
+</div>
+<div id="urlDlgOptMap" class="urlPolicyOpt">重定向目标方式：<select id="urlDlgMapURLSelect"><option value="url">直接指定 URL</option><option value="replace">源 URL 正则替换</option></select>
+<div id="urlDlgGroupMapURL">URL：<input type="text" id="urlDlgMapURL" size="28" /></div>
+<div id="urlDlgGroupReplaceURL" style="display:none;">正则<input type="text" id="urlDlgReplaceRegex" placeholder="匹配源 URL 的正则" /><span style="margin-left:4px;">替换为</span><input type="text" id="urlDlgReplaceValue" placeholder="普通字符串或捕获串" /><span class="ui-icon ui-icon-lightbulb" style="display:inline-block;" onclick="window.open('/profile/commands', '_blank')"></span></div>
+</div>
+<div id="urlDlgOptContent" class="urlPolicyOpt">
+<div>编码内容：</div>
+<div><input type="text" id="urlDlgRewriteContent" size="50" style="margin-left:0;" /></div>
+<div style="text-align:right;"><input type="button" value="转换..." onclick="openContentDialog()" /></div>
+
+</div>
+<div id="urlDlgOptStore" class="urlPolicyOpt">预置内容 ID：<select id="urlDlgStoreID">{{if .Stores}}{{range .Stores}}<option value="{{.}}">{{.}}</option>{{end}}{{else}}<option value="">无可用 ID</option>{{end}}</select><input type="button" value="预览" onclick="previewStore()" /><input type="button" value="新建" onclick="createStore()" /></div>
+</div>
+</div>
+<div id="urlDialogGroupOther" class="commandGroup"><span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlDialogGroupOther')"></span><b>其他策略</b>
+<div class="toggleGroup">
+<div><input type="checkbox" id="urlDlg302" />302 透明（在服务器执行）</div>
+<div><input type="checkbox" id="urlDlg304" />304 禁止（总是返回内容）</div>
+<div>指定连接服务器：<input type="text" id="urlDlgHost" size="22" placeholder="ip:port"/></div>
+<div>指定 StatusCode：<select id="urlDlgStatusDef"><option value="">[不设置]</option><option value="403">403</option><option value="404">404</option><option value="500">500</option><option value="502">502</option><option value="user">其它</option></select><input type="text" id="urlDlgStatusUser" size="4" style="display:none"/></div>
+<div>Content-Type：<select id="urlDlgContentTypeDef"><option value="">[默认]</option><option value="remove">移除</option><option value="empty">置空</option><option value="user">自定义</option></select><input type="text" id="urlDlgContentTypeUser" style="display:none;" /></div>
+<div>Chunked 设置：<select id="urlDlgChunkedDef"><option value="">[不设置]</option><option value="off">强制关闭</option><option value="on">强制开启</option><option value="block">指定块数量</option><option value="size">指定块大小</option></select><input type="text" id="urlDlgChunkedBlockNum" size="4" style="display:none;" /><input type="text" id="urlDlgChunkedSize" style="display:none;" placeholder="1024,456,0" /></div>
+</div>
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onURLCommandDialogOK()" />
+<input type="button" value="取消" onclick="closeDialog('urlCommandDialog')" />
+</div>
+</div>
+
+<div id="domainCommandDialog" title="Domain 策略生成" style="display:none">
+<div id="domainDialogGroupDomain" class="commandGroup">域名：<input type="text" id="domainDlgDomain" size="30" />
+</div>
+<div id="domainDialogGroupDNS" class="commandGroup"><span class="ui-icon ui-icon-minusthick" onclick="toggleGroup('domainDialogGroupDNS')"></span><b>解析设置</b>
+<div class="toggleGroup" style="display:block">
+<div>目标 IP：<input type="text" id="domainDlgIP" placeholder="[可选]解析 IP" style="margin-right:auto;"/></div>
+<div>解析策略：<select id="domainDlgPolicy"><option value="">[正常解析]</option><option value="block">不返回</option><option value="null">返回空</option><option value="proxy">强制代理</option></select></div>
+</div>
+</div>
+<div id="domainDialogGroupDelay" class="commandGroup"><span class="ui-icon ui-icon-minusthick" onclick="toggleGroup('domainDialogGroupDelay')"></span><b>延时设置</b>
+<div class="toggleGroup" style="display:block">
+<div>延时时长：<input type="text" id="domainDlgDuration" placeholder="默认：秒" /></div>
+<div><input type="checkbox" id="domainDlgRandDelay" />随机时长</div>
+</div>
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onDomainCommandDialogOK()" />
+<input type="button" value="取消" onclick="closeDialog('domainCommandDialog')" />
+</div>
+</div>
+
+<div id="contentDialog" title="内容编辑" style="display:none">
+<div class="commandGroup">
+原始内容：<br/>
+<textarea id="dlgContent" rows="5" cols="50" placeholder="请输入原始内容，按“确定”返回编码后的内容"></textarea>
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onContentDialogOK()" />
+<input type="button" value="取消" onclick="closeDialog('contentDialog')" />
+</div>
+</div>
+
+<div id="urlPatternDialog" title="URL 匹配模式" style="display:none">
+<div style="margin-bottom:5px;">请输入 URL 三个部分的匹配模式，“确定”后合成完整模式：</div>
+<div id="urlPatternGroupDomain" class="commandGroup">
+<span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlPatternGroupDomain')"></span><b>域名</b>：<br/><input type="text" id="urlPatternDlgDomain" size="50" style="margin-left:2em;margin-top:4px;" placeholder="*.google.com" />
+<div class="toggleGroup">
+<div style="width:400px;">域名匹配模式，支持通配符，比如 *.google.com 能匹配上 mail.google.com</div>
+<div>被测域名：<input type="text" id="testDomain" /><input type="button" value="测试" onclick="testPattern('domain')" /></div>
+</div>
+</div>
+<div id="urlPatternGroupPath" class="commandGroup">
+<span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlPatternGroupPath')"></span><b>路径</b>：<br/><input type="text" id="urlPatternDlgPath" size="50" style="margin-left:2em;margin-top:4px;" placeholder="/path/to/*/*.html" value="/*" />
+<div class="toggleGroup">
+<div style="width:400px;">路径匹配模式，支持通配符，比如 /v3/*/query 可以匹配 /v3/ping/pong/query。留空或者 “/*” 可匹配所有路径</div>
+<div>被测路径：<input type="text" id="testPath" /><input type="button" value="测试" onclick="testPattern('path')" /></div>
+</div>
+</div>
+<div id="urlPatternGroupArgs" class="commandGroup">
+<span class="ui-icon ui-icon-plusthick" onclick="toggleGroup('urlPatternGroupArgs')"></span><b>参数</b>：<br/><input type="text" id="urlPatternDlgArgs" size="50" style="margin-left:2em;margin-top:4px;" placeholder="a=b&c=e" />
+<div class="toggleGroup">
+<div style="width:400px;">参数匹配模式，显式指定参数必须一个不少地全部匹配，才算匹配。<br/>比如 a=b&amp;c=e 匹配 a=b&amp;c=e&amp;x=y，但不匹配 a=c&amp;c=e 也不匹配 a=b&amp;d=e</div>
+<div>被测参数：<input type="text" id="testArgs" /><input type="button" value="测试" onclick="testPattern('args')" /></div>
+</div>
+</div>
+<div class="commandGroup">
+被测 URL：<input type="text" id="testURL" size="35" style="margin-left:4px;" placeholder="输入 URL 然后测试能否匹配" /><input type="button" value="测试" style="margin-left:4px;" onclick="testPattern('url')" />
+</div>
+<div style="width:100%;text-align:center;">
+<input type="button" value="确定" onclick="onURLPatternDialogOK()" />
+<input type="button" value="取消" onclick="closeDialog('urlPatternDialog')" />
+</div>
+</div>
+
+<div id="packDialog" title="打包命令" style="display:none">
+<div>包名：<input type="text" id="packDlgName" size="40" placeholder="module.case.item" /></div>
+<div>作者：<input type="text" id="packDlgAuthor" size="40" placeholder="your nickname" /></div>
+<div>介绍：<input type="text" id="packDlgComment" size="40" placeholder="" /></div>
+<div>命令：<textarea rows="5" cols="40" id="packDlgCommandBox" style="vertical-align:middle;"></textarea></div>
+<div style="width:100%;text-align:center;"><input type="button" value="打包" onclick="doPackCommand()"/></div>
+</div>
+
+<div id="onlineTestDialog" title="在线测试 URL" style="display:none">
+<div class="commandGroup">目标 URL：<input type="text" id="onlineTestURL" size="50" placeholder="http://g.cn/" /></div>
+<div class="commandGroup"><a href="/profile/commands" target="_blank">命令策略</a>：<input type="text" id="onlineTestPolicy" size="50" placeholder="speed 100 # 留空则使用 profile 的策略" />
+<span style="text-align:right;display:block;margin-top:4px;">{{if .NotOwner}}{{else}}<input value="策略向导" type="button" onclick="createPolicyForOnlineTest()" />{{end}}<input value="匹配 URL 的策略" type="button" onclick="matchURLPolicy()" /></span>
+</div>
+<input type="button" value="测试" onclick="doOnlineTest()" />
+</div>
+
+<div id="restartDialog" title="重启状态" style="display:none;">
+<span>确定重启 profile 状态？</span>
+</div>
+
+<script>
+
+$(document).ready(function() {
+
+{{if .NotOwner}}{{else}}
+
+$("#packDialog").dialog({
+  autoOpen: false,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$( "#packButton" ).show();
+
+$( "#ulCommandTabs" ).show();
+
+$( "#commandTabs" ).tabs();
+
+showMenuHint=true;
+$( "#menu" ).menu({
+  select: function( event, ui ) {
+    switch (ui.item.context.id) {
+    case "menu-url-proxy":
+      appendCmd("url proxy <url>");
+      break;
+    case "menu-url-timeout":
+      appendCmd("url timeout <1.0s> <url>");
+      break;
+    case "menu-url-drop-in":
+      appendCmd("url drop <1.0s> <url>");
+      break;
+    case "menu-url-rewrite":
+      appendCmd("url rewrite <url-encoded-content> <url>");
+      break;
+    case "menu-url-speed":
+      appendCmd("url speed <5KB/s> <url>");
+      break;
+    case "menu-url-status":
+      appendCmd("url status <404> <url>");
+      break;
+    case "menu-url-redirect":
+      appendCmd("url redirect <new-url> <url>");
+      break;
+    case "menu-url-map":
+      appendCmd("url map <source-content-url> <url>");
+      break;
+    case "menu-domain-default":
+      appendCmd("<ip> <domain>");
+      break;
+    case "menu-domain-block":
+      appendCmd("domain block <domain>");
+      break;
+    case "menu-domain-null":
+      appendCmd("domain null <domain>");
+      break;
+    case "menu-domain-proxy":
+      appendCmd("domain proxy <domain>");
+      break;
+    default:
+      return;
+    }
+
+    if (showMenuHint) {
+      showMenuHint = false;
+      appendCmd("# 尖括号内容请替换成实际的值，如 <url> 替换成 http://a.bc/efg.html");
+    }
+  }
+});
+
+reloadPack();
+
+$( "#operatorButton" ).show();
+$( "#operatorDialog" ).dialog({
+  autoOpen: false,
+  width: 400
+});
+
+$("#urlDlgPolicy").change(urlDlgPolicyChanged);
+
+$("#urlDlgStatusDef").change(urlDlgStatusChanged);
+
+$("#urlDlgContentTypeDef").change(urlDlgContentTypeChanged);
+
+$("#urlDlgChunkedDef").change(urlDlgChunkedChanged);
+
+$("#urlDlgMapURLSelect").change(urlDlgMapURLChanged);
+
+$("#urlCommandDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#domainCommandDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#contentDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#urlPatternDialog").dialog({
+  autoOpen: false,
+  modal: true,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+$("#restartDialog").dialog({
+  autoOpen: false,
+  width: 300,
+  height: 'auto',
+  resizable: false,
+  modal: true,
+  buttons: [
+    {
+      text: "确定",
+      click: function() {
+        $(this).dialog("close");
+        restart();
+      }
+    },
+    {
+      text: "放弃",
+      click: function() {
+        $(this).dialog("close");
+      }
+    }
+  ]
+});
+
+{{end}} // end of owner's js init
+
+$( "#onlineTestDialog" ).dialog({
+  autoOpen: false,
+  width: 'auto',
+  height: 'auto',
+  resizable: false,
+});
+
+}); // end of document.ready
+
+</script>
 </body>
 </html>

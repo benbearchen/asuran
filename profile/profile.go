@@ -1,221 +1,42 @@
 package profile
 
 import (
-	"math/rand"
+	"github.com/benbearchen/asuran/policy"
+
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
-
-type DelayActType int
-
-const (
-	DelayActNone      = iota
-	DelayActDelayEach // delay each request in Time seconds
-	DelayActDropUntil // drop all request in Time seconds from the first request
-	DelayActTimeout
-)
-
-type DelayAction struct {
-	Act  DelayActType
-	Rand bool
-	Time float32 // in seconds
-}
-
-func (d *DelayAction) Duration() time.Duration {
-	return (time.Duration)(d.Time * 1000000000)
-}
-
-func (d *DelayAction) RandDuration(r *rand.Rand) time.Duration {
-	t := d.Time
-	if d.Rand {
-		t *= r.Float32()
-	}
-
-	return (time.Duration)(t * 1000000000)
-}
-
-func (d *DelayAction) DurationCommand() string {
-	t := ""
-	if d.Time >= 60*60 {
-		t = strconv.FormatFloat(float64(d.Time/60/60), 'f', -1, 32) + "h"
-	} else if d.Time >= 60 {
-		t = strconv.FormatFloat(float64(d.Time/60), 'f', -1, 32) + "m"
-	} else if d.Time >= 1 {
-		t = strconv.FormatFloat(float64(d.Time), 'f', -1, 32) + "s"
-	} else {
-		t = strconv.FormatFloat(float64(d.Time*1000), 'f', -1, 32) + "ms"
-	}
-
-	if d.Rand {
-		t = "rand " + t
-	}
-
-	return t
-}
-
-func (d *DelayAction) String() string {
-	switch d.Act {
-	case DelayActNone:
-		return "即时返回"
-	case DelayActDelayEach:
-		return "固定延时：" + d.DurationCommand()
-	case DelayActDropUntil:
-		if d.Time == 0 {
-			return "丢弃第一次请求"
-		} else {
-			return "丢弃前 " + d.DurationCommand() + " 内请求"
-		}
-	case DelayActTimeout:
-		return "等 " + d.DurationCommand() + " 后丢弃请求"
-	default:
-		return "delayAct:" + strconv.Itoa(int(d.Act))
-	}
-}
-
-func MakeEmptyDelay() DelayAction {
-	return DelayAction{DelayActNone, false, 0}
-}
-
-func MakeDelay(act DelayActType, rand bool, delay float32) DelayAction {
-	switch act {
-	case DelayActNone:
-		return DelayAction{act, rand, 0}
-	case DelayActDelayEach:
-		return DelayAction{act, rand, delay}
-	case DelayActDropUntil:
-		return DelayAction{act, rand, delay}
-	case DelayActTimeout:
-		return DelayAction{act, rand, delay}
-	}
-
-	return DelayAction{DelayActNone, rand, 0}
-}
-
-type UrlAct int
-
-const (
-	UrlActNone = iota
-	UrlActCache
-	UrlActStatus
-	UrlActMap
-	UrlActRedirect
-	UrlActRewritten
-	UrlActRestore
-	UrlActTcpWritten
-)
-
-type UrlProxyAction struct {
-	Act          UrlAct
-	ContentValue string
-}
-
-func (action *UrlProxyAction) String() string {
-	switch action.Act {
-	case UrlActNone:
-		return "透明代理"
-	case UrlActCache:
-		return "缓存"
-	case UrlActStatus:
-		return "以 HTTP 返回状态码 " + action.ContentValue + " 返回"
-	case UrlActMap:
-		return "映射代理至 " + action.ContentValue
-	case UrlActRedirect:
-		return "302 跳转至 " + action.ContentValue
-	case UrlActRewritten:
-		return "以 url-encoded 的内容返回"
-	case UrlActRestore:
-		return "以 id 为 " + action.ContentValue + " 的预存内容返回"
-	case UrlActTcpWritten:
-		return "以 url-encoded 的内容直接写 TCP"
-	default:
-		return "act:" + strconv.Itoa(int(action.Act))
-	}
-}
-
-func MakeEmptyUrlProxyAction() UrlProxyAction {
-	return UrlProxyAction{UrlActNone, ""}
-}
-
-type Settings map[string]string
-
-func (s Settings) Switch(key string) bool {
-	return s.SwitchDef(key, false)
-}
-
-func (s Settings) SwitchDef(key string, def bool) bool {
-	v, ok := s[key]
-	if ok {
-		return v == "on" || v == "yes"
-	} else {
-		return def
-	}
-}
 
 type urlAction struct {
 	UrlPattern string
 	pattern    *UrlPattern
-	Act        UrlProxyAction
-	Delay      DelayAction
-	BodyDelay  DelayAction
-	Speed      SpeedAction
-	Settings   Settings
+	p          *policy.UrlPolicy
 }
 
 type UrlOperator interface {
-	Action(ip, url string) UrlProxyAction
-	Delay(ip, url string) DelayAction
-	BodyDelay(ip, url string) DelayAction
-	Speed(ip, url string) SpeedAction
+	Action(ip, url string) *policy.UrlPolicy
 }
-
-type DomainAct int
-
-const (
-	DomainActNone = iota
-	DomainActBlock
-	DomainActProxy
-	DomainActNull
-)
 
 type DomainAction struct {
 	Domain  string
 	pattern *DomainPattern
-	Act     DomainAct
-	IP      string
+	p       *policy.DomainPolicy
 }
 
 type DomainOperator interface {
-	Action(ip, domain string) *DomainAction
-}
-
-func NewDomainAction(domain string, act DomainAct, ip string) *DomainAction {
-	return &DomainAction{domain, nil, act, ip}
-}
-
-func (a DomainAct) String() string {
-	switch a {
-	case DomainActNone:
-		return "正常通行"
-	case DomainActBlock:
-		return "丢弃不返回"
-	case DomainActProxy:
-		return "代理域名"
-	case DomainActNull:
-		return "查询无结果"
-	default:
-		return ""
-	}
+	Action(ip, domain string) *policy.DomainPolicy
 }
 
 func (d *DomainAction) TargetString() string {
-	if d.IP == "" {
-		return "真实地址"
-	} else {
-		return d.IP
+	t := d.p.TargetString()
+	if t == "" {
+		t = "真实地址"
 	}
+
+	return t
 }
 
 type Store struct {
@@ -228,14 +49,15 @@ type ProxyHostOperator interface {
 }
 
 type Profile struct {
-	Name      string
-	Ip        string
-	Owner     string
-	Operators map[string]bool
-	Urls      map[string]*urlAction
-	Domains   map[string]*DomainAction
-	storeID   int
-	stores    map[string]*Store
+	Name       string
+	Ip         string
+	Owner      string
+	Operators  map[string]bool
+	Urls       map[string]*urlAction
+	UrlDefault *policy.UrlPolicy
+	Domains    map[string]*DomainAction
+	storeID    int
+	stores     map[string]*Store
 
 	proxyOp ProxyHostOperator
 
@@ -249,192 +71,70 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Owner = owner
 	p.Operators = make(map[string]bool)
 	p.Urls = make(map[string]*urlAction)
+	p.UrlDefault = policy.NewDefaultUrlPolicy()
 	p.Domains = make(map[string]*DomainAction)
 	p.storeID = 1
 	p.stores = make(map[string]*Store)
 	return p
 }
 
-func (p *Profile) SetUrl(set bool, urlPattern string, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string) {
+func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if u, ok := p.Urls[urlPattern]; ok {
-		if delayAction != nil {
-			u.Delay = *delayAction
+	urlPattern := s.Target()
+	if urlPattern == "" {
+		p.UrlDefault.Update(s)
+		return
+	}
+
+	all := urlPattern == "all"
+
+	if s.Delete() {
+		if all {
+			for u, _ := range p.Urls {
+				delete(p.Urls, u)
+			}
+		} else {
+			delete(p.Urls, urlPattern)
 		}
 
-		if bodyDelayAction != nil {
-			u.BodyDelay = *bodyDelayAction
-		}
+		return
+	}
 
-		if proxyAction != nil {
-			u.Act = *proxyAction
+	if all {
+		for _, u := range p.Urls {
+			u.p.Update(s)
 		}
-
-		if speedAction != nil {
-			u.Speed = *speedAction
-		}
-
-		if set {
-			u.Settings = make(map[string]string)
-		}
-
-		for k, v := range settings {
-			u.Settings[k] = v
-		}
+	} else if u, ok := p.Urls[urlPattern]; ok {
+		u.p.Update(s)
 	} else {
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), MakeEmptyUrlProxyAction(), MakeEmptyDelay(), MakeEmptyDelay(), MakeEmptySpeed(), settings}
-		if delayAction != nil {
-			u.Delay = *delayAction
-		}
-
-		if bodyDelayAction != nil {
-			u.BodyDelay = *bodyDelayAction
-		}
-
-		if proxyAction != nil {
-			u.Act = *proxyAction
-		}
-
-		if speedAction != nil {
-			u.Speed = *speedAction
-		}
-
+		s.Def(p.UrlDefault)
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), s}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
 				p.proxyOp.New(port)
 			}
 		}
-	}
 
-	host := getHostOfUrlPattern(urlPattern)
-	if len(host) != 0 {
-		p.proxyDomainIfNotExists(host)
-	}
-}
-
-func (p *Profile) SetAllUrl(set bool, delayAction, bodyDelayAction *DelayAction, proxyAction *UrlProxyAction, speedAction *SpeedAction, settings map[string]string) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	for _, u := range p.Urls {
-		if delayAction != nil {
-			u.Delay = *delayAction
-		}
-
-		if bodyDelayAction != nil {
-			u.BodyDelay = *bodyDelayAction
-		}
-
-		if proxyAction != nil {
-			u.Act = *proxyAction
-		}
-
-		if speedAction != nil {
-			u.Speed = *speedAction
-		}
-
-		if set {
-			u.Settings = make(map[string]string)
-		}
-
-		for k, v := range settings {
-			u.Settings[k] = v
+		host := getHostOfUrlPattern(urlPattern)
+		if len(host) != 0 {
+			p.proxyDomainIfNotExists(host)
 		}
 	}
 }
 
-func (p *Profile) UrlAction(url string) UrlProxyAction {
+func (p *Profile) UrlAction(url string) *policy.UrlPolicy {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
 	u := p.MatchUrl(url)
 	if u != nil {
-		return u.Act
+		return u.p
 	}
 
-	return MakeEmptyUrlProxyAction()
-}
-
-func (p *Profile) UrlDelay(url string) DelayAction {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	u := p.MatchUrl(url)
-	if u != nil {
-		return u.Delay
-	}
-
-	return MakeEmptyDelay()
-}
-
-func (p *Profile) UrlBodyDelay(url string) DelayAction {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	u := p.MatchUrl(url)
-	if u != nil {
-		return u.BodyDelay
-	}
-
-	return MakeEmptyDelay()
-}
-
-func (p *Profile) UrlSpeed(url string) SpeedAction {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	u := p.MatchUrl(url)
-	if u != nil {
-		return u.Speed
-	}
-
-	return MakeEmptySpeed()
-}
-
-func (p *Profile) SettingDont302(url string) bool {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	u := p.MatchUrl(url)
-	if u != nil {
-		return u.Settings.SwitchDef("dont302", true)
-	}
-
-	return true
-}
-
-func (p *Profile) SettingSwitch(url string, set string) bool {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	u := p.MatchUrl(url)
-	if u != nil {
-		return u.Settings.Switch(set)
-	}
-
-	return false
-}
-
-func (p *Profile) SettingString(url string, set string) string {
-	return p.SettingStringDef(url, set, "")
-}
-
-func (p *Profile) SettingStringDef(url string, set string, def string) string {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-
-	u := p.MatchUrl(url)
-	if u != nil {
-		v, ok := u.Settings[set]
-		if ok {
-			return v
-		}
-	}
-
-	return def
+	return p.UrlDefault
 }
 
 func (p *Profile) MatchUrl(url string) *urlAction {
@@ -444,6 +144,7 @@ func (p *Profile) MatchUrl(url string) *urlAction {
 	for _, u := range p.Urls {
 		score := u.pattern.MatchScore(us)
 		if score > high {
+			high = score
 			highUrl = u
 		}
 	}
@@ -460,52 +161,47 @@ func (p *Profile) DeleteAllUrl() {
 	}
 }
 
-func (p *Profile) SetDomainAction(domain string, act *DomainAct, targetIP string) {
+func (p *Profile) SetDomainPolicy(s *policy.DomainPolicy) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	d, ok := p.Domains[domain]
-	if ok {
-		if act != nil {
-			d.Act = *act
+	domain := s.Domain()
+	all := domain == "all"
+	if s.Delete() {
+		if all {
+			for d, _ := range p.Domains {
+				delete(p.Domains, d)
+			}
+		} else {
+			delete(p.Domains, domain)
 		}
 
-		d.IP = targetIP
+		return
+	}
+
+	if all {
+		for _, d := range p.Domains {
+			d.p.Update(s)
+		}
+	} else if d, ok := p.Domains[domain]; ok {
+		d.p.Update(s)
 	} else {
-		var a DomainAct = DomainActNone
-		if act != nil {
-			a = *act
-		}
-
-		p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), a, targetIP}
+		p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), s}
 	}
 }
 
-func (p *Profile) SetAllDomainAction(act *DomainAct, targetIP string) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	for _, d := range p.Domains {
-		if act != nil {
-			d.Act = *act
-		}
-
-		d.IP = targetIP
-	}
-}
-
-func (p *Profile) Domain(domain string) *DomainAction {
+func (p *Profile) Domain(domain string) *policy.DomainPolicy {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
 	d, ok := p.Domains[domain]
 	if ok {
-		return d
+		return d.p
 	}
 
 	for _, d := range p.Domains {
 		if d.pattern != nil && d.pattern.Match(domain) {
-			return d
+			return d.p
 		}
 	}
 
@@ -526,13 +222,20 @@ func (p *Profile) proxyDomainIfNotExists(domain string) {
 
 	d, ok := p.Domains[domain]
 	if ok {
-		if d.Act == DomainActNone {
-			d.Act = DomainActProxy
+		if d.p.Action() == nil {
+			d.p.SetProxy()
 		}
 		return
 	}
 
-	p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), DomainActProxy, ""}
+	// TODO: 更好地构造 DomainPolicy？
+	dp, err := policy.Factory("domain proxy " + domain)
+	if err != nil {
+		fmt.Println("set domain", domain, "failed,", err)
+		return
+	}
+
+	p.Domains[domain] = &DomainAction{domain, NewDomainPattern(domain), dp.(*policy.DomainPolicy)}
 }
 
 func (p *Profile) DeleteDomain(domain string) {
@@ -698,9 +401,16 @@ func (p *Profile) Clear() {
 }
 
 func getHostOfUrlPattern(urlPattern string) string {
-	p := strings.Index(urlPattern, "/")
-	if p <= 0 {
+	p := strings.Index(urlPattern, "://")
+	if p >= 0 {
+		urlPattern = urlPattern[p+3:]
+	}
+
+	p = strings.Index(urlPattern, "/")
+	if p == 0 {
 		return ""
+	} else if p < 0 {
+		p = len(urlPattern)
 	}
 
 	server := urlPattern[0:p]

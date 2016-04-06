@@ -4,6 +4,7 @@ import (
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
+	"github.com/benbearchen/asuran/web/proxy/pack"
 
 	"fmt"
 	"html/template"
@@ -57,13 +58,23 @@ func (p *Proxy) WriteInitDevice(w io.Writer, ip string) {
 type indexData struct {
 	Version   string
 	ServeIP   string
+	MainHost  string
 	ProxyHost string
 	UsingDNS  bool
+	Client    string
 }
 
-func (p *Proxy) index(w http.ResponseWriter, ver string) {
+func (p *Proxy) index(w http.ResponseWriter, ver, clientIP string) {
 	t, err := template.ParseFiles("template/index.tmpl")
-	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, !p.disableDNS})
+	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, p.proxyAddr, !p.disableDNS, clientIP})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+func (p *Proxy) features(w http.ResponseWriter, ver string) {
+	t, err := template.ParseFiles("template/features.tmpl")
+	err = t.Execute(w, indexData{ver, p.serveIP, p.mainHost, p.proxyAddr, !p.disableDNS, ""})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
@@ -219,6 +230,19 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 			} else {
 				d.URLBody = url
 			}
+		} else if len(s) >= 2 && s[0] == "cache" {
+			d.HttpStatus = "命中缓存"
+			url := s[1]
+			d.URL = url
+			if len(s) > 2 {
+				d.URL += " " + s[2]
+			}
+
+			if strings.HasPrefix(url, "http://") {
+				d.URLBody = url[7:]
+			} else {
+				d.URLBody = url
+			}
 		} else {
 			d.EventString = e.String
 		}
@@ -240,6 +264,7 @@ func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Li
 
 type dnsHistoryEventData struct {
 	Even     bool
+	Profile  bool
 	Time     string
 	Domain   string
 	DomainIP string
@@ -264,8 +289,12 @@ func formatDNSHistoryEventDataList(events []*life.HistoryEvent, f *life.Life, ta
 		s := strings.Split(e.String, " ")
 		if len(s) >= 3 {
 			client := s[0]
-			if len(targetIP) > 0 && targetIP != client {
-				continue
+			if len(targetIP) > 0 {
+				if targetIP != client {
+					continue
+				} else {
+					d.Profile = true
+				}
 			}
 
 			d.Client = client
@@ -394,9 +423,10 @@ type editStoreData struct {
 	Client         string
 	ID             string
 	EncodedContent string
+	View           bool
 }
 
-func formatEditStoreData(profileIP string, prof *profile.Profile, id string) editStoreData {
+func formatEditStoreData(profileIP string, prof *profile.Profile, id string, view bool) editStoreData {
 	encodedContent := ""
 	if len(id) > 0 {
 		c := prof.Restore(id)
@@ -405,12 +435,12 @@ func formatEditStoreData(profileIP string, prof *profile.Profile, id string) edi
 		}
 	}
 
-	return editStoreData{profileIP, id, encodedContent}
+	return editStoreData{profileIP, id, encodedContent, view}
 }
 
-func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string) {
+func (p *Proxy) writeEditStore(w http.ResponseWriter, profileIP string, prof *profile.Profile, id string, view bool) {
 	t, err := template.ParseFiles("template/store-edit.tmpl")
-	err = t.Execute(w, formatEditStoreData(profileIP, prof, id))
+	err = t.Execute(w, formatEditStoreData(profileIP, prof, id, view))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
@@ -426,6 +456,38 @@ type storeResultData struct {
 func (p *Proxy) writeStoreResult(w http.ResponseWriter, profileIP, url, id, sid string) {
 	t, err := template.ParseFiles("template/store-result.tmpl")
 	err = t.Execute(w, storeResultData{profileIP, url, id, sid})
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type packData struct {
+	Even    bool
+	Name    string
+	Author  string
+	Comment string
+}
+
+type packsData struct {
+	Packs []packData
+}
+
+func formatPacksData(packs *pack.Dir) packsData {
+	names := packs.ListNames()
+	datas := make([]packData, 0, len(names))
+	for i, name := range names {
+		pack := packs.GetPack(name)
+		even := i%2 == 1
+		data := packData{even, pack.Name(), pack.Author(), pack.Comment()}
+		datas = append(datas, data)
+	}
+
+	return packsData{datas}
+}
+
+func (p *Proxy) writePacks(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/packs-list.tmpl")
+	err = t.Execute(w, formatPacksData(p.packs))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}

@@ -57,7 +57,7 @@ function proxyCache(url) {
 </tr>
 {{range .Events}}
 <tr{{if .Even}} class="alt"{{end}}>
-<td><a href="/dns/history/{{.Client}}" title="只查看 {{.Client}} 的访问历史">{{.Client}}</a></td>
+<td><a {{if .Profile}}href="/profile/{{.Client}}" title="进入 {{.Client}} 的管理页面"{{else}}href="/dns/history/{{.Client}}" title="只查看 {{.Client}} 的访问历史"{{end}}>{{.Client}}</a></td>
 <td>{{.Time}}</td>
 <td>{{.DomainIP}}</td>
 <td>{{if .Domain}}{{.Domain}}{{end}}</td>

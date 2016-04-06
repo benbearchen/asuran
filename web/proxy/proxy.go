@@ -3,10 +3,14 @@ package proxy
 import (
 	"github.com/benbearchen/asuran/net"
 	"github.com/benbearchen/asuran/net/httpd"
+	"github.com/benbearchen/asuran/net/websocket"
+	"github.com/benbearchen/asuran/policy"
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/web/proxy/cache"
 	"github.com/benbearchen/asuran/web/proxy/life"
+	"github.com/benbearchen/asuran/web/proxy/pack"
 
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,12 +18,15 @@ import (
 	gonet "net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+const ASURAN_POLICY_HEADER = "ASURAN_POLICY"
 
 type Proxy struct {
 	ver        string
@@ -30,37 +37,48 @@ type Proxy struct {
 	domainOp   profile.DomainOperator
 	serveIP    string
 	mainHost   string
+	proxyAddr  string
 	disableDNS bool
+	packs      *pack.Dir
 
 	lock sync.RWMutex
 	r    *rand.Rand
 }
 
-func NewProxy(ver string) *Proxy {
+func NewProxy(ver string, dataDir string) *Proxy {
 	p := new(Proxy)
 	p.ver = ver
 	p.webServers = make(map[int]*httpd.Http)
 	p.lives = life.NewIPLives()
 	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	p.packs = pack.New(filepath.Join(dataDir, "packs"))
 
 	p.Bind(80)
 
 	ips := net.LocalIPs()
 	if ips == nil {
-		fmt.Println("Proxy can't get local ip")
+		fmt.Println("大王不好了，找不到本地 IP 啊！！")
 	} else {
 		for _, ip := range ips {
 			p.serveIP = ip
-			fmt.Println("proxy on ip: " + ip)
+			fmt.Println("HTTP 代理、DNS 服务 监听 IP: " + ip)
+			fmt.Println()
 			for port, _ := range p.webServers {
 				p.mainHost = ip
 				if port != 80 {
 					p.mainHost += ":" + strconv.Itoa(port)
 				}
 
-				fmt.Println("visit http://" + p.mainHost + "/ for more information")
+				p.proxyAddr = ip + ":" + strconv.Itoa(port)
+
+				fmt.Println("标准 HTTP 代理地址:  " + p.proxyAddr)
+				fmt.Println("asuran 管理界面:     http://" + p.mainHost + "/    ∈←← ←  ←    ←")
 			}
+
+			fmt.Println()
 		}
+
+		fmt.Println("本机还可访问 http://localhost/ 进入管理界面")
 	}
 
 	return p
@@ -152,20 +170,27 @@ func (p *Proxy) testUrl(
 	}
 }
 
-func (p *Proxy) OnRequest(
-	w http.ResponseWriter,
-	r *http.Request) {
+func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	targetHost := httpd.RemoteHost(r.Host)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
 	urlPath := r.URL.Path
+	if u, ok := r.Header["Upgrade"]; ok {
+		if len(u) > 0 && strings.ToLower(u[0]) == "websocket" {
+			p.proxyWebsocket(remoteIP, w, r)
+			return
+		}
+	}
+
 	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
-	if strings.HasPrefix(urlPath, "http://") {
-		p.proxyUrl(urlPath, w, r)
+	if r.Method != "GET" && r.Method != "POST" {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
+	} else if strings.HasPrefix(urlPath, "http://") {
+		p.proxyRequest(w, r)
 	} else if targetHost == "i.me" {
 		p.initDevice(w, remoteIP)
 	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) {
-		target := "http://" + r.Host + urlPath
-		p.proxyUrl(target, w, r)
+		p.proxyRequest(w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/post"); m {
 		p.postTest(w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/test/"); m {
@@ -177,6 +202,10 @@ func (p *Proxy) OnRequest(
 		p.testUrl(target, w, r)
 	} else if page, m := httpd.MatchPath(urlPath, "/to/"); m {
 		target := "http://" + page[1:]
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+
 		p.proxyUrl(target, w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/usage"); m {
 		p.WriteUsage(w)
@@ -190,8 +219,19 @@ func (p *Proxy) OnRequest(
 		}
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
+	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
+		p.dealPacks(w, r, page)
 	} else if urlPath == "/" {
-		p.index(w, p.ver)
+		ip := func() string {
+			if p.isSelfAddr(remoteIP) {
+				return ""
+			} else {
+				return remoteIP
+			}
+		}()
+		p.index(w, p.ver, ip)
+	} else if urlPath == "/features" {
+		p.features(w, p.ver)
 	} else if urlPath == "/devices" {
 		p.devices(w)
 	} else if urlPath == "/about" {
@@ -230,6 +270,8 @@ func (p *Proxy) OnRequest(
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/to/"+p.mainHost+"/about to purely proxy of http://"+p.mainHost+"/about")
 		fmt.Fprintln(w, "")
 		fmt.Fprintln(w, "visit http://"+p.mainHost+"/test/"+p.mainHost+"/test/"+p.mainHost+"/about to test the proxy")
+		fmt.Fprintln(w, "")
+		fmt.Fprintln(w, "visit http://"+p.mainHost+"/profile/255.255.255.255/policy/speed%2015/"+p.mainHost+"/about to test the command policy")
 	} else if urlPath == "/urlencoded" {
 		p.urlEncoded(w)
 	} else {
@@ -237,19 +279,25 @@ func (p *Proxy) OnRequest(
 	}
 }
 
-func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) {
-	remoteIP := httpd.RemoteHost(r.RemoteAddr)
-	p.remoteProxyUrl(remoteIP, target, w, r)
+func (p *Proxy) proxyRequest(w http.ResponseWriter, r *http.Request) {
+	scheme := r.URL.Scheme
+	if len(scheme) == 0 {
+		scheme = "http"
+	}
+
+	url := scheme + "://" + r.Host + r.URL.RequestURI()
+	p.proxyUrl(url, w, r)
 }
 
-func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request) {
+func (p *Proxy) proxyUrl(target string, w http.ResponseWriter, r *http.Request) {
+	remoteIP := httpd.RemoteHost(r.RemoteAddr)
+	p.remoteProxyUrl(remoteIP, target, w, r, nil)
+}
+
+func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r *http.Request, up *policy.UrlPolicy) {
 	needCache := false
 
 	fullUrl := target
-	if len(r.URL.RawQuery) > 0 {
-		fullUrl += "?" + r.URL.RawQuery
-	}
-
 	requestUrl := fullUrl
 	requestR := r
 	contentSource := ""
@@ -267,93 +315,134 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	var writeWrap io.Writer = nil
+	forceChunked := false
+	forceRecvFirst := false
 
-	if p.urlOp != nil {
-		delay := p.urlOp.Delay(remoteIP, fullUrl)
-		//fmt.Println("url delay: " + delay.String())
-		switch delay.Act {
-		case profile.DelayActDelayEach:
-			if delay.Time > 0 {
-				// TODO: create request before sleep, more effective
-				d := delay.RandDuration(p.r)
-				time.Sleep(d)
-				f.Log("proxy " + fullUrl + " delay " + d.String())
-			}
-			break
-		case profile.DelayActDropUntil:
-			d := delay.RandDuration(p.r)
-			if u != nil && u.DropUntil(d) {
-				f.Log("proxy " + fullUrl + " drop " + d.String())
-				net.ResetResponse(w)
+	if up == nil {
+		if cmd := r.Header.Get(ASURAN_POLICY_HEADER); len(cmd) > 0 {
+			p, err := policy.Factory("url " + cmd)
+			if err != nil {
+				w.WriteHeader(400)
+				fmt.Fprintf(w, `policy "url %s" err: %v`, cmd, err)
 				return
 			}
-			break
-		case profile.DelayActTimeout:
-			if delay.Time > 0 {
+
+			up = p.(*policy.UrlPolicy)
+		} else if p.urlOp != nil {
+			up = p.urlOp.Action(remoteIP, fullUrl)
+		}
+	}
+
+	if up != nil {
+		delay := up.DelayPolicy()
+		if delay != nil {
+			//fmt.Println("url delay: " + delay.String())
+			switch delay := delay.(type) {
+			case *policy.DelayPolicy:
+				if delay.Duration() > 0 {
+					// TODO: create request before sleep, more effective
+					d := delay.RandDuration(p.r)
+					time.Sleep(d)
+					f.Log("proxy " + fullUrl + " delay " + d.String())
+				}
+				break
+			case *policy.DropPolicy:
 				d := delay.RandDuration(p.r)
-				time.Sleep(d)
-				f.Log("proxy " + fullUrl + " timeout " + d.String())
-			} else {
-				f.Log("proxy " + fullUrl + " timeout")
+				if u != nil && u.DropUntil(d) {
+					f.Log("proxy " + fullUrl + " drop " + d.String())
+					net.ResetResponse(w)
+					return
+				}
+				break
+			case *policy.TimeoutPolicy:
+				if delay.Duration() > 0 {
+					d := delay.RandDuration(p.r)
+					time.Sleep(d)
+					f.Log("proxy " + fullUrl + " timeout " + d.String())
+				} else {
+					f.Log("proxy " + fullUrl + " timeout")
+				}
+				net.ResetResponse(w)
+				return
+				break
 			}
-			net.ResetResponse(w)
-			return
-			break
 		}
 
-		act := p.urlOp.Action(remoteIP, fullUrl)
-		//fmt.Println("url act: " + act.String())
-		speed := p.urlOp.Speed(remoteIP, fullUrl)
-		bodyDelay := p.urlOp.BodyDelay(remoteIP, fullUrl)
-
-		switch act.Act {
-		case profile.UrlActCache:
-			needCache = true
-		case profile.UrlActStatus:
-			status := 502
-			if c, err := strconv.Atoi(act.ContentValue); err == nil {
-				status = c
+		if s := up.Status(); s != nil {
+			status := s.StatusCode()
+			if status == 0 {
+				status = 502
 			}
 
 			w.WriteHeader(status)
 			f.Log("proxy " + fullUrl + " status " + strconv.Itoa(status))
 			return
-		case profile.UrlActMap:
-			requestUrl = act.ContentValue
-			requestR = nil
-			contentSource = "map " + act.ContentValue
-		case profile.UrlActRedirect:
-			http.Redirect(w, r, act.ContentValue, 302)
-			f.Log("proxy " + fullUrl + " redirect " + act.ContentValue)
-			return
-		case profile.UrlActRewritten:
-			fallthrough
-		case profile.UrlActRestore:
-			fallthrough
-		case profile.UrlActTcpWritten:
-			if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, bodyDelay) {
+		}
+
+		act := up.ContentPolicy()
+		//fmt.Println("url act: " + act.String())
+		speed := up.Speed()
+		bodyDelay := up.BodyPolicy()
+		chunked := up.Chunked()
+
+		if act != nil {
+			switch act := act.(type) {
+			case *policy.CachePolicy:
+				needCache = true
+			case *policy.MapPolicy:
+				requestUrl = act.URL(requestUrl)
+				requestR = nil
+				contentSource = "map " + requestUrl
+			case *policy.RedirectPolicy:
+				requestUrl = act.URL(requestUrl)
+				http.Redirect(w, r, requestUrl, 302)
+				f.Log("proxy " + fullUrl + " redirect " + requestUrl)
 				return
+			case *policy.RewritePolicy, *policy.RestorePolicy, *policy.TcpwritePolicy:
+				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, chunked, bodyDelay, up.ContentType()) {
+					return
+				}
 			}
 		}
 
-		switch bodyDelay.Act {
-		case profile.DelayActDelayEach:
-			fallthrough
-		case profile.DelayActTimeout:
+		if chunked != nil {
+			chunkedOp := chunked.Option()
+			if chunkedOp != policy.ChunkedDefault && chunkedOp != policy.ChunkedOff {
+				forceChunked = true
+			}
+
+			if chunkedOp == policy.ChunkedOff || chunkedOp == policy.ChunkedBlock || chunkedOp == policy.ChunkedSize {
+				forceRecvFirst = true
+			}
+		}
+
+		if bodyDelay != nil {
+			switch bodyDelay.(type) {
+			case *policy.DelayPolicy, *policy.TimeoutPolicy:
+				if writeWrap == nil {
+					writeWrap = w
+				}
+
+				canSubPackage := !forceChunked
+				writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r, canSubPackage)
+			}
+		}
+
+		if speed != nil {
 			if writeWrap == nil {
 				writeWrap = w
 			}
 
-			writeWrap = newDelayWriter(bodyDelay, writeWrap, p.r)
+			canSubPackage := !forceChunked
+			writeWrap = newSpeedWriter(speed, writeWrap, canSubPackage)
 		}
 
-		switch speed.Act {
-		case profile.SpeedActConstant:
+		if forceChunked {
 			if writeWrap == nil {
 				writeWrap = w
 			}
 
-			writeWrap = newSpeedWriter(speed, writeWrap)
+			writeWrap = newChunkedWriter(chunked, writeWrap)
 		}
 	}
 
@@ -361,22 +450,31 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 		c := f.CheckCache(fullUrl, rangeInfo)
 		if c != nil && c.Error == nil {
 			c.Response(w, writeWrap)
+			extraInfo := ""
+			if len(rangeInfo) > 0 {
+				extraInfo = " " + rangeInfo
+			}
+
+			f.Log("cache " + fullUrl + extraInfo)
 			return
 		}
 	}
 
 	dont302 := true
 	settingContentType := "default"
-	if prof != nil {
-		dont302 = prof.SettingDont302(fullUrl)
-		settingContentType = prof.SettingStringDef(fullUrl, "content-type", settingContentType)
-		if prof.SettingSwitch(fullUrl, "disable304") {
+	var hostPolicy *policy.HostPolicy
+	if up != nil {
+		dont302 = up.Dont302()
+		settingContentType = up.ContentType()
+		if up.Disable304() && requestR != nil {
 			p.disable304FromHeader(requestR.Header)
 		}
+
+		hostPolicy = up.Host()
 	}
 
 	httpStart := time.Now()
-	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(target, remoteIP), dont302)
+	resp, postBody, redirection, err := net.NewHttp(requestUrl, requestR, p.parseDomainAsDial(requestUrl, remoteIP, hostPolicy), dont302)
 	if err != nil {
 		c := cache.NewUrlCache(fullUrl, r, nil, nil, contentSource, nil, rangeInfo, httpStart, time.Now(), err)
 		if f != nil {
@@ -392,7 +490,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	} else {
 		defer resp.Close()
 		p.procHeader(resp.Header(), settingContentType)
-		content, err := resp.ProxyReturn(w, writeWrap)
+		content, err := resp.ProxyReturn(w, writeWrap, forceRecvFirst, forceChunked)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
 		if f != nil {
@@ -401,26 +499,30 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act profile.UrlProxyAction, speed profile.SpeedAction, bodyDelay profile.DelayAction) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act policy.Policy, speed *policy.SpeedPolicy, chunked *policy.ChunkedPolicy, bodyDelay policy.Policy, contentType string) bool {
 	var content []byte = nil
 	contentSource := ""
-	switch act.Act {
-	case profile.UrlActRewritten:
-		fallthrough
-	case profile.UrlActTcpWritten:
-		u, err := url.QueryUnescape(act.ContentValue)
+	istcp := false
+	switch act := act.(type) {
+	case *policy.RewritePolicy:
+		u, err := url.QueryUnescape(act.Value())
 		if err != nil {
 			return false
 		}
 
 		content = []byte(u)
-		if act.Act == profile.UrlActRewritten {
-			contentSource = "rewrite"
-		} else if act.Act == profile.UrlActTcpWritten {
-			contentSource = "tcpwrite"
+		contentSource = "rewrite"
+	case *policy.TcpwritePolicy:
+		istcp = true
+		u, err := url.QueryUnescape(act.Value())
+		if err != nil {
+			return false
 		}
-	case profile.UrlActRestore:
-		content = prof.Restore(act.ContentValue)
+
+		content = []byte(u)
+		contentSource = "tcpwrite"
+	case *policy.RestorePolicy:
+		content = prof.Restore(act.Value())
 		if content == nil {
 			return false
 		}
@@ -428,38 +530,79 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 		return false
 	}
 
-	if act.Act != profile.UrlActTcpWritten {
-		p.procHeader(w.Header(), prof.SettingStringDef(target, "content-type", "default"))
-	}
-
-	var writeWrapper func(w io.Writer) io.Writer = nil
-	switch bodyDelay.Act {
-	case profile.DelayActDelayEach:
-		fallthrough
-	case profile.DelayActTimeout:
-		writeWrapper = func(w io.Writer) io.Writer {
-			return newDelayWriter(bodyDelay, w, p.r)
+	if len(rangeInfo) > 0 {
+		c, cr, err := cache.MakeRange(rangeInfo, content)
+		if err != nil {
+			w.WriteHeader(416)
+			fmt.Fprintln(w, "error:", err)
+			return true
+		} else {
+			w.Header()["Content-Range"] = []string{"bytes " + cr}
+			w.Header()["Content-Length"] = []string{strconv.Itoa(len(c))}
+			w.WriteHeader(206)
+			content = c
 		}
 	}
 
-	switch speed.Act {
-	case profile.SpeedActConstant:
+	if _, ok := act.(*policy.TcpwritePolicy); !ok {
+		p.procHeader(w.Header(), contentType)
+	}
+
+	forceChunked := false
+	if chunked != nil {
+		chunkedOp := chunked.Option()
+		if chunkedOp != policy.ChunkedDefault && chunkedOp != policy.ChunkedOff {
+			forceChunked = true
+		}
+	}
+
+	var writeWrapper func(w io.Writer) io.Writer = nil
+	if bodyDelay != nil {
+		switch bodyDelay.(type) {
+		case *policy.DelayPolicy, *policy.TimeoutPolicy:
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newDelayWriter(bodyDelay, w, p.r, true)
+			}
+		}
+	}
+
+	if speed != nil {
+		canSubPackage := !forceChunked
 		if writeWrapper != nil {
 			wrap := writeWrapper
 			writeWrapper = func(w io.Writer) io.Writer {
-				return newSpeedWriter(speed, wrap(w))
+				return newSpeedWriter(speed, wrap(w), canSubPackage)
 			}
 		} else {
 			writeWrapper = func(w io.Writer) io.Writer {
-				return newSpeedWriter(speed, w)
+				return newSpeedWriter(speed, w, canSubPackage)
+			}
+		}
+	}
+
+	if forceChunked {
+		if writeWrapper != nil {
+			wrap := writeWrapper
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newChunkedWriter(chunked, wrap(w))
+			}
+		} else {
+			writeWrapper = func(w io.Writer) io.Writer {
+				return newChunkedWriter(chunked, w)
 			}
 		}
 	}
 
 	start := time.Now()
-	if act.Act == profile.UrlActTcpWritten {
+	if istcp {
 		net.TcpWriteHttp(w, writeWrapper, content)
 	} else {
+		if !forceChunked {
+			// set the Content-Length, then chunked would be disabled
+			w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+		}
+
+		w.WriteHeader(200)
 		if writeWrapper != nil {
 			writeWrapper(w).Write(content)
 		} else {
@@ -468,7 +611,7 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	c := cache.NewUrlCache(target, r, nil, nil, contentSource, content, rangeInfo, start, time.Now(), nil)
-	if act.Act == profile.UrlActTcpWritten {
+	if istcp {
 		c.ResponseCode = 599
 	} else {
 		c.ResponseCode = 200
@@ -494,10 +637,10 @@ type proxyDomainOperator struct {
 	p *Proxy
 }
 
-func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
+func (p *proxyDomainOperator) Action(ip, domain string) *policy.DomainPolicy {
 	if domain == "i.me" {
 		p.p.LogDomain(ip, ip, "init", domain, p.p.serveIP)
-		return profile.NewDomainAction(domain, profile.DomainActNone, p.p.serveIP)
+		return policy.NewStaticDomainPolicy(domain, p.p.serveIP)
 	}
 
 	profIP := ip
@@ -510,23 +653,21 @@ func (p *proxyDomainOperator) Action(ip, domain string) *profile.DomainAction {
 	if p.p.domainOp != nil {
 		act := "query"
 		a := p.p.domainOp.Action(profIP, domain)
-		if a != nil {
-			b := *a
-			a = &b
-		}
-
-		if a != nil {
-			if a.Act == profile.DomainActProxy {
-				a.IP = p.p.serveIP
+		if a != nil && a.Action() != nil {
+			switch a.Action().(type) {
+			case *policy.ProxyPolicy:
+				a = policy.NewStaticDomainPolicy(domain, p.p.serveIP)
 				act = "proxy"
-			} else if a.Act == profile.DomainActBlock {
+			case *policy.BlockPolicy:
 				act = "block"
+			case *policy.NullPolicy:
+				act = "null"
 			}
 		}
 
 		resultIP := ""
-		if a != nil && len(a.IP) > 0 {
-			resultIP = a.IP
+		if a != nil && len(a.IP()) > 0 {
+			resultIP = a.IP()
 		}
 
 		p.p.LogDomain(profIP, ip, act, domain, resultIP)
@@ -597,14 +738,17 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		fmt.Fprintln(w, f.ExportCommand())
 		return
 	} else if op == "restart" {
-		if f := p.lives.OpenExists(profileIP); f != nil {
+		if !canOperate {
+			w.WriteHeader(403)
+			fmt.Fprintln(w, "没有操作权限")
+		} else if f := p.lives.OpenExists(profileIP); f != nil {
 			f.Restart()
-			fmt.Fprintln(w, profileIP+" 已经重新初始化")
+			fmt.Fprintf(w, "restarted")
 		} else {
+			w.WriteHeader(404)
 			fmt.Fprintln(w, profileIP+" 不存在")
 		}
 
-		fmt.Fprintln(w, "# 关了这个窗口吧 #")
 		return
 	} else if op == "history" {
 		if f := p.lives.OpenExists(profileIP); f != nil {
@@ -639,7 +783,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			case "redirect":
 				if len(pages) >= 5 {
 					domain := pages[4]
-					f.SetUrl(false, profile.UrlToPattern(domain), nil, nil, nil, nil, make(map[string]string))
+					dp, _ := policy.Factory("domain proxy " + domain)
+					f.SetDomainPolicy(dp.(*policy.DomainPolicy))
 					fmt.Fprintf(w, "<html><head><title>代理域名 %s</title></head><body>域名 %s 已处理。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", domain, domain, profileIP)
 					return
 				}
@@ -655,7 +800,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				if len(pages) >= 5 {
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
-						f.SetUrl(false, profile.UrlToPattern(u), nil, nil, &profile.UrlProxyAction{profile.UrlActRestore, sid}, nil, make(map[string]string))
+						up, _ := policy.Factory("url restore " + sid + " " + profile.UrlToPattern(u))
+						f.SetUrlPolicy(up.(*policy.UrlPolicy))
 						p.writeStoreResult(w, profileIP, u, id, sid)
 					}
 					return
@@ -666,14 +812,25 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		fmt.Fprintf(w, "<html><body>无效请求。返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
 		return
 	} else if op == "stores" {
-		if len(pages) >= 4 {
+		if len(pages) >= 4 && pages[3] != "" {
 			k := pages[3]
 			switch k {
-			case "edit":
+			case "edit", "view":
 				id := ""
 				if len(pages) >= 5 {
 					id = pages[4]
 				}
+
+				p.writeEditStore(w, profileIP, f, id, k == "view")
+			case "commit":
+				if !canOperate {
+					w.WriteHeader(403)
+					fmt.Fprintln(w, "无权操作")
+					return
+				}
+
+				id := ""
+
 				r.ParseForm()
 				if v, ok := r.Form["id"]; ok && len(v) > 0 {
 					id = strings.TrimSpace(v[0])
@@ -682,13 +839,27 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 					}
 				}
 
-				if v, ok := r.Form["content"]; ok && len(v) > 0 {
-					if c, err := url.QueryUnescape(v[0]); err == nil {
-						f.Store(id, []byte(c))
-					}
+				if id == "" {
+					w.WriteHeader(404)
+					fmt.Fprintln(w, "empty id")
+					return
 				}
 
-				p.writeEditStore(w, profileIP, f, id)
+				if v, ok := r.Form["content"]; ok && len(v) > 0 {
+					c, err := url.QueryUnescape(v[0])
+					if err == nil {
+						f.Store(id, []byte(c))
+						fmt.Fprintf(w, "保存成功")
+					} else {
+						w.WriteHeader(404)
+						fmt.Fprintf(w, "错误:", err)
+					}
+
+					return
+				}
+
+				w.WriteHeader(404)
+				fmt.Fprintln(w, "empty content")
 			case "delete":
 				if len(pages) >= 5 {
 					id := pages[4]
@@ -722,37 +893,97 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				case "remove":
 					f.RemoveOperator(operator)
 				default:
-					fmt.Fprintf(w, "<html><body>未知操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", pages[3], profileIP)
+					w.WriteHeader(404)
+					fmt.Fprintf(w, "未知操作 %s", pages[3])
 					return
 				}
-			} else {
-				fmt.Fprintf(w, "<html><body>未知操作。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
-				return
 			}
 
-			fmt.Fprintf(w, "<html><body>好了。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP)
+			operators := ""
+			for op, _ := range f.Operators {
+				if len(operators) == 0 {
+					operators = op
+				} else {
+					operators += ", " + op
+				}
+			}
+
+			fmt.Fprintf(w, "%s", operators)
 		}
 		return
 	} else if op == "to" {
+		if len(pages) <= 3 || pages[3] == "" {
+			w.WriteHeader(400)
+			fmt.Fprintln(w, "profile/.../to/ need a target, like profile/.../to/g.cn")
+			return
+		}
+
 		url := "http://" + strings.Join(pages[3:], "/")
-		p.remoteProxyUrl(profileIP, url, w, r)
+		if r.URL.RawQuery != "" {
+			url = url + "?" + r.URL.RawQuery
+		}
+
+		p.remoteProxyUrl(profileIP, url, w, r, nil)
+		return
+	} else if op == "policy" {
+		if len(pages) <= 4 || pages[4] == "" {
+			w.WriteHeader(400)
+			fmt.Fprintln(w, "profile/.../policy/ need policy command and target, like profile/.../to/rewrite xyz/g.cn")
+			return
+		}
+
+		cmd := pages[3]
+		up, err := policy.Factory("url " + cmd)
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, `policy "url %s" err: %v`, cmd, err)
+			return
+		}
+
+		url := "http://" + strings.Join(pages[4:], "/")
+		if r.URL.RawQuery != "" {
+			url = url + "?" + r.URL.RawQuery
+		}
+
+		p.remoteProxyUrl(profileIP, url, w, r, up.(*policy.UrlPolicy))
+		return
+	} else if op == "match" {
+		r.ParseForm()
+		if v, ok := r.Form["url"]; ok && len(v) > 0 {
+			c := f.UrlAction(v[0])
+			if c != nil {
+				fmt.Fprintf(w, "%s", c.Policy())
+			}
+		} else {
+			w.WriteHeader(404)
+			fmt.Fprintln(w, "miss url")
+		}
+
+		return
+	} else if op == "pattern" {
+		p.patternProc(w, r)
+		return
+	} else if op == "pack" {
+		p.packCommand(w, r)
 		return
 	} else if op != "" {
+		w.WriteHeader(404)
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
 		return
 	}
 
 	r.ParseForm()
+	errors := []string{}
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
 		if canOperate {
 			for _, cmd := range v {
-				p.Command(cmd, f, p.lives.Open(profileIP))
+				errors = p.Command(cmd, f, p.lives.Open(profileIP))
 			}
 		}
 	}
 
 	savedIDs := f.ListStoreIDs()
-	f.WriteHtml(w, savedIDs, canOperate)
+	f.WriteHtml(w, savedIDs, canOperate, errors)
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
@@ -856,31 +1087,37 @@ func (p *Proxy) NewProxyHostOperator() profile.ProxyHostOperator {
 	return &proxyHostOperator{p}
 }
 
-func (p *Proxy) parseDomainAsDial(target, client string) func(network, addr string) (gonet.Conn, error) {
-	if p.domainOp == nil {
-		return nil
+func (p *Proxy) parseDomainAsDial(target, client string, hostPolicy *policy.HostPolicy) func(network, addr string) (gonet.Conn, error) {
+	address := ""
+	if hostPolicy == nil {
+		if p.domainOp == nil {
+			return nil
+		}
+
+		u, err := url.Parse(target)
+		if err != nil {
+			return nil
+		}
+
+		domain, port, err := gonet.SplitHostPort(u.Host)
+		if err != nil {
+			domain = u.Host
+		}
+
+		if len(port) == 0 {
+			port = "80"
+		}
+
+		a := p.domainOp.Action(client, domain)
+		if a == nil || len(a.IP()) == 0 {
+			return nil
+		}
+
+		address = gonet.JoinHostPort(a.IP(), port)
+	} else {
+		address = hostPolicy.HTTP()
 	}
 
-	u, err := url.Parse(target)
-	if err != nil {
-		return nil
-	}
-
-	domain, port, err := gonet.SplitHostPort(u.Host)
-	if err != nil {
-		domain = u.Host
-	}
-
-	if len(port) == 0 {
-		port = "80"
-	}
-
-	a := p.domainOp.Action(client, domain)
-	if a == nil || len(a.IP) == 0 {
-		return nil
-	}
-
-	address := gonet.JoinHostPort(a.IP, port)
 	return func(network, addr string) (gonet.Conn, error) {
 		if network == "tcp" {
 			return gonet.Dial(network, address)
@@ -983,4 +1220,148 @@ func (p *Proxy) procHeader(header http.Header, settingContentType string) {
 func (p *Proxy) disable304FromHeader(header http.Header) {
 	delete(header, "If-None-Match")
 	delete(header, "If-Modified-Since")
+}
+
+func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Request) {
+	//fmt.Printf("recv websocket: to %s %v\n", r.Host, r.URL)
+	domain, port, err := gonet.SplitHostPort(r.Host)
+	if err != nil {
+		domain = r.Host
+	}
+
+	if len(port) == 0 {
+		port = "80"
+	}
+
+	host := domain
+	if p.domainOp != nil {
+		a := p.domainOp.Action(client, domain)
+		if a != nil && len(a.IP()) > 0 {
+			host = a.IP()
+		}
+	}
+
+	address := gonet.JoinHostPort(host, port)
+
+	headers := make(map[string][]string)
+	for h, v := range r.Header {
+		headers[h] = v
+	}
+
+	if _, ok := headers["Host"]; !ok {
+		headers["Host"] = []string{r.Host}
+	}
+
+	path := r.URL.RequestURI()
+
+	upConn, err := websocket.Conn(address, path, headers)
+	if err != nil {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	downConn, _, err := net.TryHijack(w)
+	if err != nil {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	net.PipeConn(upConn, downConn)
+}
+
+func (p *Proxy) packCommand(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	name := r.Form.Get("name")
+	author := r.Form.Get("author")
+	comment := r.Form.Get("comment")
+	cmd := r.Form.Get("cmd")
+
+	if len(name) == 0 || len(author) == 0 || len(cmd) == 0 {
+		fmt.Fprintf(w, "error: some fields are empty")
+		return
+	}
+
+	err := p.packs.Save(name, author, comment, cmd)
+	if err != nil {
+		fmt.Fprintf(w, "save failed, err: %v", err)
+	} else {
+		fmt.Fprintf(w, "saved")
+	}
+}
+
+func (p *Proxy) dealPacks(w http.ResponseWriter, r *http.Request, page string) {
+	if len(page) <= 1 { // "" or "/"
+		p.writePacks(w)
+		return
+	}
+
+	switch page[1:] {
+	case "names.json":
+		bytes, err := json.Marshal(p.packs.ListNames())
+		if err == nil {
+			w.Write(bytes)
+		} else {
+			w.WriteHeader(502)
+			fmt.Fprintf(w, "error: %v", err)
+		}
+		return
+	case "get":
+		r.ParseForm()
+		cmd := p.packs.Get(r.Form.Get("name"))
+		if len(cmd) > 0 {
+			fmt.Fprintf(w, "%s", cmd)
+		} else {
+			w.WriteHeader(404)
+			fmt.Fprintln(w, "invalid name or pack is empty")
+		}
+		return
+	}
+
+	w.WriteHeader(404)
+}
+
+func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	op := r.Form.Get("op")
+	if op != "test" {
+		w.WriteHeader(404)
+		fmt.Fprintln(w, "unknown operation: "+op)
+		return
+	}
+
+	t := r.Form.Get("t")
+	p := r.Form.Get("pattern")
+	v := r.Form.Get("v")
+
+	var err error
+	match := false
+	switch t {
+	case "domain":
+		match = profile.NewDomainPattern(p).Match(v)
+	case "path":
+		match = profile.NewPathPattern(p).Match(v)
+	case "args":
+		match = profile.NewArgsPattern(p).MatchArgs(v)
+	case "url":
+		match = profile.NewUrlPattern(p).MatchUrl(v)
+	default:
+		w.WriteHeader(404)
+		fmt.Fprintln(w, "unknown pattern type: "+r.Form.Get("t"))
+		return
+	}
+
+	if err != nil {
+		w.WriteHeader(404)
+		fmt.Fprintf(w, "err: %v", err)
+		return
+	}
+
+	result := "成功"
+	if !match {
+		result = "失败"
+	}
+
+	fmt.Fprintf(w, "%s", result)
 }

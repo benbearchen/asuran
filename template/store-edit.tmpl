@@ -1,43 +1,126 @@
+<!doctype html>
 <html>
 <head>
-<title>{{.Client}} Edit store content {{.ID}}</title>
+<meta charset="utf-8" />
+<link href="/res/js/jquery-ui.css" rel="stylesheet" />
+<title>{{.Client}} {{if .View}}View{{else}}Edit{{end}} store content {{.ID}}</title>
+<style type="text/css">
+
+.commandGroup {
+  border: 1px solid #cccccc;
+  background: #f6f6f6 url("/res/js/images/ui-bg_glass_100_f6f6f6_1x400.png") 50% 50% repeat-x;
+  //font-weight: bold;
+  color: #1c94c4;
+  padding: 4px;
+  margin-bottom: 5px;
+}
+
+.commandGroup input {
+  margin-top: 4px;
+}
+
+</style>
 <script type="text/javascript">
 
 function convertContent() {
   var source = document.getElementById('Source');
   var encoded = document.getElementById('EncodedContent');
   encoded.value = encodeURIComponent(source.value)
+
+  $("#sourceBox").hide();
+  $("#encodedBox").show();
 }
 
 function decodeContent() {
   var source = document.getElementById('Source');
   var encoded = document.getElementById('EncodedContent');
-  source.value = decodeURIComponent(encoded.value)
+  try {
+    source.value = decodeURIComponent(encoded.value)
+  } catch (e) {
+    alert("url-encoded 后内容有问题？无法转换回“原始内容”！！！\n\n" + e);
+    return;
+  }
+
+  $("#encodedBox").hide();
+  $("#sourceBox").show();
+}
+
+function checkID() {
+  var id = $("#storeID").val();
+  if (id == "") {
+    alert("ID 不能为空");
+    return false;
+  } else if (id.indexOf(" ") >= 0) {
+    alert("ID 不能包含空格");
+    return false;
+  }
+
+  return true;
+}
+
+function commitStore(id, encodedContent) {
+  $.ajax({
+    type: "POST",
+    url: "/profile/{{.Client}}/stores/commit",
+    data: {id: id, content: encodedContent},
+    success: function(data) {
+      alert("成功！\n" + data);
+    },
+    error: function(data) {
+      alert("访问失败！\n" + data.responseText);
+    },
+    async: false
+  });
+}
+
+function commitEncoded() {
+  if (!checkID()) {
+    return;
+  }
+
+  var id = $("#storeID").val();
+  var c = $("#EncodedContent").val();
+  commitStore(id, c);
+}
+
+function commitSource() {
+  if (!checkID()) {
+    return;
+  }
+
+  var id = $("#storeID").val();
+  var s = $("#Source").val();
+  commitStore(id, encodeURIComponent(s));
 }
 
 </script>
+<script src="/res/js/external/jquery/jquery.js"></script>
+<script src="/res/js/jquery-ui.js"></script>
 </head>
 
 <body>
 
-<form method="POST">
-需要保存内容的 ID（英文数字、不含空格的字符串）：<br/>
-<input type="text" value="{{.ID}}" {{if .ID}}readonly{{end}} name="id" onkeyup="value=value.replace(/[\W]/g,'')" onbeforepaste="clipboardData.setData('text',clipboardData.getData('text').replace(/[^\d]/g,''))"/>
+<div class="commandGroup">
+<b>预存内容 ID</b>：（英文数字、不含空格的字符串）<br/>
+<input type="text" value="{{.ID}}" {{if .ID}}readonly style="background-color: #DDD;"{{end}} id="storeID" onkeyup="value=value.replace(/[\W]/g,'')" onbeforepaste="clipboardData.setData('text',clipboardData.getData('text').replace(/[^\d]/g,''))"/>
 <!-- http://blog.csdn.net/daizhen256/article/details/8452623 -->
-<hr/>
-需保存的 url-encoded 后内容：<br/>
-<textarea rows="10" cols="80" id="EncodedContent" name="content">{{.EncodedContent}}</textarea>
-<button type="button" onclick="decodeContent();">decode</button><br/>
-
-<input type="submit" value="提交上方内容"/>
-</form>
-
+</div>
 <hr/>
 
-原始<b>文本内容</b>临时编辑框<br/>
-（修改原始内容后，请 url-encode 到上方）<br/>
-<textarea rows="10" cols="80" id="Source" name="cmd"></textarea>
-<button type="button" onclick="convertContent();">url-encode</button><br/>
+<div id="encodedBox" class="commandGroup">
+<b>编码</b>（url-encoded）后内容：<br/>
+<textarea rows="10" cols="80" id="EncodedContent" {{if .View}}readonly{{else}}placeholder="在这里输入 URL Encode 编码后的内容"{{end}}>{{.EncodedContent}}</textarea><br/>
+<input type="button" onclick="decodeContent();" value="转成原始内容" />
+<input type="button" value="提交上方内容" {{if .View}}disabled="disabled"{{end}} onclick="commitEncoded()" />
+</div>
+
+
+<div id="sourceBox" class="commandGroup" style="display:none;">
+<b>原始</b>内容：<br/>
+<textarea rows="10" cols="80" id="Source" {{if .View}}readonly{{else}}placeholder="在这里输入原始内容"{{end}}></textarea><br/>
+<input type="button" onclick="convertContent();" value="转成编码后内容" />
+<input type="button" value="提交上方内容" {{if .View}}disabled="disabled"{{end}} onclick="commitSource()" />
+</div>
 
 </body>
 </html>
