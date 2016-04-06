@@ -16,6 +16,7 @@ Changelog of asuran
         + `remove <keyword>`
     + Domain command
         + `delay [rand] <duration>`
+        + Support multi IPs
 + bug
     + fix mistake of url args' matching count comparing
     + fix that a range request may cover the cache of full request
