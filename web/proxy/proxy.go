@@ -37,6 +37,7 @@ type Proxy struct {
 	domainOp   profile.DomainOperator
 	serveIP    string
 	mainHost   string
+	proxyAddr  string
 	disableDNS bool
 	packs      *pack.Dir
 
@@ -68,7 +69,9 @@ func NewProxy(ver string, dataDir string) *Proxy {
 					p.mainHost += ":" + strconv.Itoa(port)
 				}
 
-				fmt.Println("标准 HTTP 代理地址:  " + ip + ":" + strconv.Itoa(port))
+				p.proxyAddr = ip + ":" + strconv.Itoa(port)
+
+				fmt.Println("标准 HTTP 代理地址:  " + p.proxyAddr)
 				fmt.Println("asuran 管理界面:     http://" + p.mainHost + "/    ∈←← ←  ←    ←")
 			}
 

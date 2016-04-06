@@ -23,6 +23,11 @@ br{
 <b><a href="https://github.com/benbearchen/asuran">asuran</a></b> {{.Version}} 是一个通过 DNS 实现透明代理的服务。
 
 <hr/>
+<div style="width:100%;"><div style="width:40%;display:inline-block;">DNS 服务器地址：</div><div style="display:inline-block;">{{.ServeIP}}</div></div>
+<div style="width:100%;"><div style="width:40%;display:inline-block;">HTTP 代理服务器地址：</div><div style="display:inline-block;">{{.ProxyHost}}</div></div>
+<div style="width:100%;"><div style="width:40%;display:inline-block;">管理入口：</div><div style="display:inline-block;">http://{{.MainHost}}</div></div>
+
+<hr/>
 
 {{if .Client}}<div class="entry"><a href="/profile/{{.Client}}" target="_blank">配置当前设备</a></div>{{end}}
 <div class="entry"><a href="/profile" target="_blank">您管理的设备</a></div>
