@@ -2,6 +2,20 @@ features pool
 =============
 * `cache` with merge range to entire content
 * Record and replay certain commands packs
+* Strict encode rules?
+* Interactive response?
+
+
+ver 0.4
+=========
+* Source code level plugins
+  * Using plugins as pipe line?
+  * Plugin setting webfront?
+* Realtime request streams
+* `shuffle` or `round` domain ips
+* Policy to packs in HTTP Header
+* Setting http headers
+* Filter history
 
 
 ver 0.3  fatcow
