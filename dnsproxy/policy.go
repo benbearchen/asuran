@@ -43,7 +43,7 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	}
 
 	if a.Action() == nil {
-		return passDomain(domain, a.IPs())
+		return passDomain(domain, a.NextIPs())
 	}
 
 	//fmt.Println(clientIP + " domain " + domain + " " + a.Act.String() + " " + a.TargetString())
@@ -51,11 +51,11 @@ func (p *Policy) Query(clientIP, domain string) (string, []net.IP) {
 	case *policy.BlockPolicy:
 		return domain, nil
 	case *policy.ProxyPolicy:
-		return passDomain(domain, a.IPs())
+		return passDomain(domain, a.NextIPs())
 	case *policy.NullPolicy:
 		return domain, []net.IP{}
 	default:
-		return passDomain(domain, a.IPs())
+		return passDomain(domain, a.NextIPs())
 	}
 }
 

@@ -12,7 +12,7 @@ ver 0.4
   * Using plugins as pipe line?
   * Plugin setting webfront?
 * Realtime request streams
-* `shuffle` or `round` domain ips
+* `shuffle` or `circular` domain ips
 * Policy to packs in HTTP Header
 * Setting http headers
 * Filter history
