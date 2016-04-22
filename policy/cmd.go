@@ -23,7 +23,7 @@ url remove <setting-keyword> [<url-pattern>|all]
 
 url delete (<url-pattern>|all)
 
-domain ([default]|block|proxy|null) (delay [rand] <duration>) (<domain-name>|all) [<ip>]
+domain ([default]|block|proxy|null) (delay [rand] <duration>) [shuffle] [n <n>] [circular] (<domain-name>|all) [<ip>[,<ip>...]]
 
 domain delete (<domain-name>|all)
 
@@ -198,6 +198,16 @@ domain mode:
 
     delay [rand] <duration>
               延时后返回，定义与 url delay 相同（不支持 body）
+
+    shuffle
+              打乱返回多个 IP 先后顺序
+
+    n <n>
+              最多返回 <n> 个 IP。<n> 必须大于等于 0
+
+    circular
+              把 IP 串成环，循环返回 IP。
+              比如三个 IP a,b,c 每次返回两个，则先后输出：a,b | c,a | b,c
 
 <domain-name>:
     ([^.]+.)+[^.]+
