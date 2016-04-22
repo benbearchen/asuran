@@ -28,7 +28,10 @@ import (
 	"time"
 )
 
-const ASURAN_POLICY_HEADER = "ASURAN_POLICY"
+const (
+	ASURAN_POLICY_HEADER = "ASURAN_POLICY"
+	ASURAN_PACK_HEADER   = "ASURAN_PACK"
+)
 
 type Proxy struct {
 	ver        string
@@ -332,6 +335,15 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 			}
 
 			up = p.(*policy.UrlPolicy)
+		} else if pkg := r.Header.Get(ASURAN_PACK_HEADER); len(pkg) > 0 {
+			p, err := p.matchPack(fullUrl, pkg)
+			if err != nil {
+				w.WriteHeader(400)
+				fmt.Fprintf(w, `policy pack "%s" err: %v`, pkg, err)
+				return
+			}
+
+			up = p
 		} else if p.urlOp != nil {
 			up = p.urlOp.Action(remoteIP, fullUrl)
 		}
@@ -1405,7 +1417,7 @@ func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, targ
 	start := time.Now()
 	log := func(statusCode int, postBody, content []byte, err error) {
 		go func() {
-			c := cache.NewUrlCache(target, r, postBody, nil, "plugin " + pluginPolicy.Name(), content, "", start, time.Now(), err)
+			c := cache.NewUrlCache(target, r, postBody, nil, "plugin "+pluginPolicy.Name(), content, "", start, time.Now(), err)
 			c.ResponseCode = statusCode
 
 			id := f.SaveContentToCache(c, false)
@@ -1418,4 +1430,33 @@ func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, targ
 
 	context := &api.Context{profileIP, pluginPolicy, log}
 	api.Call(context, pluginPolicy.Name(), target, w, r)
+}
+
+func (p *Proxy) matchPack(fullUrl, packName string) (*policy.UrlPolicy, error) {
+	cmd := p.packs.Get(packName)
+	if len(cmd) == 0 {
+		return nil, fmt.Errorf("has no pack %s", packName)
+	}
+
+	ps, _ := p.ParseCommand(cmd)
+	var score uint32
+	var up *policy.UrlPolicy
+	for _, p := range ps {
+		switch p := p.(type) {
+		case *policy.UrlPolicy:
+			if up == nil && p.Target() == "" {
+				up = p
+			} else {
+				s := profile.NewUrlPattern(p.Target()).MatchUrlScore(fullUrl)
+				if s > score {
+					score = s
+					up = p
+				}
+			}
+		default:
+			continue
+		}
+	}
+
+	return up, nil
 }

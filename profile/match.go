@@ -305,6 +305,10 @@ func (p *UrlPattern) MatchScore(url *UrlSection) uint32 {
 	return (uint32(domainScore) << 16) + (uint32(pathScore) << 8) + uint32(queryScore)
 }
 
+func (p *UrlPattern) MatchUrlScore(url string) uint32 {
+	return p.MatchScore(parseUrlSection(url))
+}
+
 func parseUrlAsPattern(url string) [4]string {
 	if strings.HasPrefix(url, "http://") {
 		url = url[len("http://"):]

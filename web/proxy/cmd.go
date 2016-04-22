@@ -11,8 +11,31 @@ import (
 	"strings"
 )
 
-func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) []string {
+func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) []string {
+	ps, errors := p.ParseCommand(commands)
+	for _, p := range ps {
+		switch p := p.(type) {
+		case *policy.RestartPolicy:
+			if v != nil {
+				v.Restart()
+			}
+		case *policy.ClearPolicy:
+			f.Clear()
+		case *policy.DomainPolicy:
+			f.SetDomainPolicy(p)
+		case *policy.UrlPolicy:
+			f.SetUrlPolicy(p)
+		default:
+		}
+	}
+
+	return errors
+}
+
+func (*Proxy) ParseCommand(commands string) ([]policy.Policy, []string) {
 	errors := make([]string, 0)
+	ps := make([]policy.Policy, 0)
+
 	commandLines := strings.Split(commands, "\n")
 	for _, line := range commandLines {
 		line = strings.TrimSpace(line)
@@ -31,22 +54,10 @@ func (*Proxy) Command(commands string, f *profile.Profile, v *life.Life) []strin
 			}
 		}
 
-		switch p := p.(type) {
-		case *policy.RestartPolicy:
-			if v != nil {
-				v.Restart()
-			}
-		case *policy.ClearPolicy:
-			f.Clear()
-		case *policy.DomainPolicy:
-			f.SetDomainPolicy(p)
-		case *policy.UrlPolicy:
-			f.SetUrlPolicy(p)
-		default:
-		}
+		ps = append(ps, p)
 	}
 
-	return errors
+	return ps, errors
 }
 
 func parseIPDomain(c, rest string) (string, string, bool) {
