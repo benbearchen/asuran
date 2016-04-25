@@ -16,6 +16,7 @@ settings... ::=
       [(dont302|do302)]
       [(disable304|allow304)]
       [content-type (default|remove|empty|<content-type>)]
+      [(request-headers|response-headers) <header-settings>]
       [host <ip:port>]
       [plugin [setting <setting-value>] <plugin-name>]
 
@@ -140,6 +141,14 @@ url command:
               empty 表示将回复的 Content-Type 置为空；
               其它将 Content-Type 设置为 <content-type> 值。
               <content-type> 不能包含空格，所以可能不支持 multipart。
+
+    (request-headers|response-headers) <header-settings>
+              对请求或回复的 HTTP Headers 进行增、删、改操作。
+              <header-settings> 每一行对应一个 Header 的 Key[: Value]，
+              在 Key 前面加三个字符 +、-、= 中的一个，分别表示增删改。
+              其中 = 可以省略，默认表示“改”。
+              ** <header-settings> 可能需要二阶 URL Encode
+              ** 其它对 Headers 操作如 content-type/disable304 要早于本策略
 
 
     host <ip:port>

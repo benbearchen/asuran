@@ -334,6 +334,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 				return
 			}
 
+			r.Header.Del(ASURAN_POLICY_HEADER)
 			up = p.(*policy.UrlPolicy)
 		} else if pkg := r.Header.Get(ASURAN_PACK_HEADER); len(pkg) > 0 {
 			p, err := p.matchPack(fullUrl, pkg)
@@ -343,6 +344,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 				return
 			}
 
+			r.Header.Del(ASURAN_PACK_HEADER)
 			up = p
 		} else if p.urlOp != nil {
 			up = p.urlOp.Action(remoteIP, fullUrl)
@@ -420,7 +422,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 				f.Log("proxy " + fullUrl + " redirect " + requestUrl)
 				return
 			case *policy.RewritePolicy, *policy.RestorePolicy, *policy.TcpwritePolicy:
-				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, chunked, bodyDelay, up.ContentType()) {
+				if p.rewriteUrl(fullUrl, w, r, rangeInfo, prof, f, act, speed, chunked, bodyDelay, up.ContentType(), up.ResponseHeaders()) {
 					return
 				}
 			}
@@ -484,14 +486,23 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	dont302 := true
 	settingContentType := "default"
 	var hostPolicy *policy.HostPolicy
+	var headersPolicy *policy.HeadersPolicy
 	if up != nil {
 		dont302 = up.Dont302()
 		settingContentType = up.ContentType()
-		if up.Disable304() && requestR != nil {
-			p.disable304FromHeader(requestR.Header)
+		if requestR != nil {
+			if up.Disable304() {
+				p.disable304FromHeader(requestR.Header)
+			}
+
+			hp := up.RequestHeaders()
+			if hp != nil {
+				hp.Apply(requestR.Header)
+			}
 		}
 
 		hostPolicy = up.Host()
+		headersPolicy = up.ResponseHeaders()
 	}
 
 	httpStart := time.Now()
@@ -510,7 +521,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 		}
 	} else {
 		defer resp.Close()
-		p.procHeader(resp.Header(), settingContentType)
+		p.procHeader(resp.Header(), settingContentType, headersPolicy)
 		content, err := resp.ProxyReturn(w, writeWrap, forceRecvFirst, forceChunked)
 		httpEnd := time.Now()
 		c := cache.NewUrlCache(fullUrl, r, postBody, resp, contentSource, content, rangeInfo, httpStart, httpEnd, err)
@@ -520,7 +531,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 }
 
-func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act policy.Policy, speed *policy.SpeedPolicy, chunked *policy.ChunkedPolicy, bodyDelay policy.Policy, contentType string) bool {
+func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request, rangeInfo string, prof *profile.Profile, f *life.Life, act policy.Policy, speed *policy.SpeedPolicy, chunked *policy.ChunkedPolicy, bodyDelay policy.Policy, contentType string, hp *policy.HeadersPolicy) bool {
 	var content []byte = nil
 	contentSource := ""
 	istcp := false
@@ -566,7 +577,7 @@ func (p *Proxy) rewriteUrl(target string, w http.ResponseWriter, r *http.Request
 	}
 
 	if _, ok := act.(*policy.TcpwritePolicy); !ok {
-		p.procHeader(w.Header(), contentType)
+		p.procHeader(w.Header(), contentType, hp)
 	}
 
 	forceChunked := false
@@ -1226,7 +1237,7 @@ func (p *Proxy) isSelfAddr(addr string) bool {
 	return false
 }
 
-func (p *Proxy) procHeader(header http.Header, settingContentType string) {
+func (p *Proxy) procHeader(header http.Header, settingContentType string, hp *policy.HeadersPolicy) {
 	switch settingContentType {
 	case "default":
 	case "remove":
@@ -1236,6 +1247,10 @@ func (p *Proxy) procHeader(header http.Header, settingContentType string) {
 		fallthrough
 	default:
 		header["Content-Type"] = []string{settingContentType}
+	}
+
+	if hp != nil {
+		hp.Apply(header)
 	}
 }
 

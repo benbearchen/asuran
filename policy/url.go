@@ -31,6 +31,8 @@ func init() {
 		disable304Keyword,
 		allow304Keyword,
 		contentTypeKeyword,
+		requestHeadersKeyword,
+		responseHeadersKeyword,
 		hostKeyword,
 		pluginKeyword,
 		removeKeyword,
@@ -241,7 +243,7 @@ func (u *UrlPolicy) Update(p Policy) error {
 		}
 	case *ProxyPolicy, *CachePolicy, *MapPolicy, *RedirectPolicy, *RewritePolicy, *RestorePolicy, *TcpwritePolicy:
 		u.contents = p
-	case *StatusPolicy, *SpeedPolicy, *Dont302Policy, *Disable304Policy, *ContentTypePolicy, *ChunkedPolicy:
+	case *StatusPolicy, *SpeedPolicy, *Dont302Policy, *Disable304Policy, *ContentTypePolicy, *HeadersPolicy, *HostPolicy, *ChunkedPolicy, *PluginPolicy:
 		for i, s := range u.subs {
 			if s.Keyword() == p.Keyword() {
 				u.subs[i] = p
@@ -374,6 +376,30 @@ func (u *UrlPolicy) ContentType() string {
 	}
 
 	return ContentTypeActDefault
+}
+
+func (u *UrlPolicy) RequestHeaders() *HeadersPolicy {
+	p := u.subKeyDef(requestHeadersKeyword)
+	if p != nil {
+		h, ok := p.(*HeadersPolicy)
+		if ok {
+			return h
+		}
+	}
+
+	return nil
+}
+
+func (u *UrlPolicy) ResponseHeaders() *HeadersPolicy {
+	p := u.subKeyDef(responseHeadersKeyword)
+	if p != nil {
+		h, ok := p.(*HeadersPolicy)
+		if ok {
+			return h
+		}
+	}
+
+	return nil
 }
 
 func (u *UrlPolicy) Host() *HostPolicy {
