@@ -1439,24 +1439,30 @@ func (p *Proxy) matchPack(fullUrl, packName string) (*policy.UrlPolicy, error) {
 	}
 
 	ps, _ := p.ParseCommand(cmd)
-	var score uint32
-	var up *policy.UrlPolicy
+	var score uint32 = 0
+	up := []*policy.UrlPolicy{}
 	for _, p := range ps {
 		switch p := p.(type) {
 		case *policy.UrlPolicy:
-			if up == nil && p.Target() == "" {
-				up = p
-			} else {
-				s := profile.NewUrlPattern(p.Target()).MatchUrlScore(fullUrl)
-				if s > score {
-					score = s
-					up = p
-				}
+			var s uint32 = 0
+			if p.Target() != "" {
+				s = profile.NewUrlPattern(p.Target()).MatchUrlScore(fullUrl)
+			}
+
+			if s > score {
+				score = s
+				up = []*policy.UrlPolicy{p}
+			} else if s == score {
+				up = append(up, p)
 			}
 		default:
 			continue
 		}
 	}
 
-	return up, nil
+	if len(up) > 0 {
+		return up[rand.Int()%len(up)], nil
+	} else {
+		return nil, nil
+	}
 }
