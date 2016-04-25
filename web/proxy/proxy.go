@@ -764,6 +764,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 			fmt.Fprintln(w, "没有操作权限")
 		} else if f := p.lives.OpenExists(profileIP); f != nil {
 			f.Restart()
+			p.resetPlugin(profileIP)
 			fmt.Fprintf(w, "restarted")
 		} else {
 			w.WriteHeader(404)
@@ -1430,6 +1431,11 @@ func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, targ
 
 	context := &api.Context{profileIP, pluginPolicy, log}
 	api.Call(context, pluginPolicy.Name(), target, w, r)
+}
+
+func (p *Proxy) resetPlugin(profileIP string) {
+	context := &api.Context{ProfileIP: profileIP}
+	api.Reset(context)
 }
 
 func (p *Proxy) matchPack(fullUrl, packName string) (*policy.UrlPolicy, error) {

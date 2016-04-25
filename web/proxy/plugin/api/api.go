@@ -18,6 +18,7 @@ type API interface {
 	Name() string
 	Intro() string
 	Call(context *Context, targetURI string, w http.ResponseWriter, r *http.Request)
+	Reset(context *Context)
 }
 
 var (
@@ -68,6 +69,15 @@ func Call(context *Context, name string, targetURI string, w http.ResponseWriter
 	}
 }
 
+func Reset(context *Context) {
+	lock.RLock()
+	defer lock.RUnlock()
+
+	for _, p := range plugins {
+		p.Reset(context)
+	}
+}
+
 func Intro(name string) string {
 	lock.RLock()
 	defer lock.RUnlock()
@@ -90,4 +100,7 @@ func (h *apiHandler) Intro() string {
 
 func (h *apiHandler) Call(context *Context, targetURI string, w http.ResponseWriter, r *http.Request) {
 	h.handler(context, targetURI, w, r)
+}
+
+func (h *apiHandler) Reset(context *Context) {
 }
