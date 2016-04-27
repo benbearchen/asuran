@@ -49,6 +49,17 @@ func (h *History) Events() []*HistoryEvent {
 	return events
 }
 
+func (h *History) EventsAfter(t time.Time) []*HistoryEvent {
+	events := make([]*HistoryEvent, 0, len(h.events))
+	for _, e := range h.events {
+		if e.Time.After(t) {
+			events = append(events, e)
+		}
+	}
+
+	return events
+}
+
 func (h *History) Clear() {
 	h.events = make([]*HistoryEvent, 0, 100)
 }

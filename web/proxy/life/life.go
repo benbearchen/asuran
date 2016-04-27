@@ -53,6 +53,7 @@ type Life struct {
 	domains    map[string]*DomainState
 	cache      *cache.Cache
 	history    *History
+	watching   []cWatchHistory
 
 	c chan interface{}
 }
@@ -66,6 +67,7 @@ func NewLife(ip string) *Life {
 	f.domains = make(map[string]*DomainState)
 	f.cache = cache.NewCache()
 	f.history = NewHistory()
+	f.watching = make([]cWatchHistory, 0)
 
 	f.c = make(chan interface{})
 	go func() {
@@ -145,6 +147,15 @@ func (f *Life) restart() {
 
 	f.cache.Clear()
 	f.history.Clear()
+
+	go func(w []cWatchHistory) {
+		for _, e := range w {
+			e.c <- true
+		}
+	}(f.watching)
+
+	f.watching = make([]cWatchHistory, 0)
+
 	f.VisitTime = time.Time{}
 }
 
@@ -234,7 +245,16 @@ func (f *Life) Log(s string) {
 }
 
 func (f *Life) log(s string) {
-	f.history.Log(StringHistory(s))
+	event := StringHistory(s)
+	f.history.Log(event)
+
+	go func(w []cWatchHistory) {
+		for _, e := range w {
+			e.c <- []*HistoryEvent{&event}
+		}
+	}(f.watching)
+
+	f.watching = make([]cWatchHistory, 0)
 }
 
 type cFormatHistory struct {
@@ -263,6 +283,48 @@ func (f *Life) HistoryEvents() []*HistoryEvent {
 
 func (f *Life) historyEvents() []*HistoryEvent {
 	return f.history.Events()
+}
+
+type cWatchHistory struct {
+	c chan interface{}
+	t time.Time
+}
+
+func (f *Life) WatchHistory(t time.Time) chan interface{} {
+	c := make(chan interface{})
+	f.c <- cWatchHistory{c, t}
+	return c
+}
+
+func (f *Life) watchHistory(e cWatchHistory) {
+	events := f.history.EventsAfter(e.t)
+	if len(events) > 0 {
+		go func() {
+			e.c <- events
+		}()
+	} else {
+		f.watching = append(f.watching, e)
+	}
+}
+
+type cStopWatchHistory struct {
+	c chan interface{}
+}
+
+func (f *Life) StopWatchHistory(c chan interface{}) {
+	f.c <- cStopWatchHistory{c}
+}
+
+func (f *Life) stopWatchHistory(c chan interface{}) {
+	for i, e := range f.watching {
+		if e.c == c {
+			w := make([]cWatchHistory, len(f.watching)-1)
+			copy(w[:i], f.watching[:i])
+			copy(w[i:], f.watching[i+1:])
+			f.watching = w
+			return
+		}
+	}
 }
 
 func (f *Life) work() {
@@ -295,6 +357,8 @@ func (f *Life) work() {
 			e.c <- f.formatHistory()
 		case cHistoryEvents:
 			e.c <- f.historyEvents()
+		case cWatchHistory:
+			f.watchHistory(e)
 		}
 	}
 }

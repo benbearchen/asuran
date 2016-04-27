@@ -785,7 +785,11 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		return
 	} else if op == "history" {
 		if f := p.lives.OpenExists(profileIP); f != nil {
-			p.writeHistory(w, profileIP, f)
+			if len(pages) >= 4 && pages[3] == "watch.json" {
+				p.watchHistory(w, r, profileIP, f)
+			} else {
+				p.writeHistory(w, profileIP, f)
+			}
 		} else {
 			fmt.Fprintln(w, profileIP+" 不存在")
 		}
@@ -1485,5 +1489,56 @@ func (p *Proxy) matchPack(fullUrl, packName string) (*policy.UrlPolicy, error) {
 		return up[rand.Int()%len(up)], nil
 	} else {
 		return nil, nil
+	}
+}
+
+type jsonWatchHistory struct {
+	Info    string             `json:"info"`
+	History []historyEventData `json:"history"`
+}
+
+func (p *Proxy) watchHistory(w http.ResponseWriter, r *http.Request, profileIP string, f *life.Life) {
+	var t time.Time
+	r.ParseForm()
+	if ta := r.Form.Get("t"); len(ta) > 0 {
+		t64, err := strconv.ParseInt(ta, 16, 64)
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintln(w, "wrong t:", ta)
+			return
+		}
+
+		t = time.Unix(0, t64)
+	}
+
+	var j jsonWatchHistory
+	c := f.WatchHistory(t)
+	select {
+	case e := <-c:
+		switch e := e.(type) {
+		case bool:
+			if e {
+				j.Info = "restarted"
+			} else {
+				j.Info = "unknown stopped"
+			}
+		case []*life.HistoryEvent:
+			j.History, _ = formatHistoryEventDataList(e, profileIP, f)
+		default:
+			w.WriteHeader(500)
+			fmt.Fprintln(w, "internal error: unknown chan type of watching history")
+			return
+		}
+	case <-time.NewTimer(30 * time.Second).C:
+		f.StopWatchHistory(c)
+		j.Info = "timeout"
+	}
+
+	bytes, err := json.Marshal(j)
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprintln(w, err)
+	} else {
+		w.Write(bytes)
 	}
 }

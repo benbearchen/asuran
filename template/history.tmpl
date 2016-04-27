@@ -33,6 +33,10 @@
   background-color:#EAF2D3;
   }
 </style>
+
+<script src="/res/js/external/jquery/jquery.js"></script>
+<script src="/res/js/jquery-ui.js"></script>
+
 <script type="text/javascript">
 function domainRedirect(domain) {
     alert("暂时未实现重定向 " + domain);
@@ -40,6 +44,78 @@ function domainRedirect(domain) {
 
 function proxyCache(url) {
     alert("暂时未实现缓存 " + url);
+}
+
+var lastTime = "{{.LastT}}";
+
+function watchHistory() {
+  var data = {};
+  if (lastTime != "") {
+    data.t = lastTime;
+  }
+
+  $.ajax({
+    type: "POST",
+    url: "/profile/{{.Client}}/history/watch.json",
+    dataType: "json",
+    data: data,
+    success: function(result) {
+      if (result.info == "") {
+        showHistory(result.history);
+      } else if (result.info == "restarted") {
+        lastTime = "";
+        alert("profile 历史已重启，要看新历史请刷新或重新打开！");
+        return;
+      }
+
+      watchHistory();
+    },
+    error: function(data) {
+      //alert(data);
+      setTimeout(watchHistory, 15000);
+    }
+  });
+}
+
+function showHistory(history) {
+  if (history == null || history.length == 0) {
+    return;
+  }
+
+  var c = $("#profile tr").length;
+  for (var i = 0; i != history.length; i++) {
+    var h = history[i];
+    lastTime = h.t;
+
+    var even = "";
+    if ((c + i) % 2 == 0) {
+      even = ' class="alt"';
+    }
+
+    var ops = "";
+    if (h.ops != null && h.ops.length > 0) {
+      for (var j = 0; j != h.ops.length; j++) {
+         var op = h.ops[j];
+         ops += '<a href="/profile/'+op.client+'/'+op.act+'/'+op.arg+'" target="_blank">'+op.name+'<a/>';
+      }
+    }
+
+    var urlIDBegin = "";
+    var urlIDEnd = "";
+    var urlIDDetail = "";
+    var urlBody = "";
+    if (h.url != "") {
+      if (h.urlID != "") {
+        urlIDBegin = '<a href="/profile/'+h.client+'/look/'+h.urlID+'" target="_blank">';
+        urlIDEnd = '</a>';
+        urlIDDetail = ' <a href="/profile/'+h.client+'/detail/'+h.urlID+'" target="_blank">HTTP 详情</a> ';
+      }
+
+      urlBody = ' <a href="/profile/'+h.client+'/list/'+h.urlBody+'" target="_blank">所有历史</a>';
+    }
+
+    $("<tr"+even+"><td>"+ops+"</td><td>"+h.time+"</td><td>"+h.domainIP+h.info+"</td><td>"+h.domain+urlIDBegin+h.url+urlIDEnd+urlIDDetail+urlBody+h.log+"</td></tr>").appendTo("#profile");
+  }
 }
 
 </script>
@@ -62,6 +138,10 @@ function proxyCache(url) {
 </tr>
 {{end}}
 </table>
+
+<script type="text/javascript">
+watchHistory(); // auto load new history
+</script>
 
 </body>
 </html>

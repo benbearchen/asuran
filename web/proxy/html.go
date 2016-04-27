@@ -146,34 +146,37 @@ func (p *Proxy) writeUrlHistoryList(w http.ResponseWriter, profileIP, url string
 }
 
 type opData struct {
-	Name   string
-	Act    string
-	Arg    string
-	Client string
+	Name   string `json:"name"`
+	Act    string `json:"act"`
+	Arg    string `json:"arg"`
+	Client string `json:"client"`
 }
 
 type historyEventData struct {
 	Even        bool
-	Time        string
-	Domain      string
-	DomainIP    string
-	URL         string
-	URLID       string
-	URLBody     string
-	HttpStatus  string
-	EventString string
-	OPs         []opData
-	Client      string
+	T           string   `json:"t"`
+	Time        string   `json:"time"`
+	Domain      string   `json:"domain"`
+	DomainIP    string   `json:"domainIP"`
+	URL         string   `json:"url"`
+	URLID       string   `json:"urlID"`
+	URLBody     string   `json:"urlBody"`
+	HttpStatus  string   `json:"info"`
+	EventString string   `json:"log"`
+	OPs         []opData `json:"ops"`
+	Client      string   `json:"client"`
 }
 
 type historyData struct {
 	Client string
+	LastT  string
 	Events []historyEventData
 }
 
-func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *life.Life) []historyEventData {
+func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *life.Life) ([]historyEventData, string) {
 	list := make([]historyEventData, 0, len(events))
 	even := true
+	lastT := ""
 	for _, e := range events {
 		d := historyEventData{}
 		d.OPs = make([]opData, 0)
@@ -182,6 +185,8 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 		even = !even
 		d.Even = even
 		d.Time = e.Time.Format("2006-01-02 15:04:05")
+		d.T = fmt.Sprintf("%016x", e.Time.UnixNano())
+		lastT = d.T
 
 		s := strings.Split(e.String, " ")
 		if len(s) >= 3 && s[0] == "domain" {
@@ -277,13 +282,13 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 		list = append(list, d)
 	}
 
-	return list
+	return list, lastT
 }
 
 func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Life) {
 	t, err := template.ParseFiles("template/history.tmpl")
-	list := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
-	err = t.Execute(w, historyData{profileIP, list})
+	list, lastT := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
+	err = t.Execute(w, historyData{profileIP, lastT, list})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
