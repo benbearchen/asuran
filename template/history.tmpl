@@ -147,6 +147,7 @@ function showHistory(history) {
 }
 
 var filterKeywords = [];
+var reverse = false;
 
 function filter() {
   var f = $("#filterKeywords").val().split("|");
@@ -161,6 +162,7 @@ function filter() {
   }
 
   filterKeywords = ks;
+  reverse = $("#reverseFilter").prop("checked");
 
   $("#profile").empty();
   $("<tr><th>操作</th><th>时间</th><th>值/状态</th><th>事件</th></tr>").appendTo("#profile");
@@ -176,11 +178,11 @@ function shouldFilter(h) {
   for (var i = 0; i < filterKeywords.length; i++) {
     var k = filterKeywords[i];
     if (h.domain.indexOf(k) >= 0 || h.url.indexOf(k) >= 0) {
-      return true;
+      return !reverse;
     }
   }
 
-  return false;
+  return reverse;
 }
 
 </script>
@@ -188,7 +190,7 @@ function shouldFilter(h) {
 <body>
 
 <div>
-<input id="filterKeywords" type="text" size="40" placeholder="用 | 分隔域名等关键字" /><input type="button" value="过滤" onclick="filter()" /><span id="filterCount"></span>
+<input id="filterKeywords" type="text" size="40" placeholder="用 | 分隔域名等关键字" /><input type="button" value="过滤" onclick="filter()" />（<input type="checkbox" id="reverseFilter" onclick="filter()" />显示未匹配）<span id="filterCount"></span>
 </div>
 
 <div>
