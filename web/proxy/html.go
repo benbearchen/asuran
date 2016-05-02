@@ -287,8 +287,8 @@ func formatHistoryEventDataList(events []*life.HistoryEvent, client string, f *l
 
 func (p *Proxy) writeHistory(w http.ResponseWriter, profileIP string, f *life.Life) {
 	t, err := template.ParseFiles("template/history.tmpl")
-	list, lastT := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
-	err = t.Execute(w, historyData{profileIP, lastT, list})
+	//list, lastT := formatHistoryEventDataList(f.HistoryEvents(), profileIP, f)
+	err = t.Execute(w, historyData{profileIP, "", []historyEventData{}})
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
