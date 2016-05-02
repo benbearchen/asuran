@@ -152,8 +152,7 @@ function filter() {
   var f = $("#filterKeywords").val().split("|");
   var ks = [];
   for (var i = 0; i < f.length; i++) {
-    var k = f[i];
-    // Fixme: trim k
+    var k = f[i].replace(/^\s*/g,"").replace(/\s*$/g,"");
     if (k == "") {
       continue;
     }
