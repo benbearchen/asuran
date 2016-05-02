@@ -32,6 +32,15 @@
   color:#000000;
   background-color:#EAF2D3;
   }
+
+div {
+  padding-bottom: 4px;
+}
+
+input {
+  margin-right: 4px;
+}
+
 </style>
 
 <script src="/res/js/external/jquery/jquery.js"></script>
@@ -46,12 +55,12 @@ function proxyCache(url) {
     alert("暂时未实现缓存 " + url);
 }
 
-var lastTime = "{{.LastT}}";
+var allHistory = [];
 
 function watchHistory() {
   var data = {};
-  if (lastTime != "") {
-    data.t = lastTime;
+  if (allHistory.length != 0) {
+    data.t = allHistory[allHistory.length-1].t;
   }
 
   $.ajax({
@@ -61,9 +70,12 @@ function watchHistory() {
     data: data,
     success: function(result) {
       if (result.info == "") {
+        for (var i = 0; i < result.history.length; i++) {
+          allHistory.push(result.history[i]);
+        }
+
         showHistory(result.history);
       } else if (result.info == "restarted") {
-        lastTime = "";
         alert("profile 历史已重启，要看新历史请刷新或重新打开！");
         return;
       }
@@ -71,6 +83,8 @@ function watchHistory() {
       watchHistory();
     },
     error: function(data) {
+      ajax = null;
+
       //alert(data);
       setTimeout(watchHistory, 15000);
     }
@@ -83,12 +97,19 @@ function showHistory(history) {
   }
 
   var c = $("#profile tr").length;
+  if (c > 0) {
+    c--;
+  }
+
   for (var i = 0; i != history.length; i++) {
     var h = history[i];
-    lastTime = h.t;
+    if (!shouldFilter(h)) {
+      continue;
+    }
 
+    ++c;
     var even = "";
-    if ((c + i) % 2 == 0) {
+    if (c % 2 == 0) {
       even = ' class="alt"';
     }
 
@@ -116,11 +137,62 @@ function showHistory(history) {
 
     $("<tr"+even+"><td>"+ops+"</td><td>"+h.time+"</td><td>"+h.domainIP+h.info+"</td><td>"+h.domain+urlIDBegin+h.url+urlIDEnd+urlIDDetail+urlBody+h.log+"</td></tr>").appendTo("#profile");
   }
+
+  var total = allHistory.length;
+  if (c != total) {
+    $("#filterCount").text("显示 " + c + " / 总数 " + total);
+  } else {
+    $("#filterCount").text("总数 " + total);
+  }
+}
+
+var filterKeywords = [];
+
+function filter() {
+  var f = $("#filterKeywords").val().split("|");
+  var ks = [];
+  for (var i = 0; i < f.length; i++) {
+    var k = f[i];
+    // Fixme: trim k
+    if (k == "") {
+      continue;
+    }
+
+    ks.push(k);
+  }
+
+  filterKeywords = ks;
+
+  $("#profile").empty();
+  $("<tr><th>操作</th><th>时间</th><th>值/状态</th><th>事件</th></tr>").appendTo("#profile");
+
+  showHistory(allHistory);
+}
+
+function shouldFilter(h) {
+  if (filterKeywords.length == 0) {
+    return true;
+  }
+
+  for (var i = 0; i < filterKeywords.length; i++) {
+    var k = filterKeywords[i];
+    if (h.domain.indexOf(k) >= 0 || h.url.indexOf(k) >= 0) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 </script>
 </head>
 <body>
+
+<div>
+<input id="filterKeywords" type="text" size="40" placeholder="用 | 分隔域名等关键字" /><input type="button" value="过滤" onclick="filter()" /><span id="filterCount"></span>
+</div>
+
+<div>
 
 <table id="profile">
 <tr>
@@ -139,7 +211,10 @@ function showHistory(history) {
 {{end}}
 </table>
 
+</div>
+
 <script type="text/javascript">
+filter();
 watchHistory(); // auto load new history
 </script>
 
