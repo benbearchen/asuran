@@ -856,6 +856,23 @@ function hintCopyHosts() {
   moveCaretToEnd(document.getElementById('CommandBoxId'));
 }
 
+function clearHistory() {
+  var cmd = $.ajax({
+    url : "/profile/{{.IP}}/history/clear",
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("清空失败：" + cmd.responseText);
+  } else {
+    if (cmd.responseText == "cleared") {
+      alert("访问历史已清空");
+    } else {
+      alert("清空失败：\n" + cmd.responseText);
+    }
+  }
+}
+
 </script>
 </head>
 
@@ -975,7 +992,8 @@ function hintCopyHosts() {
 </div>
 
 <div id="commandTabs-4" style="display:none;">
-<div><input type="button" value="查看所有日志" onclick="window.open('/profile/{{.IP}}/history', '_blank')" /></div>
+<input type="button" value="查看所有日志" onclick="window.open('/profile/{{.IP}}/history', '_blank')" />
+<input type="button" value="清空日志" onclick="clearHistory()" />
 </div>
 
 {{if .NotOwner}}{{else}}

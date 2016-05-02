@@ -146,6 +146,18 @@ func (f *Life) restart() {
 	}
 
 	f.cache.Clear()
+	f.clearHistory()
+	f.VisitTime = time.Time{}
+}
+
+type cClearHistory struct {
+}
+
+func (f *Life) ClearHistory() {
+	f.c <- cClearHistory{}
+}
+
+func (f *Life) clearHistory() {
 	f.history.Clear()
 
 	go func(w []cWatchHistory) {
@@ -155,8 +167,6 @@ func (f *Life) restart() {
 	}(f.watching)
 
 	f.watching = make([]cWatchHistory, 0)
-
-	f.VisitTime = time.Time{}
 }
 
 type cCheckCache struct {
@@ -341,6 +351,8 @@ func (f *Life) work() {
 			e.c <- f.openDomain(e.domain)
 		case cRestart:
 			f.restart()
+		case cClearHistory:
+			f.clearHistory()
 		case cCheckCache:
 			e.c <- f.checkCache(e.url, e.rangeInfo)
 		case cLookCache:

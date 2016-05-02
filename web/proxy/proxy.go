@@ -787,6 +787,9 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		if f := p.lives.OpenExists(profileIP); f != nil {
 			if len(pages) >= 4 && pages[3] == "watch.json" {
 				p.watchHistory(w, r, profileIP, f)
+			} else if len(pages) >= 4 && pages[3] == "clear" {
+				f.ClearHistory()
+				fmt.Fprintf(w, "cleared")
 			} else {
 				p.writeHistory(w, profileIP, f)
 			}
