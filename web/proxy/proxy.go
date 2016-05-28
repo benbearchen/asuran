@@ -319,6 +319,8 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	var u *life.UrlState
 	if f != nil {
 		u = f.OpenUrl(fullUrl)
+		in := f.Incoming(fullUrl, "")
+		defer in.Done()
 	}
 
 	var writeWrap io.Writer = nil
@@ -794,6 +796,14 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 				p.writeHistory(w, profileIP, f)
 			}
 		} else {
+			fmt.Fprintln(w, profileIP+" 不存在")
+		}
+		return
+	} else if op == "in.json" {
+		if f := p.lives.OpenExists(profileIP); f != nil {
+			p.watchIncoming(w, r, profileIP, f)
+		} else {
+			w.WriteHeader(404)
 			fmt.Fprintln(w, profileIP+" 不存在")
 		}
 		return
@@ -1535,6 +1545,53 @@ func (p *Proxy) watchHistory(w http.ResponseWriter, r *http.Request, profileIP s
 	case <-time.NewTimer(30 * time.Second).C:
 		f.StopWatchHistory(c)
 		j.Info = "timeout"
+	}
+
+	bytes, err := json.Marshal(j)
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprintln(w, err)
+	} else {
+		w.Write(bytes)
+	}
+}
+
+func mapIncoming(in *life.Incoming) map[string]interface{} {
+	m := make(map[string]interface{})
+	m["id"] = in.ID()
+	m["t"] = fmt.Sprintf("%016x", in.T().UnixNano())
+	m["key"] = in.Key()
+	m["start"] = strconv.FormatInt(in.Start().UnixNano()/1000000, 10)
+	if !in.End().IsZero() {
+		m["end"] = strconv.FormatInt(in.End().UnixNano()/1000000, 10)
+	}
+
+	return m
+}
+
+func (p *Proxy) watchIncoming(w http.ResponseWriter, r *http.Request, profileIP string, f *life.Life) {
+	var t time.Time
+	r.ParseForm()
+	if ta := r.Form.Get("t"); len(ta) > 0 {
+		t64, err := strconv.ParseInt(ta, 16, 64)
+		if err != nil {
+			w.WriteHeader(404)
+			fmt.Fprintln(w, err)
+			return
+		}
+
+		t = time.Unix(0, t64)
+	}
+
+	v := <-f.WatchIncoming(t)
+	j := make([]interface{}, 0)
+	switch v := v.(type) {
+	case []*life.Incoming:
+		for _, in := range v {
+			j = append(j, mapIncoming(in))
+		}
+	case *life.Incoming:
+		j = append(j, mapIncoming(v))
 	}
 
 	bytes, err := json.Marshal(j)

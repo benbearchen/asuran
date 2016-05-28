@@ -11,7 +11,7 @@ type HistoryEvent struct {
 
 func StringHistory(s string) HistoryEvent {
 	e := HistoryEvent{}
-	e.Time = time.Now()
+	e.Time = uniqueTime()
 	e.String = s
 
 	return e

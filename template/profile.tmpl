@@ -873,6 +873,54 @@ function clearHistory() {
   }
 }
 
+var lastIncomingT = "";
+var incomings = {};
+
+function watchIncoming() {
+  var data = {"t": lastIncomingT};
+
+  $.ajax({
+    type: "POST",
+    url: "/profile/{{.IP}}/in.json",
+    dataType: "json",
+    data: data,
+    success: function(result) {
+      var inc = 0;
+      for (var i = 0; i < result.length; i++) {
+        if (result[i].t > lastIncomingT) {
+          lastIncomingT = result[i].t;
+        }
+
+        if (result[i].hasOwnProperty("end")) {
+          delete incomings[result[i].id];
+        } else {
+          incomings[result[i].id] = result[i];
+        }
+      }
+
+      showIncomings(inc);
+
+      setTimeout(watchIncoming, 100);
+    },
+    error: function(data) {
+      ajax = null;
+
+      //alert(data);
+      setTimeout(watchIncoming, 15000);
+    }
+  });
+}
+
+function showIncomings(inc) {
+  var c = Object.getOwnPropertyNames(incomings).length;
+  var text = "正在请求：" + c + "\r\n";
+  for (var id in incomings) {
+    text += incomings[id].key + "\r\n";
+  }
+
+  $("#incomingMemo").text(text);
+}
+
 </script>
 </head>
 
@@ -994,6 +1042,7 @@ function clearHistory() {
 <div id="commandTabs-4" style="display:none;">
 <input type="button" value="查看所有日志" onclick="window.open('/profile/{{.IP}}/history', '_blank')" />
 <input type="button" value="清空日志" onclick="clearHistory()" />
+<div><pre id="incomingMemo"></pre></div>
 </div>
 
 {{if .NotOwner}}{{else}}
@@ -1307,6 +1356,8 @@ $( "#onlineTestDialog" ).dialog({
   height: 'auto',
   resizable: false,
 });
+
+watchIncoming();
 
 }); // end of document.ready
 

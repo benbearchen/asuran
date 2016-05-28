@@ -54,6 +54,8 @@ type Life struct {
 	cache      *cache.Cache
 	history    *History
 	watching   []cWatchHistory
+	incomings  *incomings
+	inWatching []cWatchIncoming
 
 	c chan interface{}
 }
@@ -70,6 +72,9 @@ func NewLife(ip string) *Life {
 	f.watching = make([]cWatchHistory, 0)
 
 	f.c = make(chan interface{})
+
+	f.incomings = newIncomings(f.c)
+
 	go func() {
 		f.work()
 	}()
@@ -337,6 +342,47 @@ func (f *Life) stopWatchHistory(c chan interface{}) {
 	}
 }
 
+func (f *Life) Incoming(key, act string) *Incoming {
+	in := f.incomings.create(key, act)
+	go func() {
+		f.c <- in
+	}()
+
+	return in
+}
+
+type cWatchIncoming struct {
+	t time.Time
+	c chan interface{}
+}
+
+func (f *Life) WatchIncoming(t time.Time) chan interface{} {
+	c := make(chan interface{})
+	f.c <- cWatchIncoming{t, c}
+	return c
+}
+
+func (f *Life) watchIncoming(e cWatchIncoming) {
+	ins := f.incomings.after(e.t)
+	if len(ins) > 0 {
+		go func() {
+			e.c <- ins
+		}()
+	} else {
+		f.inWatching = append(f.inWatching, e)
+	}
+}
+
+func (f *Life) outputIncoming(in *Incoming) {
+	if len(f.inWatching) > 0 {
+		ins := f.inWatching
+		f.inWatching = make([]cWatchIncoming, 0)
+		for _, c := range ins {
+			f.watchIncoming(c)
+		}
+	}
+}
+
 func (f *Life) work() {
 	for {
 		e, ok := <-f.c
@@ -371,6 +417,10 @@ func (f *Life) work() {
 			e.c <- f.historyEvents()
 		case cWatchHistory:
 			f.watchHistory(e)
+		case *Incoming:
+			f.outputIncoming(e)
+		case cWatchIncoming:
+			f.watchIncoming(e)
 		}
 	}
 }
