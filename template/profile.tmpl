@@ -79,6 +79,7 @@
 hr {
   clear:both;
 }
+
 </style>
 
 <script src="/res/js/external/jquery/jquery.js"></script>
@@ -885,7 +886,6 @@ function watchIncoming() {
     dataType: "json",
     data: data,
     success: function(result) {
-      var inc = 0;
       for (var i = 0; i < result.length; i++) {
         if (result[i].t > lastIncomingT) {
           lastIncomingT = result[i].t;
@@ -898,7 +898,7 @@ function watchIncoming() {
         }
       }
 
-      showIncomings(inc);
+      showIncomings();
 
       setTimeout(watchIncoming, 100);
     },
@@ -911,7 +911,7 @@ function watchIncoming() {
   });
 }
 
-function showIncomings(inc) {
+function showIncomings() {
   var c = Object.getOwnPropertyNames(incomings).length;
   var text = "正在请求：" + c + "\r\n";
   for (var id in incomings) {
@@ -1042,7 +1042,7 @@ function showIncomings(inc) {
 <div id="commandTabs-4" style="display:none;">
 <input type="button" value="查看所有日志" onclick="window.open('/profile/{{.IP}}/history', '_blank')" />
 <input type="button" value="清空日志" onclick="clearHistory()" />
-<div><pre id="incomingMemo"></pre></div>
+<div><pre id="incomingMemo" style="border:1px solid #98bf21;font-family:Arial, Helvetica, sans-serif;padding:3px;"></pre></div>
 </div>
 
 {{if .NotOwner}}{{else}}
@@ -1357,6 +1357,7 @@ $( "#onlineTestDialog" ).dialog({
   resizable: false,
 });
 
+showIncomings();
 watchIncoming();
 
 }); // end of document.ready
