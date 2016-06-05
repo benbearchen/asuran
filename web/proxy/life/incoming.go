@@ -47,6 +47,10 @@ func (c *Incoming) after(t time.Time) bool {
 	}
 }
 
+func (c *Incoming) doneFrom(t time.Time) bool {
+	return !c.end.IsZero() && c.end.Before(t)
+}
+
 func (c *Incoming) Done() {
 	c.ender(c.uniqueID)
 }
@@ -119,8 +123,14 @@ func (c *incomings) after(t time.Time) []*Incoming {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
+	d := time.Now().Add(-time.Second * 30)
 	ins := make([]*Incoming, 0)
-	for _, in := range c.cs {
+	for k, in := range c.cs {
+		if in.doneFrom(d) {
+			delete(c.cs, k)
+			continue
+		}
+
 		if in.after(t) {
 			ins = append(ins, in)
 		}
