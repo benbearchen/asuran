@@ -3,6 +3,7 @@ features pool
 * `cache` with merge range to entire content
 * Strict encode rules?
 * Interactive response?
+* Record and replay certain commands
 
 
 ver 0.4  mesut
@@ -15,8 +16,11 @@ ver 0.4  mesut
 * Policy to packs in HTTP Header
 * Setting http request's and response's headers
 * Filter history
-* Record and replay certain commands
 * URL/Domain: directly edit policy in menu
+* bug: URL target with space
+* Profile auto save
+* Device's Random Access Code for operator
+* Add operator in console
 
 
 ver 0.3  fatcow
