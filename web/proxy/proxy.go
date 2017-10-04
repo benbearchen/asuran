@@ -933,7 +933,20 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		return
 	} else if op == "operator" {
 		if !canOperate {
-			fmt.Fprintf(w, "<html><body>无权操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP, profileIP)
+			if len(pages) >= 5 && pages[3] == "apply" {
+				if f.CheckAccessCode(pages[4]) {
+					f.AddOperator(ownerIP)
+					fmt.Fprintf(w, pages[4])
+				} else {
+					w.WriteHeader(403)
+					fmt.Fprintf(w, "访问码错误")
+				}
+			} else {
+				w.WriteHeader(403)
+				fmt.Fprintf(w, "<html><body>无权操作 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", profileIP, profileIP)
+			}
+
+			return
 		} else {
 			if len(pages) >= 5 {
 				operator := pages[4]

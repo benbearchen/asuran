@@ -4,10 +4,12 @@ import (
 	"github.com/benbearchen/asuran/policy"
 
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type urlAction struct {
@@ -61,6 +63,8 @@ type Profile struct {
 
 	proxyOp ProxyHostOperator
 
+	accessCode string
+
 	lock sync.RWMutex
 }
 
@@ -75,6 +79,7 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Domains = make(map[string]*DomainAction)
 	p.storeID = 1
 	p.stores = make(map[string]*Store)
+	p.accessCode = makeRandomAccessCode()
 	return p
 }
 
@@ -400,6 +405,10 @@ func (p *Profile) Clear() {
 	p.DeleteAllStore()
 }
 
+func (p *Profile) CheckAccessCode(accessCode string) bool {
+	return strings.ToLower(accessCode) == p.accessCode
+}
+
 func getHostOfUrlPattern(urlPattern string) string {
 	p := strings.Index(urlPattern, "://")
 	if p >= 0 {
@@ -420,4 +429,13 @@ func getHostOfUrlPattern(urlPattern string) string {
 	} else {
 		return host
 	}
+}
+
+var (
+	randGen = rand.New(rand.NewSource(time.Now().UnixNano()))
+)
+
+func makeRandomAccessCode() string {
+	c := randGen.Uint32()
+	return fmt.Sprintf("%8x", c)
 }

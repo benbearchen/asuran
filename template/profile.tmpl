@@ -296,6 +296,31 @@ function doOperator(op) {
   }
 }
 
+function openApplyOperatorDialog() {
+  $( "#applyOperatorDialog" ).dialog("open");
+}
+
+function doApplyOperator(op) {
+  if (op == "cancel") {
+    $( "#applyOperatorDialog" ).dialog("close");
+    return;
+  }
+
+  var accessCode = document.getElementById('accessCode').value;
+  var cmd = $.ajax({
+    url : "/profile/{{.IP}}/operator/apply/" + accessCode,
+    async: false
+  });
+
+  if (cmd.status != 200) {
+    alert("申请失败：" + cmd.responseText);
+  } else {
+    alert("申请成功")
+    $( "#applyOperatorDialog" ).dialog( "close" );
+    location.reload();
+  }
+}
+
 function cmdToAppend(cmd) {
   var url = $("#urlDlgURL").val();
   if (url == "") {
@@ -926,8 +951,16 @@ function showIncomings() {
 
 <body>
 <div>配置名字：{{.Name}}</div>
-<div>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}</div>
-<div>操作员 IP：<u id="operatorList">{{.Operators}}</u>{{if .NotOwner}}（你不能操作此配置）{{else}}
+<div>目标设备 IP：{{.IP}}，拥有者 IP：{{.Owner}}{{if .AccessCode}}（访问码：{{.AccessCode}}）{{end}}</div>
+<div>操作员 IP：<u id="operatorList">{{.Operators}}</u>
+{{if .NotOwner}}
+<input id="applyOperator" type="button" value="申请操作权限" onclick="openApplyOperatorDialog()" />
+<div id="applyOperatorDialog" title="申请操作员" style="display:none">
+访问码：<input type="text" id="accessCode" size="16" /><br/>
+<input type="button" value="确定" onclick="doApplyOperator('ok')" />
+<input type="button" value="取消" onclick="doApplyOperator('cancel')" />
+</div>
+{{else}}
 <input id="operatorButton" type="button" value="增删操作员" onclick="openOperatorDialog()" style="display:none" />
 <div id="operatorDialog" title="操作员" style="display:none">
 操作者 IP：<input type="text" id="operatorIP" size="16" /><br/>
@@ -1209,7 +1242,14 @@ URL 目标：<input type="text" id="urlDlgURL" size="45" placeholder="http://*.d
 
 $(document).ready(function() {
 
-{{if .NotOwner}}{{else}}
+{{if .NotOwner}}
+
+$( "#applyOperatorDialog" ).dialog({
+  autoOpen: false,
+  width: 400
+});
+
+{{else}}
 
 $("#packDialog").dialog({
   autoOpen: false,
@@ -1282,6 +1322,7 @@ $( "#operatorDialog" ).dialog({
   autoOpen: false,
   width: 400
 });
+
 
 $("#urlDlgPolicy").change(urlDlgPolicyChanged);
 
