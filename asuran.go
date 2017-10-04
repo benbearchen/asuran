@@ -31,6 +31,8 @@ cmd:
         finally calc used/avg time.  default: http://localhost
 
   delete profile <ip>
+
+  profile <ip> operator (add|delete) <ip2>
 `)
 }
 
@@ -170,9 +172,69 @@ func main() {
 			default:
 				usage()
 			}
+		case "profile":
+			if !cmdProfile(rest, ipProfiles) {
+				usage()
+			}
+
 		default:
 			usage()
 			fmt.Println(`UNKNOWN command: "` + command + `" ` + rest)
 		}
 	}
+}
+
+func cmdProfile(command string, ipProfiles *profile.IpProfiles) bool {
+	cmds := cmd.SplitCommand(command)
+	if len(cmds) < 2 {
+		return false
+	}
+
+	ip := cmds[0]
+	op := cmds[1]
+	needIP := false
+	switch op {
+	case "delete":
+		if ipProfiles.Delete(ip) {
+			fmt.Println(`profile "` + ip + `" deleted`)
+		} else {
+			fmt.Println(`profile "` + ip + `" don't exist`)
+		}
+	default:
+		needIP = true
+	}
+
+	if !needIP {
+		return true
+	}
+
+	prof := ipProfiles.FindByIp(ip)
+	if prof == nil {
+		fmt.Printf("profile %s doesn't exist\n", ip)
+		return true
+	}
+
+	switch op {
+	case "operator":
+		if len(cmds) < 4 {
+			return false
+		}
+
+		adm := cmds[2]
+		oper := cmds[3]
+		switch adm {
+		case "add":
+			prof.AddOperator(oper)
+		case "delete":
+			prof.RemoveOperator(oper)
+		default:
+			fmt.Printf("unknown `profile operator' command `%s', should be add/delete", adm)
+			return true
+		}
+	default:
+		fmt.Printf("unknown `profile' command `%s'", op)
+		return false
+	}
+
+	return true
 }
