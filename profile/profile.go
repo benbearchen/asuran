@@ -405,6 +405,10 @@ func (p *Profile) Clear() {
 	p.DeleteAllStore()
 }
 
+func (p *Profile) AccessCode() string {
+	return p.accessCode
+}
+
 func (p *Profile) CheckAccessCode(accessCode string) bool {
 	return strings.ToLower(accessCode) == p.accessCode
 }

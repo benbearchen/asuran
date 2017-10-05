@@ -33,6 +33,7 @@ cmd:
   delete profile <ip>
 
   profile <ip> operator (add|delete) <ip2>
+  profile <ip> code
 `)
 }
 
@@ -231,6 +232,11 @@ func cmdProfile(command string, ipProfiles *profile.IpProfiles) bool {
 			fmt.Printf("unknown `profile operator' command `%s', should be add/delete", adm)
 			return true
 		}
+
+	case "code":
+		fmt.Printf("Access Code of profile %s is: %s\n", ip, prof.AccessCode())
+		return true
+
 	default:
 		fmt.Printf("unknown `profile' command `%s'", op)
 		return false
