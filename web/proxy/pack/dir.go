@@ -1,6 +1,8 @@
 package pack
 
 import (
+	"github.com/benbearchen/asuran/util"
+
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,20 +42,7 @@ func (d *Dir) ListNames() []string {
 }
 
 func (d *Dir) mkdir() error {
-	di, err := os.Stat(d.dir)
-	create := false
-	if err != nil {
-		create = true
-	} else if !di.IsDir() {
-		os.Rename(d.dir, d.dir+".bak")
-		create = true
-	}
-
-	if !create {
-		return nil
-	}
-
-	return os.MkdirAll(d.dir, os.ModePerm)
+	return util.MakeDir(d.dir)
 }
 
 func (d *Dir) load() error {

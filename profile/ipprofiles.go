@@ -12,6 +12,7 @@ type IpProfiles struct {
 	profiles map[string]*Profile
 	proxyOp  ProxyHostOperator
 	config   ProfilesConfig
+	saveDir  *ProfileRootDir
 
 	lock sync.RWMutex
 }
@@ -25,9 +26,10 @@ type ProfileOperator interface {
 	All() []*Profile
 }
 
-func NewIpProfiles() *IpProfiles {
+func NewIpProfiles(dir string) *IpProfiles {
 	p := new(IpProfiles)
 	p.profiles = make(map[string]*Profile)
+	p.saveDir = NewProfileRootDir(dir)
 	return p
 }
 
@@ -64,7 +66,7 @@ func (p *IpProfiles) CreateProfile(name, ip, owner string) *Profile {
 	}
 
 	if profile == nil {
-		profile = NewProfile(name, ip, owner)
+		profile = NewProfile(name, ip, owner, p.saveDir)
 	}
 
 	profile.proxyOp = p.proxyOp
@@ -147,10 +149,4 @@ func (p *IpProfiles) All() []*Profile {
 	}
 
 	return profiles
-}
-
-func (p *IpProfiles) Load(path string) {
-}
-
-func (p *IpProfiles) Save(path string) {
 }

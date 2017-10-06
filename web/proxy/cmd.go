@@ -29,6 +29,10 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) []str
 		}
 	}
 
+	if len(ps) > 0 {
+		f.Save()
+	}
+
 	return errors
 }
 

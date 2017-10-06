@@ -105,7 +105,7 @@ func main() {
 
 	p := proxy.NewProxy(VersionCode, *dataDir)
 
-	ipProfiles := profile.NewIpProfiles()
+	ipProfiles := profile.NewIpProfiles(filepath.Join(*dataDir, "profiles"))
 	ipProfiles.BindProxyHostOperator(p.NewProxyHostOperator())
 	ipProfiles.SetDefaultCopyProfile("localhost")
 

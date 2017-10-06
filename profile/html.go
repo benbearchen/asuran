@@ -29,17 +29,18 @@ type domainData struct {
 }
 
 type profileData struct {
-	Name       string
-	IP         string
-	Owner      string
-	NotOwner   bool
-	AccessCode string
-	Operators  string
-	Path       string
-	Urls       []urlActionData
-	Domains    []domainData
-	Stores     []string
-	Errors     []string
+	Name        string
+	IP          string
+	Owner       string
+	NotOwner    bool
+	AccessCode  string
+	Operators   string
+	Path        string
+	LastCommand string
+	Urls        []urlActionData
+	Domains     []domainData
+	Stores      []string
+	Errors      []string
 }
 
 func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []string) profileData {
@@ -49,11 +50,15 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []st
 	notOwner := !canOperate
 	accessCode := ""
 	path := p.Ip
+	lastCommand := ""
 	urls := make([]urlActionData, 0, len(p.Urls))
 	domains := make([]domainData, 0, len(p.Domains))
 
 	if canOperate {
 		accessCode = p.accessCode
+		if p.notSet {
+			lastCommand = p.Load()
+		}
 	}
 
 	operators := ""
@@ -114,7 +119,7 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []st
 		domains = append(domains, domainData{d.Domain, act, d.TargetString(), edit, del, even})
 	}
 
-	return profileData{name, ip, owner, notOwner, accessCode, operators, path, urls, domains, savedIDs, errors}
+	return profileData{name, ip, owner, notOwner, accessCode, operators, path, lastCommand, urls, domains, savedIDs, errors}
 }
 
 func (p *Profile) WriteHtml(w io.Writer, savedIDs []string, realOwner bool, errors []string) {

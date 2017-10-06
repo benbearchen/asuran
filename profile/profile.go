@@ -60,6 +60,8 @@ type Profile struct {
 	Domains    map[string]*DomainAction
 	storeID    int
 	stores     map[string]*Store
+	saver      *ProfileRootDir
+	notSet     bool
 
 	proxyOp ProxyHostOperator
 
@@ -68,7 +70,7 @@ type Profile struct {
 	lock sync.RWMutex
 }
 
-func NewProfile(name, ip, owner string) *Profile {
+func NewProfile(name, ip, owner string, saver *ProfileRootDir) *Profile {
 	p := new(Profile)
 	p.Name = name
 	p.Ip = ip
@@ -79,6 +81,8 @@ func NewProfile(name, ip, owner string) *Profile {
 	p.Domains = make(map[string]*DomainAction)
 	p.storeID = 1
 	p.stores = make(map[string]*Store)
+	p.saver = saver
+	p.notSet = true
 	p.accessCode = makeRandomAccessCode()
 	return p
 }
@@ -378,7 +382,7 @@ func (p *Profile) CloneNew(newName, newIp, newOwner string) *Profile {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
-	n := NewProfile(newName, newIp, newOwner)
+	n := NewProfile(newName, newIp, newOwner, p.saver)
 	n.proxyOp = p.proxyOp
 	for u, url := range p.Urls {
 		c := *url
@@ -411,6 +415,16 @@ func (p *Profile) AccessCode() string {
 
 func (p *Profile) CheckAccessCode(accessCode string) bool {
 	return strings.ToLower(accessCode) == p.accessCode
+}
+
+func (p *Profile) Load() string {
+	c, _ := p.saver.Load(p.Ip)
+	return string(c)
+}
+
+func (p *Profile) Save() {
+	p.saver.Save(p.Ip, p.ExportCommand())
+	p.notSet = false
 }
 
 func getHostOfUrlPattern(urlPattern string) string {
