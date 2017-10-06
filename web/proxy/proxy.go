@@ -236,7 +236,16 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 				return remoteIP
 			}
 		}()
-		p.index(w, p.ver, ip)
+
+		accessCode := ""
+		if len(ip) > 0 {
+			prof := p.profileOp.FindByIp(ip)
+			if prof != nil {
+				accessCode = prof.AccessCode()
+			}
+		}
+
+		p.index(w, p.ver, ip, accessCode)
 	} else if urlPath == "/features" {
 		p.features(w, p.ver)
 	} else if urlPath == "/devices" {

@@ -29,7 +29,7 @@ br{
 
 <hr/>
 
-{{if .Client}}<div class="entry"><a href="/profile/{{.Client}}" target="_blank">配置当前设备</a></div>{{end}}
+{{if .Client}}<div class="entry"><a href="/profile/{{.Client}}" target="_blank">配置当前设备</a>{{if .AccessCode}}<br/>（访问码：{{.AccessCode}}）{{end}}</div>{{end}}
 <div class="entry"><a href="/profile" target="_blank">您管理的设备</a></div>
 <div class="entry"><a href="/devices" target="_blank">所有设备</a></div>
 <br/><hr/>
