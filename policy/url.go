@@ -96,6 +96,10 @@ func (*urlPolicyFactory) Build(args []string) (Policy, []string, error) {
 		return nil, left, fmt.Errorf("unnecessary args: %v", left)
 	}
 
+	if strings.IndexAny(target, " \"") >= 0 {
+		return nil, left, fmt.Errorf("target url can't have space or double-quote: %s", target)
+	}
+
 	p, err := newUrlPolicy(subs, target)
 	return p, left, err
 }
