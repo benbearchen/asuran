@@ -36,6 +36,11 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) []str
 	return errors
 }
 
+func (p *Proxy) CheckCommand(commands string) []string {
+	_, errors := p.ParseCommand(commands)
+	return errors
+}
+
 func (*Proxy) ParseCommand(commands string) ([]policy.Policy, []string) {
 	errors := make([]string, 0)
 	ps := make([]policy.Policy, 0)

@@ -1060,6 +1060,19 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	} else if op == "pack" {
 		p.packCommand(w, r)
 		return
+	} else if op == "check" {
+		r.ParseForm()
+		errors := []string{}
+		if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
+			errors = p.CheckCommand(v[0])
+			for _, e := range errors {
+				fmt.Fprintln(w, e)
+			}
+		} else {
+			w.WriteHeader(403)
+		}
+
+		return
 	} else if op != "" {
 		w.WriteHeader(404)
 		fmt.Fprintf(w, "<html><body>无效请求 %s。<br/>返回 <a href=\"/profile/%s\">管理页面</a></body></html>", op, profileIP)
