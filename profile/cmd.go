@@ -41,6 +41,10 @@ func (p *Profile) ExportCommand() string {
 	return export
 }
 
+func (p *Profile) ExportHistoryCommand(index int) (string, error) {
+	return p.saver.LoadHistory(p.Ip, index)
+}
+
 func (p *Profile) ExportDNSCommand() string {
 	export := "\n# 以下为域名命令定义 #\n"
 	for _, d := range p.Domains {

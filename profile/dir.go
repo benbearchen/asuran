@@ -88,6 +88,24 @@ func (d *ProfileRootDir) Load(ip string) (string, error) {
 	return "", nil
 }
 
+func (d *ProfileRootDir) LoadHistory(ip string, index int) (string, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+
+	dir, err := d.makeProfileDir(ip)
+	if err != nil {
+		return "", err
+	}
+
+	if index < 0 || index >= len(d.nameList) {
+		return "", fmt.Errorf("无效历史序号 %d", index)
+	}
+
+	p := filepath.Join(dir, d.nameList[index])
+	content, err := d.checksum(p)
+	return string(content), err
+}
+
 func (d *ProfileRootDir) mkdir() error {
 	return util.MakeDir(d.dir)
 }

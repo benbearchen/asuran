@@ -786,6 +786,22 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	if op == "export" {
 		fmt.Fprintln(w, f.ExportCommand())
 		return
+	} else if op == "export1" || op == "export2" || op == "export3" {
+		i, err := strconv.Atoi(op[6:])
+		if err != nil {
+			w.WriteHeader(403)
+			fmt.Fprintln(w, "无效参数：", op)
+		} else {
+			cmd, err := f.ExportHistoryCommand(i - 1)
+			if err != nil {
+				w.WriteHeader(403)
+				fmt.Fprintln(w, err)
+			} else {
+				fmt.Fprintln(w, cmd)
+			}
+		}
+
+		return
 	} else if op == "restart" {
 		if !canOperate {
 			w.WriteHeader(403)
