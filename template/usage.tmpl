@@ -53,9 +53,9 @@ asuran 使用模式：
   <li>给设备设置 HTTP 代理为 {{.IP}}:80
   <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;</u> 可以管理你的设备的 HTTP 代理行为。<br/>
       当然 profile 也是包括 DNS 解析行为管理的
-  <li>如果你不知道你的设备 IP，可以在设备上访问 <u>http://i.me/</u> ，然后就有 profile 的访问链接。<br/>
+  <li>如果你不知道你的设备 IP，可以在设备上访问 <u>http://{{.Domain}}/</u> ，然后就有 profile 的访问链接。<br/>
       如下图：<br/>
-      <img src="/res/i.me.png" border="1"/>
+      <img src="/res/domain.png" border="1"/>
   <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
 </ol>
 
@@ -66,7 +66,7 @@ asuran 使用模式：
   <li>修改设备的 DNS 服务器地址为 {{.IP}}
   <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;</u> 可以管理你的设备的 HTTP 代理行为。<br/>
       当然 profile 也是包括 DNS 解析行为管理的
-  <li>如果你不知道你的设备 IP，可以在设备上访问 <u>http://i.me/</u>，如前
+  <li>如果你不知道你的设备 IP，可以在设备上访问 <u>http://{{.Domain}}/</u>，如前
   <li>通过<a href="http://{{.Host}}/profile/commands">命令</a>来控制 HTTP 解析行为与 DNS 解析行为，见 <a href="http://{{.Host}}/profile/commands">http://{{.Host}}/profile/commands</a>
   <li>例如命令 proxy http://*.google.com/* 可以代理都有 *.google.com 下所有页面的请求，然后你可以在历史看到
   <li>通过 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;/history</u> 可以查看所有访问历史
@@ -83,9 +83,9 @@ asuran 使用模式：
       <li>或，设置 HTTP 代理服务器为 IP：{{.IP}}，端口：80
   </ul>
 <li><b>初始化代理</b><sub>（下面二选一即可）</sub>
-  <ul><li>从测试设备访问 <u>http://i.me/</u>（地址栏输入域名 i.me 即可）。但是注意不要使用网络加速的浏览器（如 UC）。<br/>
+  <ul><li>从测试设备访问 <u>http://{{.Domain}}/</u>（地址栏输入域名 {{.Domain}} 即可）。但是注意不要使用网络加速的浏览器（如 UC）。<br/>
           访问成功，会显示一条管理链接，可以在 PC 上访问，以管理测试设备的代理设置。如下图：<br/>
-          <img src="/res/i.me.png" border="1"/>
+          <img src="/res/domain.png" border="1"/>
       <li>或，获取测试设备 IP 地址，从管理 PC 上访问 <u>http://{{.Host}}/profile/&lt;<i>设备IP</i>&gt;</u> 直接管理（配置）测试设备
   </ul>
 <li><b>配置页面</b><br/>对域名和 URL 的管理页面大概见<a href="/res/profile.png">例图</a>。对代理的设置以“<a href="/profile/commands" target="_blank">命令</a>”方式执行，不便之处敬请见谅。<br/>命令分为对域名和对 URL 进行操作的两种。搭配使用就可以定义测试设备的代理行为了。<br/>在命令导航中填写参数，点左边的按钮生成命令，再“执行命令”就可以执行设置了<br/>

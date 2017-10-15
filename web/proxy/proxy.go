@@ -42,6 +42,7 @@ type Proxy struct {
 	domainOp   profile.DomainOperator
 	serveIP    string
 	mainHost   string
+	domain     string
 	proxyAddr  string
 	disableDNS bool
 	packs      *pack.Dir
@@ -57,6 +58,7 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	p.lives = life.NewIPLives()
 	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	p.packs = pack.New(filepath.Join(dataDir, "packs"))
+	p.domain = "asu.run"
 
 	p.Bind(80)
 
@@ -87,6 +89,10 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	}
 
 	return p
+}
+
+func (p *Proxy) SetVisitDomain(domain string) {
+	p.domain = domain
 }
 
 func (p *Proxy) Bind(port int) bool {
@@ -192,7 +198,7 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
 	} else if strings.HasPrefix(urlPath, "http://") {
 		p.proxyRequest(w, r)
-	} else if targetHost == "i.me" {
+	} else if targetHost == p.domain {
 		p.initDevice(w, remoteIP)
 	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) {
 		p.proxyRequest(w, r)
@@ -681,7 +687,7 @@ type proxyDomainOperator struct {
 }
 
 func (p *proxyDomainOperator) Action(ip, domain string) *policy.DomainPolicy {
-	if domain == "i.me" {
+	if domain == p.p.domain {
 		p.p.LogDomain(ip, ip, "init", domain, p.p.serveIP)
 		return policy.NewStaticDomainPolicy(domain, p.p.serveIP)
 	}

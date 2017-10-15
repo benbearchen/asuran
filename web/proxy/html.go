@@ -21,6 +21,7 @@ import (
 type htmlUsage struct {
 	IP       string
 	Host     string
+	Domain   string
 	UsingDNS bool
 }
 
@@ -30,6 +31,7 @@ func (p *Proxy) WriteUsage(w io.Writer) {
 	u := htmlUsage{}
 	u.IP = p.serveIP
 	u.Host = p.mainHost
+	u.Domain = p.domain
 	u.UsingDNS = !p.disableDNS
 
 	err = t.Execute(w, u)
@@ -44,7 +46,7 @@ type htmlInitDevice struct {
 }
 
 func (p *Proxy) WriteInitDevice(w io.Writer, ip string) {
-	t, err := template.ParseFiles("template/i.me.tmpl")
+	t, err := template.ParseFiles("template/domain.tmpl")
 
 	d := htmlInitDevice{}
 	d.ProxyIP = p.serveIP
