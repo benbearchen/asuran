@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -366,11 +367,13 @@ func (p *Proxy) writeDNSHistory(w http.ResponseWriter, f *life.Life, targetIP st
 }
 
 type deviceData struct {
-	Even     bool
-	Name     string
-	IP       string
-	Owner    string
-	InitTime string
+	Even       bool
+	Name       string
+	IP         string
+	Owner      string
+	InitTime   string
+	VisitTime  string
+	ActiveTime string
 }
 
 type devicesListData struct {
@@ -380,21 +383,35 @@ type devicesListData struct {
 func formatDevicesListData(profiles []*profile.Profile, v *life.IPLives) devicesListData {
 	devices := make([]deviceData, 0)
 	if len(profiles) > 0 {
-		even := true
+		index := make(map[string]*profile.Profile)
+		ips := make([]string, 0, len(profiles))
 		for _, p := range profiles {
 			if p.Ip == "localhost" {
 				continue
 			}
 
-			t := ""
+			index[p.Ip] = p
+			ips = append(ips, p.Ip)
+		}
+
+		even := true
+		sort.Strings(ips)
+		for _, ip := range ips {
+			p := index[ip]
+
+			it := ""
+			vt := ""
+			at := ""
 			f := v.OpenExists(p.Ip)
 			if f != nil {
-				t = f.CreateTime.Format("2006-01-02 15:04:05")
+				it = f.CreateTime.Format("2006-01-02 15:04:05")
+				vt = f.VisitTime.Format("2006-01-02 15:04:05")
+				at = f.ActiveTime.Format("2006-01-02 15:04:05")
 			}
 
 			even = !even
 
-			devices = append(devices, deviceData{even, p.Name, p.Ip, p.Owner, t})
+			devices = append(devices, deviceData{even, p.Name, p.Ip, p.Owner, it, vt, at})
 		}
 	}
 

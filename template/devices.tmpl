@@ -42,6 +42,8 @@
 <th>IP</th>
 <th>管理者</th>
 <th>初始化时间</th>
+<th>最后操作时间</th>
+<th>最后请求时间</th>
 </tr>
 {{range .Devices}}
 <tr{{if .Even}} class="alt"{{end}}>
@@ -49,6 +51,8 @@
 <td><a href="/profile/{{.IP}}" target="_blank">{{.IP}}</a></td>
 <td>{{.Owner}}</td>
 <td>{{.InitTime}}</td>
+<td>{{.VisitTime}}</td>
+<td>{{.ActiveTime}}</td>
 </tr>
 {{end}}
 </table>

@@ -38,6 +38,15 @@ func (v *IPLives) Open(ip string) *Life {
 	return f
 }
 
+func (v *IPLives) Visit(ip string) *Life {
+	f := v.OpenExists(ip)
+	if f != nil {
+		f.visit()
+	}
+
+	return f
+}
+
 func (v *IPLives) OpenExists(ip string) *Life {
 	if len(ip) == 0 {
 		return nil
@@ -49,7 +58,6 @@ func (v *IPLives) OpenExists(ip string) *Life {
 	if !ok {
 		return nil
 	} else {
-		f.visit()
 		return f
 	}
 }

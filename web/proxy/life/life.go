@@ -49,6 +49,7 @@ type Life struct {
 	IP         string
 	CreateTime time.Time
 	VisitTime  time.Time
+	ActiveTime time.Time
 	urls       map[string]*UrlState
 	domains    map[string]*DomainState
 	cache      *cache.Cache
@@ -65,6 +66,7 @@ func NewLife(ip string) *Life {
 	f.IP = ip
 	f.CreateTime = time.Now()
 	f.VisitTime = f.CreateTime
+	f.ActiveTime = f.CreateTime
 	f.urls = make(map[string]*UrlState)
 	f.domains = make(map[string]*DomainState)
 	f.cache = cache.NewCache()
@@ -153,6 +155,7 @@ func (f *Life) restart() {
 	f.cache.Clear()
 	f.clearHistory()
 	f.VisitTime = time.Time{}
+	f.ActiveTime = time.Time{}
 }
 
 type cClearHistory struct {
@@ -262,6 +265,7 @@ func (f *Life) Log(s string) {
 func (f *Life) log(s string) {
 	event := StringHistory(s)
 	f.history.Log(event)
+	f.ActiveTime = time.Now()
 
 	go func(w []cWatchHistory) {
 		for _, e := range w {

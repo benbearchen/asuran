@@ -806,7 +806,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		if !canOperate {
 			w.WriteHeader(403)
 			fmt.Fprintln(w, "没有操作权限")
-		} else if f := p.lives.OpenExists(profileIP); f != nil {
+		} else if f := p.lives.Visit(profileIP); f != nil {
 			f.Restart()
 			p.resetPlugin(profileIP)
 			fmt.Fprintf(w, "restarted")
@@ -817,7 +817,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 
 		return
 	} else if op == "history" {
-		if f := p.lives.OpenExists(profileIP); f != nil {
+		if f := p.lives.Visit(profileIP); f != nil {
 			if len(pages) >= 4 && pages[3] == "watch.json" {
 				p.watchHistory(w, r, profileIP, f)
 			} else if len(pages) >= 4 && pages[3] == "clear" {
@@ -1079,6 +1079,8 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 		return
 	}
 
+	p.lives.Visit(profileIP)
+
 	r.ParseForm()
 	errors := []string{}
 	if v, ok := r.Form["cmd"]; ok && len(v) > 0 {
@@ -1094,7 +1096,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 }
 
 func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint32, op string) {
-	f := p.lives.OpenExists(profileIP)
+	f := p.lives.Visit(profileIP)
 	if f == nil {
 		fmt.Fprintln(w, profileIP+" 不存在")
 		return
@@ -1114,7 +1116,7 @@ func (p *Proxy) lookHistoryByID(w http.ResponseWriter, profileIP string, id uint
 }
 
 func (p *Proxy) lookHistory(w http.ResponseWriter, profileIP, lookUrl, op string) {
-	f := p.lives.OpenExists(profileIP)
+	f := p.lives.Visit(profileIP)
 	if f == nil {
 		fmt.Fprintln(w, profileIP+" 不存在")
 		return
