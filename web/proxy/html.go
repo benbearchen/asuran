@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type htmlUsage struct {
@@ -404,9 +405,17 @@ func formatDevicesListData(profiles []*profile.Profile, v *life.IPLives) devices
 			at := ""
 			f := v.OpenExists(p.Ip)
 			if f != nil {
-				it = f.CreateTime.Format("2006-01-02 15:04:05")
-				vt = f.VisitTime.Format("2006-01-02 15:04:05")
-				at = f.ActiveTime.Format("2006-01-02 15:04:05")
+				format := func(t time.Time) string {
+					if t.IsZero() {
+						return ""
+					} else {
+						return t.Format("2006-01-02 15:04:05")
+					}
+				}
+
+				it = format(f.CreateTime)
+				vt = format(f.VisitTime)
+				at = format(f.ActiveTime)
 			}
 
 			even = !even
