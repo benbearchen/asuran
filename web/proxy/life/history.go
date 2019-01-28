@@ -19,16 +19,22 @@ func StringHistory(s string) HistoryEvent {
 
 type History struct {
 	events []*HistoryEvent
+	max    int
 }
 
 func NewHistory() *History {
 	h := History{}
+	h.max = 10000
+
 	h.Clear()
 	return &h
 }
 
 func (h *History) Log(e HistoryEvent) {
 	h.events = append(h.events, &e)
+	if len(h.events) >= h.max {
+		h.events = h.events[len(h.events)/2:]
+	}
 }
 
 func (h *History) Format() string {
