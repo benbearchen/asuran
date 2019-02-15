@@ -36,6 +36,10 @@ func (*speedPolicyFactory) Build(args []string) (Policy, []string, error) {
 	return &SpeedPolicy{speed}, args[1:], nil
 }
 
+func MakeSpeedPolicy(speed float32) *SpeedPolicy {
+	return &SpeedPolicy{speed}
+}
+
 func (s *SpeedPolicy) Keyword() string {
 	return speedKeyword
 }

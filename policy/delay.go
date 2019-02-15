@@ -60,7 +60,7 @@ func (f *baseDelayPolicyFactory) Keyword() string {
 
 func (f *baseDelayPolicyFactory) Build(args []string) (Policy, []string, error) {
 	if len(args) < 1 {
-		return nil, args, fmt.Errorf("`%d` need at least a duration")
+		return nil, args, fmt.Errorf("`%s` need at least a duration", f.keyword)
 	}
 
 	body := false
@@ -87,7 +87,7 @@ func (f *baseDelayPolicyFactory) Build(args []string) (Policy, []string, error) 
 	}
 
 	if len(args) < 1 {
-		return nil, args, fmt.Errorf("`%d` need a duration")
+		return nil, args, fmt.Errorf("`%s` need a duration", f.keyword)
 	}
 
 	duration, err := parseDuration(args[0])
@@ -181,7 +181,7 @@ func (d *DelayPolicy) Comment() string {
 
 func (d *DelayPolicy) Update(p Policy) error {
 	if d.Keyword() != p.Keyword() {
-		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+		return fmt.Errorf("unmatch keyword: %s vs %s", d.Keyword(), p.Keyword())
 	}
 
 	switch p := p.(type) {
@@ -215,7 +215,7 @@ func (d *TimeoutPolicy) Comment() string {
 
 func (d *TimeoutPolicy) Update(p Policy) error {
 	if d.Keyword() != p.Keyword() {
-		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+		return fmt.Errorf("unmatch keyword: %s vs %s", d.Keyword(), p.Keyword())
 	}
 
 	switch p := p.(type) {
@@ -249,7 +249,7 @@ func (d *DropPolicy) Comment() string {
 
 func (d *DropPolicy) Update(p Policy) error {
 	if d.Keyword() != p.Keyword() {
-		return fmt.Errorf("unmatch keywrod: %s vs %s", d.Keyword(), p.Keyword())
+		return fmt.Errorf("unmatch keyword: %s vs %s", d.Keyword(), p.Keyword())
 	}
 
 	switch p := p.(type) {

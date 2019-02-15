@@ -5,11 +5,27 @@ import (
 	"github.com/benbearchen/asuran/profile"
 	"github.com/benbearchen/asuran/util/cmd"
 	"github.com/benbearchen/asuran/web/proxy/life"
+	"github.com/benbearchen/asuran/web/proxy/plugin/api"
 
 	"fmt"
 	"net"
 	"strings"
 )
+
+type pluginOperator struct {
+}
+
+func (*pluginOperator) Update(context *policy.PluginContext, pluginName string, p *policy.PluginPolicy) {
+	api.Update(context, pluginName, p)
+}
+
+func (*pluginOperator) Remove(context *policy.PluginContext, pluginName string) {
+	api.Remove(context, pluginName)
+}
+
+func (*pluginOperator) Reset(context *policy.PluginContext, pluginName string) {
+	api.Reset(context, pluginName)
+}
 
 func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) []string {
 	ps, errors := p.ParseCommand(commands)
@@ -24,7 +40,8 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) []str
 		case *policy.DomainPolicy:
 			f.SetDomainPolicy(p)
 		case *policy.UrlPolicy:
-			f.SetUrlPolicy(p)
+			context := &policy.PluginContext{f.Ip, p.Target(), nil}
+			f.SetUrlPolicy(p, context, &pluginOperator{})
 		default:
 		}
 	}

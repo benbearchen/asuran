@@ -87,12 +87,13 @@ func NewProfile(name, ip, owner string, saver *ProfileRootDir) *Profile {
 	return p
 }
 
-func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
+func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy, context *policy.PluginContext, op policy.PluginOperator) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
 	urlPattern := s.Target()
 	if urlPattern == "" {
+		p.pluginUpdate(p.UrlDefault, s, context, op)
 		p.UrlDefault.Update(s)
 		return
 	}
@@ -101,11 +102,16 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 
 	if s.Delete() {
 		if all {
-			for u, _ := range p.Urls {
-				delete(p.Urls, u)
+			for up, u := range p.Urls {
+				p.pluginRemove(u, context, op)
+				delete(p.Urls, up)
 			}
 		} else {
-			delete(p.Urls, urlPattern)
+			u, ok := p.Urls[urlPattern]
+			if ok {
+				p.pluginRemove(u, context, op)
+				delete(p.Urls, urlPattern)
+			}
 		}
 
 		return
@@ -113,9 +119,11 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 
 	if all {
 		for _, u := range p.Urls {
+			p.pluginUpdate(u.p, s, context, op)
 			u.p.Update(s)
 		}
 	} else if u, ok := p.Urls[urlPattern]; ok {
+		p.pluginUpdate(u.p, s, context, op)
 		u.p.Update(s)
 	} else {
 		s.Def(p.UrlDefault)
@@ -131,6 +139,8 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy) {
 		if len(host) != 0 {
 			p.proxyDomainIfNotExists(host)
 		}
+
+		p.pluginUpdate(u.p, s, context, op)
 	}
 }
 
@@ -425,6 +435,52 @@ func (p *Profile) Load() string {
 func (p *Profile) Save() {
 	p.saver.Save(p.Ip, p.ExportCommand())
 	p.notSet = false
+}
+
+func (p *Profile) pluginUpdate(u, up *policy.UrlPolicy, context *policy.PluginContext, op policy.PluginOperator) {
+	if op == nil {
+		return
+	}
+
+	old := u.Plugin()
+	n := up.Plugin()
+	if old == nil && n == nil {
+		return
+	}
+
+	removeOld := false
+	if up.Set() {
+		if old != nil {
+			if n == nil || n.Name() != old.Name() {
+				removeOld = true
+			}
+		}
+	} else {
+		if old != nil && n != nil && n.Name() != old.Name() {
+			removeOld = true
+		}
+	}
+
+	if removeOld {
+		op.Remove(context, old.Name())
+	}
+
+	if n != nil {
+		op.Update(context, n.Name(), n)
+	}
+}
+
+func (p *Profile) pluginRemove(u *urlAction, context *policy.PluginContext, op policy.PluginOperator) {
+	if op == nil {
+		return
+	}
+
+	old := u.p.Plugin()
+	if old == nil {
+		return
+	}
+
+	op.Remove(context, old.Name())
 }
 
 func getHostOfUrlPattern(urlPattern string) string {

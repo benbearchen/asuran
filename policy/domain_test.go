@@ -6,7 +6,7 @@ func TestDomainPolicy(t *testing.T) {
 	cmd := "domain xyz"
 	d, err := Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else if d.Command() != cmd {
 		t.Errorf("domain(%s).Command() changed: %s", cmd, d.Command())
 	}
@@ -32,15 +32,15 @@ func TestDomainPolicy(t *testing.T) {
 	cmd = "domain block g.cn"
 	d, err = Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else if d.Command() != cmd {
 		t.Errorf("domain(%s).Command() changed: %s", cmd, d.Command())
 	} else if _, ok := d.(*DomainPolicy); !ok {
-		t.Errorf("domain(%s) return non *DomainPolicy", cmd, d)
+		t.Errorf("domain(%s) return non *DomainPolicy: %v", cmd, d)
 	} else {
 		d := d.(*DomainPolicy)
 		if _, ok := d.Action().(*BlockPolicy); !ok {
-			t.Errorf("domain(%s).Action() is not *BlockPolicy", cmd, d.Action())
+			t.Errorf("domain(%s).Action() is not *BlockPolicy: %v", cmd, d.Action())
 		}
 	}
 }
@@ -49,7 +49,7 @@ func TestDomainPolicyOpts(t *testing.T) {
 	cmd := "domain n 1 g.cn 192.168.1.1,192.168.1.2"
 	d, err := Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else if d.Command() != cmd {
 		t.Errorf("domain(%s).Command() changed: %s", cmd, d.Command())
 	}
@@ -63,7 +63,7 @@ func TestDomainPolicyOpts(t *testing.T) {
 	cmd = "domain shuffle g.cn 192.168.1.1,192.168.1.2"
 	d, err = Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else if d.Command() != cmd {
 		t.Errorf("domain(%s).Command() changed: %s", cmd, d.Command())
 	} else {
@@ -91,7 +91,7 @@ func TestDomainPolicyOpts(t *testing.T) {
 	cmd = "domain n 0 g.cn 192.168.1.1,192.168.1.2"
 	d, err = Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else if d.Command() != cmd {
 		t.Errorf("domain(%s).Command() changed: %s", cmd, d.Command())
 	} else {
@@ -105,7 +105,7 @@ func TestDomainPolicyOpts(t *testing.T) {
 	cmd = "domain n 1 g.cn 192.168.1.1,192.168.1.2"
 	d, err = Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else if d.Command() != cmd {
 		t.Errorf("domain(%s).Command() changed: %s", cmd, d.Command())
 	} else {
@@ -119,7 +119,7 @@ func TestDomainPolicyOpts(t *testing.T) {
 	cmd = "domain n 1 circular g.cn 192.168.1.1,192.168.1.2"
 	d, err = Factory(cmd)
 	if err != nil {
-		t.Errorf("domain(%s) failed: ", cmd, err)
+		t.Errorf("domain(%s) failed: %v", cmd, err)
 	} else {
 		d := d.(*DomainPolicy)
 		ips := d.NextIPs()

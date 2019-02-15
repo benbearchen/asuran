@@ -17,7 +17,7 @@ import (
 )
 
 func usage() {
-	fmt.Println(`web transparent proxy
+	fmt.Printf("%s", `web transparent proxy
 
 proxy test:
   http://localhost/test/target.domain:port/path

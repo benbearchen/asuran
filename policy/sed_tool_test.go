@@ -13,7 +13,7 @@ func TestToolReplacer(t *testing.T) {
 	pattern := "/ab/cd/"
 	r, err := NewReplacer(pattern)
 	if err != nil {
-		t.Errorf(`NewReplacer("%s") err: `, pattern, err)
+		t.Errorf(`NewReplacer("%s") err: %v`, pattern, err)
 	} else {
 		check(r, pattern, "", "")
 		check(r, pattern, "a", "a")
@@ -23,7 +23,7 @@ func TestToolReplacer(t *testing.T) {
 	pattern = "/ab/$1/"
 	r, err = NewReplacer(pattern)
 	if err != nil {
-		t.Errorf(`NewReplacer("%s") err: `, pattern, err)
+		t.Errorf(`NewReplacer("%s") err: %v`, pattern, err)
 	} else {
 		check(r, pattern, "", "")
 		check(r, pattern, "a", "a")
@@ -33,7 +33,7 @@ func TestToolReplacer(t *testing.T) {
 	pattern = "/ab/x${1}y/"
 	r, err = NewReplacer(pattern)
 	if err != nil {
-		t.Errorf(`NewReplacer("%s") err: `, pattern, err)
+		t.Errorf(`NewReplacer("%s") err: %v`, pattern, err)
 	} else {
 		check(r, pattern, "", "")
 		check(r, pattern, "a", "a")
@@ -43,7 +43,7 @@ func TestToolReplacer(t *testing.T) {
 	pattern = "/(ab)/x${1}y/"
 	r, err = NewReplacer(pattern)
 	if err != nil {
-		t.Errorf(`NewReplacer("%s") err: `, pattern, err)
+		t.Errorf(`NewReplacer("%s") err: %v`, pattern, err)
 	} else {
 		check(r, pattern, "", "")
 		check(r, pattern, "a", "a")

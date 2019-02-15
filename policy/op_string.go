@@ -26,7 +26,7 @@ func (s *opStringFactory) Keyword() string {
 
 func (s *opStringFactory) Build(args []string) (Policy, []string, error) {
 	if len(args) == 0 {
-		return nil, args, fmt.Errorf(`%d need optional ops(%v) and an arg "%s"`, s.keyword, s.ops, s.argName)
+		return nil, args, fmt.Errorf(`%s need optional ops(%v) and an arg "%s"`, s.keyword, s.ops, s.argName)
 	}
 
 	flags := make(map[string]bool)
@@ -56,7 +56,7 @@ func (s *opStringFactory) Build(args []string) (Policy, []string, error) {
 	}
 
 	if len(args) == 0 {
-		return nil, args, fmt.Errorf(`%d need a arg "%s"`, s.keyword, s.argName)
+		return nil, args, fmt.Errorf(`%s need a arg "%s"`, s.keyword, s.argName)
 	}
 
 	p, err := s.create(ops, args[0])

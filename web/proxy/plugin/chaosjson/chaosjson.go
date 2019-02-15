@@ -2,6 +2,7 @@ package chaosjson
 
 import (
 	helper "github.com/benbearchen/asuran/net"
+	"github.com/benbearchen/asuran/policy"
 	"github.com/benbearchen/asuran/web/proxy/plugin/api"
 
 	"encoding/json"
@@ -19,7 +20,7 @@ func init() {
 	api.RegisterHandler("chaosjson", "change json by Diablo", chaosjson)
 }
 
-func chaosjson(context *api.Context, targetURI string, w http.ResponseWriter, r *http.Request) {
+func chaosjson(context *policy.PluginContext, p *policy.PluginPolicy, w http.ResponseWriter, r *http.Request) {
 	failHandler := func(statusCode int, err error) {
 		w.WriteHeader(statusCode)
 		fmt.Fprintln(w, err)
@@ -27,7 +28,7 @@ func chaosjson(context *api.Context, targetURI string, w http.ResponseWriter, r 
 		context.Log(statusCode, nil, nil, err)
 	}
 
-	response, _, _, err := helper.NewHttp(targetURI, r, nil, false)
+	response, _, _, err := helper.NewHttp(context.TargetURL, r, nil, false)
 	if err != nil {
 		failHandler(502, err)
 		return
@@ -37,7 +38,7 @@ func chaosjson(context *api.Context, targetURI string, w http.ResponseWriter, r 
 
 	bytes, err := response.ReadAllBytes()
 	if err == nil {
-		bytes, err = dealJson(context.Policy.Setting(), bytes)
+		bytes, err = dealJson(p.Setting(), bytes)
 	}
 
 	if err != nil {

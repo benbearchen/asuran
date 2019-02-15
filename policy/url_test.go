@@ -14,7 +14,7 @@ func TestUrlPolicy(t *testing.T) {
 
 		url, ok := u.(*UrlPolicy)
 		if !ok {
-			t.Errorf("url(%s) result not *UrlPolicy", cmd, u)
+			t.Errorf("url(%s) result not *UrlPolicy: %v", cmd, u)
 		} else {
 			if url.Target() != "g.cn" {
 				t.Errorf(`url(%s).Target() wrong: %s`, cmd, url.Target())
@@ -41,7 +41,7 @@ func TestUrlPolicy(t *testing.T) {
 
 		url, ok := u.(*UrlPolicy)
 		if !ok {
-			t.Errorf("url(%s) result not *UrlPolicy", cmd, u)
+			t.Errorf("url(%s) result not *UrlPolicy: %v", cmd, u)
 		} else {
 			if url.DelayPolicy() == nil {
 				t.Errorf("url(%s) missed drop policy", cmd)
@@ -50,7 +50,7 @@ func TestUrlPolicy(t *testing.T) {
 				if !ok {
 					t.Errorf("url(%s).DelayPolicy() not drop policy: %v", cmd, url.DelayPolicy())
 				} else if d.duration != 1 {
-					t.Errorf("url(%s).DelayPolicy().duration is wrong: %d", cmd, d.duration)
+					t.Errorf("url(%s).DelayPolicy().duration is wrong: %f", cmd, d.duration)
 				}
 			}
 

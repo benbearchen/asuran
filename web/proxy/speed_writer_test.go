@@ -5,13 +5,13 @@ import (
 )
 
 import (
-	"github.com/benbearchen/asuran/profile"
+	"github.com/benbearchen/asuran/policy"
 
 	"bytes"
 )
 
 func TestSpeedWriter(t *testing.T) {
-	w := newSpeedWriter(profile.SpeedAction{profile.SpeedActConstant, 10240}, new(bytes.Buffer)).(*speedWriter)
+	w := newSpeedWriter(policy.MakeSpeedPolicy(10240), new(bytes.Buffer), true).(*speedWriter)
 	if n, _ := w.next(10); n > 10 {
 		t.Errorf("first next(10) return %d vs <=%d", n, 10)
 	}

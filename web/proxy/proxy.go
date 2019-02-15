@@ -369,7 +369,7 @@ func (p *Proxy) remoteProxyUrl(remoteIP, target string, w http.ResponseWriter, r
 	}
 
 	if up != nil && up.Plugin() != nil {
-		p.plugin(remoteIP, up.Plugin(), target, w, r, f)
+		p.plugin(remoteIP, up, target, w, r, f)
 		return
 	}
 
@@ -882,7 +882,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 					id := pages[4]
 					if u, sid := p.storeHistory(profileIP, id, f); len(sid) > 0 {
 						up, _ := policy.Factory("url restore " + sid + " " + profile.UrlToPattern(u))
-						f.SetUrlPolicy(up.(*policy.UrlPolicy))
+						f.SetUrlPolicy(up.(*policy.UrlPolicy), nil, nil)
 						p.writeStoreResult(w, profileIP, u, id, sid)
 					}
 					return
@@ -933,7 +933,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 						fmt.Fprintf(w, "保存成功")
 					} else {
 						w.WriteHeader(404)
-						fmt.Fprintf(w, "错误:", err)
+						fmt.Fprintf(w, "错误:%v", err)
 					}
 
 					return
@@ -1505,8 +1505,9 @@ func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%s", result)
 }
 
-func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, target string, w http.ResponseWriter, r *http.Request, f *life.Life) {
+func (p *Proxy) plugin(profileIP string, up *policy.UrlPolicy, target string, w http.ResponseWriter, r *http.Request, f *life.Life) {
 	start := time.Now()
+	pluginPolicy := up.Plugin()
 	log := func(statusCode int, postBody, content []byte, err error) {
 		go func() {
 			c := cache.NewUrlCache(target, r, postBody, nil, "plugin "+pluginPolicy.Name(), content, "", start, time.Now(), err)
@@ -1520,13 +1521,13 @@ func (p *Proxy) plugin(profileIP string, pluginPolicy *policy.PluginPolicy, targ
 		}()
 	}
 
-	context := &api.Context{profileIP, pluginPolicy, log}
-	api.Call(context, pluginPolicy.Name(), target, w, r)
+	context := &policy.PluginContext{profileIP, up.Target(), log}
+	api.Call(context, pluginPolicy.Name(), w, r)
 }
 
 func (p *Proxy) resetPlugin(profileIP string) {
-	context := &api.Context{ProfileIP: profileIP}
-	api.Reset(context)
+	context := &policy.PluginContext{ProfileIP: profileIP}
+	api.Reset(context, "")
 }
 
 func (p *Proxy) matchPack(fullUrl, packName string) (*policy.UrlPolicy, error) {

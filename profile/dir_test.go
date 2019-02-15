@@ -49,7 +49,7 @@ func TestSaveAndLoad(t *testing.T) {
 		}
 
 		if c != msg {
-			t.Errorf("save msg `%s' and load changed: `'", msg, c)
+			t.Errorf("save msg `%s' and load changed: `%s'", msg, c)
 			continue
 		}
 	}
