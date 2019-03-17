@@ -84,3 +84,7 @@ func (p *PluginPolicy) Name() string {
 func (p *PluginPolicy) Setting() string {
 	return p.setting
 }
+
+func (p *PluginPolicy) Feedback(setting string) {
+	p.setting = setting
+}
