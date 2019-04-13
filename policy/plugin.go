@@ -1,6 +1,8 @@
 package policy
 
 import (
+	"github.com/benbearchen/asuran/util/cmd"
+
 	"fmt"
 	"strings"
 )
@@ -54,7 +56,7 @@ func (p *PluginPolicy) Command() string {
 	cmds := make([]string, 0, 4)
 	cmds = append(cmds, pluginKeyword)
 	if len(p.setting) > 0 {
-		cmds = append(cmds, settingSubKeyword, p.setting)
+		cmds = append(cmds, settingSubKeyword, cmd.Quote(p.setting))
 	}
 
 	cmds = append(cmds, p.name)

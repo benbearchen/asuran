@@ -37,7 +37,7 @@ func TakeFirstArg(cmd string) (string, string) {
 		return "", ""
 	}
 
-	if cmd[0] != '"' {
+	if cmd[0] != '`' {
 		s := strings.IndexAny(cmd, " \t\r\n")
 		if s == -1 {
 			return cmd, ""
@@ -47,7 +47,7 @@ func TakeFirstArg(cmd string) (string, string) {
 	}
 
 	for q := 1; q < len(cmd); q++ {
-		if cmd[q] == '"' {
+		if cmd[q] == '`' {
 			return cmd[1:q], strings.TrimSpace(cmd[q+1:])
 		}
 	}
@@ -69,4 +69,13 @@ func SplitCommand(cmd string) []string {
 	}
 
 	return args
+}
+
+func Quote(str string) string {
+	s := strings.IndexAny(str, " \t\r\n")
+	if s >= 0 {
+		return "`" + str + "`"
+	} else {
+		return str
+	}
 }

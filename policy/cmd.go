@@ -161,6 +161,7 @@ url command:
               因为全权委托插件处理，所以其它 url 设定可能都无效。
               可以通过 setting 来设置插件的参数，
               不同的插件需要的参数可能不同，但要求拼接成一个连续字符串。
+              <setting-value> 如果包含空格，应该用左引用（即“`+"`"+`”）括起来。
 
 
     remove <setting-keyword>
