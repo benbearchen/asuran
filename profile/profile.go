@@ -144,6 +144,22 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy, context *policy.PluginContex
 	}
 }
 
+func (p *Profile) SetPluginPolicy(s *policy.PluginPolicy, context *policy.PluginContext, op policy.PluginOperator) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	// TODO: 遍历所有该插件的 URL，统一变更？
+	for _, u := range p.Urls {
+		old := u.p.Plugin()
+		if old != nil && old.Name() == s.Name() {
+			context.TargetURL = u.p.Target()
+			op.Update(context, s.Name(), s)
+			u.p.Update(s)
+			return
+		}
+	}
+}
+
 func (p *Profile) UrlAction(url string) *policy.UrlPolicy {
 	p.lock.RLock()
 	defer p.lock.RUnlock()

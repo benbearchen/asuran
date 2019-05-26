@@ -9,10 +9,21 @@ import (
 
 const pluginKeyword = "plugin"
 
-const settingSubKeyword = "setting"
+const (
+	settingSubKeyword = "setting"
+	setSubKeyword     = "set"
+	deleteSubKeyword  = "delete"
+)
+
+type PluginSetter struct {
+	Key string
+	Value string
+}
 
 type PluginPolicy struct {
 	setting string
+	setter  *PluginSetter
+	deleter *string
 	name    string
 }
 
@@ -33,19 +44,42 @@ func (f *pluginPolicyFactory) Build(args []string) (Policy, []string, error) {
 	}
 
 	setting := ""
-	if args[0] == settingSubKeyword {
+	var setter *PluginSetter
+	var deleter *string
+	var err error
+	switch args[0] {
+	case settingSubKeyword:
 		if len(args) < 3 {
 			return nil, args, fmt.Errorf("plugin setting need a setting-string, then a plugin name")
 		}
 
 		setting = args[1]
 		args = args[2:]
+	case setSubKeyword:
+		if len(args) < 3 {
+			return nil, args, fmt.Errorf("plugin set need <key>=<value>, then a plugin name")
+		}
+
+		setter, err = parseKeyValueSet(args[1])
+		if err != nil {
+			return nil, args, err
+		}
+
+		args = args[2:]
+	case deleteSubKeyword:
+		if len(args) < 3 {
+			return nil, args, fmt.Errorf("plugin delete need a <key>, then a plugin name")
+		}
+
+		deleter = &args[1]
+		args = args[2:]
+	default:
 	}
 
 	name := args[0]
 	args = args[1:]
 
-	return &PluginPolicy{setting, name}, args, nil
+	return &PluginPolicy{setting, setter, deleter, name}, args, nil
 }
 
 func (p *PluginPolicy) Keyword() string {
@@ -87,6 +121,30 @@ func (p *PluginPolicy) Setting() string {
 	return p.setting
 }
 
+func (p *PluginPolicy) Setter() *PluginSetter {
+	return p.setter
+}
+
+func (p *PluginPolicy) DeleteKey() string {
+	if p.deleter != nil {
+		return *p.deleter
+	} else {
+		return ""
+	}
+}
+
 func (p *PluginPolicy) Feedback(setting string) {
 	p.setting = setting
 }
+
+func parseKeyValueSet(keyValue string) (*PluginSetter, error) {
+	p := strings.IndexByte(keyValue, '=')
+	if p == -1 {
+		return nil, fmt.Errorf("<key>=<value> `%s' need a `='", keyValue)
+	} else if p == 0 {
+		return nil, fmt.Errorf("<key>=<value> `%s' need a key", keyValue)
+	} else {
+		return &PluginSetter{keyValue[:p], keyValue[p+1:]}, nil
+	}
+}
+

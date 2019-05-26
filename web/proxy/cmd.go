@@ -42,6 +42,9 @@ func (p *Proxy) Command(commands string, f *profile.Profile, v *life.Life) []str
 		case *policy.UrlPolicy:
 			context := &policy.PluginContext{f.Ip, p.Target(), nil}
 			f.SetUrlPolicy(p, context, &pluginOperator{})
+		case *policy.PluginPolicy:
+			context := &policy.PluginContext{f.Ip, "", nil}
+			f.SetPluginPolicy(p, context, &pluginOperator{})
 		default:
 		}
 	}

@@ -19,6 +19,8 @@ settings... ::=
       [(request-headers|response-headers) <header-settings>]
       [host <ip:port>]
       [plugin [setting <setting-value>] <plugin-name>]
+      [plugin set <setting-name>=<value> <plugin-name>]
+      [plugin delete <setting-name> <plugin-name>]
 
 url remove <setting-keyword> [<url-pattern>|all]
 
@@ -157,6 +159,8 @@ url command:
 
     plugin <plugin-name>
     plugin setting <setting-value> <plugin-name>
+    plugin set <setting-name>=<value> <plugin-name>
+    plugin delete <setting-name> <plugin-name>
               以插件 <plugin-name> 处理请求。
               因为全权委托插件处理，所以其它 url 设定可能都无效。
               可以通过 setting 来设置插件的参数，
