@@ -16,6 +16,7 @@ type urlActionData struct {
 	Settings string
 	Edit     string
 	Delete   string
+	Visit    int
 	Even     bool
 }
 
@@ -83,12 +84,15 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []st
 		target := ""
 		edit := ""
 		del := ""
+		visit := 0
 		var up *policy.UrlPolicy
 		if k == "" {
 			up = p.UrlDefault
 			target = "[缺省目标]"
 		} else {
-			up = p.Urls[k].p
+			ua := p.Urls[k]
+			visit = ua.visitTimes
+			up = ua.p
 			target = up.Target()
 			del = "url delete " + target + "\n"
 		}
@@ -99,7 +103,7 @@ func (p *Profile) formatViewData(savedIDs []string, canOperate bool, errors []st
 
 		edit = up.Command() + "\n"
 
-		urls = append(urls, urlActionData{target, act, delay, other, edit, del, even})
+		urls = append(urls, urlActionData{target, act, delay, other, edit, del, visit, even})
 	}
 
 	keys = make([]string, 0, len(p.Domains))

@@ -16,7 +16,7 @@ const (
 )
 
 type PluginSetter struct {
-	Key string
+	Key   string
 	Value string
 }
 
@@ -147,4 +147,3 @@ func parseKeyValueSet(keyValue string) (*PluginSetter, error) {
 		return &PluginSetter{keyValue[:p], keyValue[p+1:]}, nil
 	}
 }
-

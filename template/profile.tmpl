@@ -1001,6 +1001,7 @@ function showIncomings() {
 <th>URL 匹配模式</th>
 <th>代理行为</th>
 <th>延时设定</th>
+<th>访问次数</th>
 <th>其它设置</th>
 </tr>
 {{range .Urls}}
@@ -1009,10 +1010,11 @@ function showIncomings() {
 <td style="min-width:500px;">{{.Pattern}}</td>
 <td>{{.Action}}</td>
 <td>{{.Delay}}</td>
+<td style="text-align:right;">{{.Visit}}</td>
 <td>{{.Settings}}</td>
 </tr>
 {{end}}
-<tr><td colspan="5" style="text-align:center;background:#C0D986;">{{if .NotOwner}}{{else}}<input type="button" value="新建 URL 策略" style="margin-right:10px;" onclick="createURLPolicy(true)" />{{end}}<input type="button" value="在线测试 URL" onclick="onlineTest()" /></td></tr>
+<tr><td colspan="6" style="text-align:center;background:#C0D986;">{{if .NotOwner}}{{else}}<input type="button" value="新建 URL 策略" style="margin-right:10px;" onclick="createURLPolicy(true)" />{{end}}<input type="button" value="在线测试 URL" onclick="onlineTest()" /></td></tr>
 </table>
 <hr/>
 

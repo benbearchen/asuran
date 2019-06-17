@@ -3,7 +3,7 @@ package policy
 import "testing"
 
 func TestQuote(t *testing.T) {
-	str := ``+"`"+``
+	str := `` + "`" + ``
 	if str != "`" {
 		t.Errorf("quote not equal")
 	}

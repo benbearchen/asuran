@@ -16,6 +16,7 @@ type urlAction struct {
 	UrlPattern string
 	pattern    *UrlPattern
 	p          *policy.UrlPolicy
+	visitTimes int
 }
 
 type UrlOperator interface {
@@ -127,7 +128,7 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy, context *policy.PluginContex
 		u.p.Update(s)
 	} else {
 		s.Def(p.UrlDefault)
-		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), s}
+		u := &urlAction{urlPattern, NewUrlPattern(urlPattern), s, 0}
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
@@ -166,6 +167,7 @@ func (p *Profile) UrlAction(url string) *policy.UrlPolicy {
 
 	u := p.MatchUrl(url)
 	if u != nil {
+		u.visitTimes++
 		return u.p
 	}
 
