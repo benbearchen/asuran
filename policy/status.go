@@ -32,10 +32,6 @@ func (*statusPolicyFactory) Build(args []string) (Policy, []string, error) {
 		return nil, args, err
 	}
 
-	if status < 100 || status > 999 {
-		return nil, args, fmt.Errorf("status %d out of range, should be 100-999", status)
-	}
-
 	return &StatusPolicy{status}, args[1:], nil
 }
 
