@@ -599,6 +599,10 @@ type tunnelsData struct {
 
 func formatTunnelsData(prefix string) tunnelsData {
 	tuns := tunnel.List()
+	sort.Slice(tuns, func(i, j int) bool {
+		return tuns[i].Name() < tuns[j].Name()
+	})
+
 	datas := make([]tunnelData, len(tuns))
 	for i, tun := range tuns {
 		datas[i].Even = (i%2 == 1)
