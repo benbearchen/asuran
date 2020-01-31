@@ -11,6 +11,8 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/pack"
 	_ "github.com/benbearchen/asuran/web/proxy/plugin"
 	"github.com/benbearchen/asuran/web/proxy/plugin/api"
+	_ "github.com/benbearchen/asuran/web/proxy/tunnel"
+	tunnel "github.com/benbearchen/asuran/web/proxy/tunnel/api"
 
 	"encoding/json"
 	"fmt"
@@ -234,6 +236,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		p.dealPacks(w, r, page)
 	} else if page, m := httpd.MatchPath(urlPath, "/plugins"); m {
 		p.dealPlugins(w, r, page)
+	} else if page, m := httpd.MatchPath(urlPath, "/tunnel"); m {
+		p.tunnel(w, r, page)
 	} else if urlPath == "/" {
 		ip := func() string {
 			if p.isSelfAddr(remoteIP) {
@@ -1459,6 +1463,31 @@ func (p *Proxy) dealPlugins(w http.ResponseWriter, r *http.Request, page string)
 	}
 
 	w.WriteHeader(404)
+}
+
+func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request, page string) {
+	if len(page) <= 1 {
+		p.writeTunnels(w)
+		return
+	}
+
+	name, path := httpd.PopPath(page)
+	tun := tunnel.Get(name)
+	if tun != nil {
+		url := tun.Link() + path
+		if r.URL.RawQuery != "" {
+			url = url + "?" + r.URL.RawQuery
+		}
+
+		p.proxyUrl(url, w, r)
+	} else {
+		w.WriteHeader(404)
+		fmt.Fprintln(w, "invalid tunnel:", name)
+	}
+}
+
+func (p *Proxy) tunnelPrefix() string {
+	return "http://" + p.mainHost + "/tunnel"
 }
 
 func (*Proxy) patternProc(w http.ResponseWriter, r *http.Request) {

@@ -6,6 +6,7 @@ import (
 	"github.com/benbearchen/asuran/web/proxy/life"
 	"github.com/benbearchen/asuran/web/proxy/pack"
 	"github.com/benbearchen/asuran/web/proxy/plugin/api"
+	tunnel "github.com/benbearchen/asuran/web/proxy/tunnel/api"
 
 	"fmt"
 	"html/template"
@@ -578,6 +579,44 @@ func formatPluginsData() pluginsData {
 func (p *Proxy) writePlugins(w http.ResponseWriter) {
 	t, err := template.ParseFiles("template/plugins-list.tmpl")
 	err = t.Execute(w, formatPluginsData())
+	if err != nil {
+		fmt.Fprintln(w, "内部错误：", err)
+	}
+}
+
+type tunnelData struct {
+	Even  bool
+	Name  string
+	Intro string
+	Entry string
+	Show  bool
+	Link  string
+}
+
+type tunnelsData struct {
+	Tunnels []tunnelData
+}
+
+func formatTunnelsData(prefix string) tunnelsData {
+	tuns := tunnel.List()
+	datas := make([]tunnelData, len(tuns))
+	for i, tun := range tuns {
+		datas[i].Even = (i%2 == 1)
+		datas[i].Name = tun.Name()
+		datas[i].Intro = tun.Intro()
+		datas[i].Entry = prefix + "/" + tun.Name()
+		datas[i].Show = tun.ShowLink()
+		if tun.ShowLink() {
+			datas[i].Link = tun.Link()
+		}
+	}
+
+	return tunnelsData{datas}
+}
+
+func (p *Proxy) writeTunnels(w http.ResponseWriter) {
+	t, err := template.ParseFiles("template/tunnels-list.tmpl")
+	err = t.Execute(w, formatTunnelsData(p.tunnelPrefix()))
 	if err != nil {
 		fmt.Fprintln(w, "内部错误：", err)
 	}
