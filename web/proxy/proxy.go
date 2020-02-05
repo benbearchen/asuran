@@ -202,7 +202,7 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		p.proxyRequest(w, r)
 	} else if targetHost == p.domain {
 		p.initDevice(w, remoteIP)
-	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) {
+	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) && targetHost != remoteIP {
 		p.proxyRequest(w, r)
 	} else if _, m := httpd.MatchPath(urlPath, "/post"); m {
 		p.postTest(w, r)
