@@ -34,7 +34,7 @@ func PopPath(path string) (node string, rest string) {
 	if p < 0 {
 		return path, ""
 	} else {
-		return path[:p], path[p+1:]
+		return path[:p], path[p:]
 	}
 }
 
