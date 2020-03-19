@@ -135,3 +135,44 @@ func TestPopPath(t *testing.T) {
 	check("//a//", "a", "/")
 	check("//a//b", "a", "/b")
 }
+
+func TestJoinPath(t *testing.T) {
+	check := func(a, b, c string) {
+		d := JoinPath(a, b)
+		if d != c {
+			t.Errorf("JoinPath('%s', '%s') -> '%s' != '%s'", a, b, d, c)
+		}
+	}
+
+	check("", "", "")
+
+	check("a", "", "a")
+	check("a/", "", "a/")
+	check("/a", "", "/a")
+	check("/a/", "", "/a/")
+
+	check("", "b", "b")
+	check("", "b/", "b/")
+	check("", "/b", "/b")
+	check("", "/b/", "/b/")
+
+	check("a", "b", "a/b")
+	check("a", "b/", "a/b/")
+	check("a", "/b", "a/b")
+	check("a", "/b/", "a/b/")
+
+	check("a/", "b", "a/b")
+	check("a/", "b/", "a/b/")
+	check("a/", "/b", "a/b")
+	check("a/", "/b/", "a/b/")
+
+	check("/a", "b", "/a/b")
+	check("/a", "b/", "/a/b/")
+	check("/a", "/b", "/a/b")
+	check("/a", "/b/", "/a/b/")
+
+	check("/a/", "b", "/a/b")
+	check("/a/", "b/", "/a/b/")
+	check("/a/", "/b", "/a/b")
+	check("/a/", "/b/", "/a/b/")
+}

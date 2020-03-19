@@ -37,3 +37,21 @@ func PopPath(path string) (node string, rest string) {
 		return path[:p], path[p+1:]
 	}
 }
+
+func JoinPath(parent, sub string) string {
+	if len(sub) <= 0 {
+		return parent
+	} else if len(parent) <= 0 {
+		return sub
+	}
+
+	p := parent[len(parent)-1] == '/'
+	q := sub[0] == '/'
+	if p && q {
+		return parent + sub[1:]
+	} else if p != q {
+		return parent + sub
+	} else {
+		return parent + "/" + sub
+	}
+}

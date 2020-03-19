@@ -1474,7 +1474,7 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request, page string) {
 	name, path := httpd.PopPath(page)
 	tun := tunnel.Get(name)
 	if tun != nil {
-		url := tun.Link() + path
+		url := httpd.JoinPath(tun.Link(), path)
 		if r.URL.RawQuery != "" {
 			url = url + "?" + r.URL.RawQuery
 		}
