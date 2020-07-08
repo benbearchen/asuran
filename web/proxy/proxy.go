@@ -258,6 +258,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		p.dealPlugins(w, r, page)
 	} else if page, m := httpd.MatchPath(urlPath, "/tunnel"); m {
 		p.tunnel(w, r, page)
+	} else if page, m := httpd.MatchPath(urlPath, "/redirect"); m {
+		p.redirect(w, r, page)
 	} else if urlPath == "/" {
 		ip := func() string {
 			if p.isSelfAddr(remoteIP) {
@@ -1555,6 +1557,36 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request, page string) {
 		w.WriteHeader(404)
 		fmt.Fprintln(w, "invalid tunnel:", name)
 	}
+}
+
+func (p *Proxy) redirect(w http.ResponseWriter, r *http.Request, page string) {
+	if page == "" || page == "/" {
+		fmt.Fprintln(w, "usage: .../redirect/github.com")
+		fmt.Fprintln(w, "usage: .../redirect/https/github.com")
+		return
+	}
+
+	name, path := httpd.PopPath(page)
+	if len(name) > 0 && name[len(name)-1] == ':' {
+		name = name[:len(name)-1]
+	}
+
+	scheme := ""
+	switch name {
+	case "http", "https", "ws", "ftp", "ssh":
+		scheme = name
+	default:
+		scheme = "http"
+		path = page
+	}
+
+	for len(path) > 0 && path[0] == '/' {
+		path = path[1:]
+	}
+
+	newURL := scheme + "://" + path
+	//fmt.Fprintln(w, name, page, newURL)
+	http.Redirect(w, r, newURL, 302)
 }
 
 func (p *Proxy) tunnelPrefix() string {
