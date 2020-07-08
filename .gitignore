@@ -16,6 +16,10 @@ bin
 pkg
 
 
+# tls
+server.cert
+server.key
+
 # asuran
 /data
 /asuran

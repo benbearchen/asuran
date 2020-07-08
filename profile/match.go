@@ -224,6 +224,7 @@ func (p *ArgsPattern) MatchScore(args map[string]string) uint8 {
 
 type UrlPattern struct {
 	pattern string
+	https   bool
 	domain  *DomainPattern
 	port    string
 	path    *PathPattern
@@ -235,6 +236,7 @@ type UrlSection struct {
 	port   string
 	path   string
 	query  map[string]string
+	scheme string
 }
 
 func NewUrlPattern(pattern string) *UrlPattern {
@@ -249,6 +251,7 @@ func NewUrlPattern(pattern string) *UrlPattern {
 	u.port = s[1]
 	u.path = NewPathPattern(s[2])
 	u.query = NewArgsPattern(s[3])
+	u.https = s[4] == "https"
 	return u
 }
 
@@ -260,6 +263,7 @@ func parseUrlSection(url string) *UrlSection {
 	u.port = s[1]
 	u.path = s[2]
 	u.query = parseQuery(s[3])
+	u.scheme = s[4]
 	return u
 }
 
@@ -309,9 +313,17 @@ func (p *UrlPattern) MatchUrlScore(url string) uint32 {
 	return p.MatchScore(parseUrlSection(url))
 }
 
-func parseUrlAsPattern(url string) [4]string {
-	if strings.HasPrefix(url, "http://") {
-		url = url[len("http://"):]
+func parseUrlAsPattern(url string) [5]string {
+	scheme := "http"
+	sp := strings.IndexByte(url, ':')
+	if sp > 0 {
+		scheme = url[:sp]
+		sp++
+		for sp < len(url) && url[sp] == '/' {
+			sp++
+		}
+
+		url = url[sp:]
 	}
 
 	head := ""
@@ -334,11 +346,11 @@ func parseUrlAsPattern(url string) [4]string {
 
 	q := strings.Index(url, "?")
 	if s >= 0 && q > s {
-		return [4]string{host, port, url[s:q], url[q:]}
+		return [5]string{host, port, url[s:q], url[q:], scheme}
 	} else if s >= 0 {
-		return [4]string{host, port, url[s:], ""}
+		return [5]string{host, port, url[s:], "", scheme}
 	} else {
-		return [4]string{host, port, "", ""}
+		return [5]string{host, port, "", "", scheme}
 	}
 }
 

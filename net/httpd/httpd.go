@@ -12,10 +12,36 @@ type HttpHandler interface {
 	OnRequest(w http.ResponseWriter, r *http.Request)
 }
 
+type tls struct {
+	certFile string
+	keyFile  string
+}
+
 type Http struct {
 	serverAddress string
+	tls           *tls
 	times         int
 	handlers      map[string]HttpHandler
+}
+
+func NewHttp() *Http {
+	h := new(Http)
+	return h
+}
+
+func NewHttps(certFile, keyFile string) *Http {
+	h := new(Http)
+	h.tls = &tls{certFile, keyFile}
+
+	return h
+}
+
+func (h *Http) Scheme() string {
+	if h.tls == nil {
+		return "http"
+	} else {
+		return "https"
+	}
 }
 
 func (h *Http) Init(server string) {
@@ -61,7 +87,11 @@ func (h *Http) Run(e func(err error)) {
 	var err error = nil
 	defer func() { e(err) }()
 
-	err = http.ListenAndServe(h.serverAddress, h)
+	if h.tls == nil {
+		err = http.ListenAndServe(h.serverAddress, h)
+	} else {
+		err = http.ListenAndServeTLS(h.serverAddress, h.tls.certFile, h.tls.keyFile, h)
+	}
 }
 
 func RemoteHost(addr string) string {

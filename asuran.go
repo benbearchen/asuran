@@ -148,13 +148,15 @@ func main() {
 
 				benchN(url)
 			}
-		case "bind":
+		case "bind", "binds":
 			port, err := strconv.Atoi(rest)
 			if err != nil {
 				fmt.Println("usage: bind <port>\nport: in 1~65535")
+				fmt.Println("usage: binds <port>\nport: in 1~65535")
 			} else {
 				fmt.Println("")
-				bindNew := p.Bind(port)
+				https := (command == "binds")
+				bindNew := p.Bind(port, https)
 				if bindNew {
 					fmt.Println("port", port, "binds ok")
 				} else {

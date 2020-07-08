@@ -62,7 +62,8 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	p.packs = pack.New(filepath.Join(dataDir, "packs"))
 	p.domain = "asu.run"
 
-	p.Bind(80)
+	p.Bind(80, false)
+	p.Bind(443, true)
 
 	ips := net.LocalIPs()
 	if ips == nil {
@@ -72,16 +73,27 @@ func NewProxy(ver string, dataDir string) *Proxy {
 			p.serveIP = ip
 			fmt.Println("HTTP 代理、DNS 服务 监听 IP: " + ip)
 			fmt.Println()
-			for port, _ := range p.webServers {
-				p.mainHost = ip
-				if port != 80 {
-					p.mainHost += ":" + strconv.Itoa(port)
+			for port, h := range p.webServers {
+				scheme := h.Scheme()
+				host := ip
+				if scheme == "http" && port == 80 {
+					p.mainHost = host
+				} else if scheme == "https" && port == 443 {
+					p.mainHost = host
+				} else {
+					host += ":" + strconv.Itoa(port)
+					if len(p.mainHost) == 0 {
+						p.mainHost = host
+					}
 				}
 
 				p.proxyAddr = ip + ":" + strconv.Itoa(port)
 
-				fmt.Println("标准 HTTP 代理地址:  " + p.proxyAddr)
-				fmt.Println("asuran 管理界面:     http://" + p.mainHost + "/    ∈←← ←  ←    ←")
+				if scheme == "http" {
+					fmt.Println("标准 HTTP 代理地址:  " + p.proxyAddr)
+				}
+
+				fmt.Println("asuran 管理界面:     " + scheme + "://" + host + "/    ∈←← ←  ←    ←")
 			}
 
 			fmt.Println()
@@ -97,7 +109,7 @@ func (p *Proxy) SetVisitDomain(domain string) {
 	p.domain = domain
 }
 
-func (p *Proxy) Bind(port int) bool {
+func (p *Proxy) Bind(port int, https bool) bool {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -105,7 +117,13 @@ func (p *Proxy) Bind(port int) bool {
 		return false
 	}
 
-	h := &httpd.Http{}
+	var h *httpd.Http
+	if https {
+		h = httpd.NewHttps("server.cert", "server.key")
+	} else {
+		h = httpd.NewHttp()
+	}
+
 	p.webServers[port] = h
 	serverAddress := fmt.Sprintf(":%d", port)
 	h.Init(serverAddress)
@@ -127,8 +145,8 @@ func (p *Proxy) overHttpd(port int, err error) {
 	delete(p.webServers, port)
 }
 
-func (p *Proxy) TryBind(port int) {
-	p.Bind(port)
+func (p *Proxy) TryBind(port int, https bool) {
+	p.Bind(port, https)
 }
 
 func (p *Proxy) BindUrlOperator(op profile.UrlOperator) {
@@ -195,7 +213,9 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
-	if r.Method != "GET" && r.Method != "POST" {
+	if r.Method == http.MethodConnect {
+		p.proxyHttps(remoteIP, w, r)
+	} else if r.Method != "GET" && r.Method != "POST" {
 		w.WriteHeader(502)
 		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
 	} else if strings.HasPrefix(urlPath, "http://") {
@@ -1192,8 +1212,8 @@ type proxyHostOperator struct {
 	p *Proxy
 }
 
-func (p *proxyHostOperator) New(port int) {
-	p.p.TryBind(port)
+func (p *proxyHostOperator) New(port int, https bool) {
+	p.p.TryBind(port, https)
 }
 
 func (p *Proxy) NewProxyHostOperator() profile.ProxyHostOperator {
@@ -1384,6 +1404,57 @@ func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Req
 		fmt.Fprintln(w, err)
 		return
 	}
+
+	net.PipeConn(upConn, downConn)
+}
+
+func (p *Proxy) proxyHttps(client string, w http.ResponseWriter, r *http.Request) {
+	domain, port, err := gonet.SplitHostPort(r.Host)
+	if err != nil {
+		domain = r.Host
+	}
+
+	if len(port) == 0 {
+		port = "443"
+	}
+
+	host := domain
+	if p.domainOp != nil {
+		a := p.domainOp.Action(client, domain)
+		if a != nil && len(a.IP()) > 0 {
+			host = a.IP()
+		}
+	}
+
+	address := gonet.JoinHostPort(host, port)
+	upConn, err := func() (*gonet.TCPConn, error) {
+		addr, err := gonet.ResolveTCPAddr("tcp", address)
+		if err != nil {
+			return nil, err
+		}
+
+		return gonet.DialTCP("tcp", nil, addr)
+	}()
+
+	if err != nil {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	defer upConn.Close()
+
+	downConn, down, err := net.TryHijack(w)
+	if err != nil {
+		w.WriteHeader(502)
+		fmt.Fprintln(w, err)
+		return
+	}
+
+	defer downConn.Close()
+
+	down.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
+	down.Flush()
 
 	net.PipeConn(upConn, downConn)
 }

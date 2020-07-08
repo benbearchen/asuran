@@ -48,7 +48,7 @@ type Store struct {
 }
 
 type ProxyHostOperator interface {
-	New(port int)
+	New(port int, https bool)
 }
 
 type Profile struct {
@@ -132,7 +132,7 @@ func (p *Profile) SetUrlPolicy(s *policy.UrlPolicy, context *policy.PluginContex
 		p.Urls[urlPattern] = u
 		if p.proxyOp != nil && u.pattern != nil && len(u.pattern.port) > 0 {
 			if port, err := strconv.Atoi(u.pattern.port); err == nil {
-				p.proxyOp.New(port)
+				p.proxyOp.New(port, u.pattern.https)
 			}
 		}
 
