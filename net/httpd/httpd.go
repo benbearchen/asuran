@@ -69,6 +69,10 @@ func (h *Http) ServeHTTP(
 	r *http.Request) {
 	h.times++
 
+	if len(r.URL.Scheme) == 0 && h.tls != nil {
+		r.URL.Scheme = "https"
+	}
+
 	path := r.URL.Path
 	handler, ok := h.handlers[path]
 	if ok {
