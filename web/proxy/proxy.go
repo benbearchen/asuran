@@ -215,7 +215,7 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	//fmt.Printf("host: %s/%s, remote: %s/%s, url: %s\n", targetHost, r.Host, remoteIP, r.RemoteAddr, urlPath)
 	if r.Method == http.MethodConnect {
 		p.proxyHttps(remoteIP, w, r)
-	} else if r.Method != "GET" && r.Method != "POST" {
+	} else if r.Method != "GET" && r.Method != "POST" && r.Method != "HEAD" {
 		w.WriteHeader(502)
 		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
 	} else if strings.HasPrefix(urlPath, "http://") {
