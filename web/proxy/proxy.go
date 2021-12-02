@@ -43,6 +43,7 @@ type Proxy struct {
 	profileOp  profile.ProfileOperator
 	domainOp   profile.DomainOperator
 	serveIP    string
+	ips        []string
 	mainHost   string
 	domain     string
 	proxyAddr  string
@@ -65,17 +66,21 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	p.Bind(80, false)
 	p.Bind(443, true)
 
+	p.ips = make([]string, 0)
+
 	ips := net.LocalIPs()
 	if ips == nil {
 		fmt.Println("大王不好了，找不到本地 IP 啊！！")
 	} else {
 		for _, ip := range ips {
 			p.serveIP = ip
+			p.ips = append(p.ips, ip)
 			fmt.Println("HTTP 代理、DNS 服务 监听 IP: " + ip)
 			fmt.Println()
+
+			host := p.wrapIP2Host(ip)
 			for port, h := range p.webServers {
 				scheme := h.Scheme()
-				host := ip
 				if scheme == "http" && port == 80 {
 					p.mainHost = host
 				} else if scheme == "https" && port == 443 {
@@ -87,7 +92,7 @@ func NewProxy(ver string, dataDir string) *Proxy {
 					}
 				}
 
-				p.proxyAddr = ip + ":" + strconv.Itoa(port)
+				p.proxyAddr = gonet.JoinHostPort(ip, strconv.Itoa(port))
 
 				if scheme == "http" {
 					fmt.Println("标准 HTTP 代理地址:  " + p.proxyAddr)
@@ -103,6 +108,14 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	}
 
 	return p
+}
+
+func (p *Proxy) wrapIP2Host(ip string) string {
+	if strings.IndexByte(ip, ':') >= 0 {
+		return "[" + ip + "]"
+	} else {
+		return ip
+	}
 }
 
 func (p *Proxy) SetVisitDomain(domain string) {
@@ -204,6 +217,8 @@ func (p *Proxy) testUrl(
 func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	targetHost := httpd.RemoteHost(r.Host)
 	remoteIP := httpd.RemoteHost(r.RemoteAddr)
+	//fmt.Printf("OnRequest() target '%s'/'%s', remote '%s'/'%s'\n", targetHost, r.Host, remoteIP, r.RemoteAddr)
+
 	urlPath := r.URL.Path
 	if u, ok := r.Header["Upgrade"]; ok {
 		if len(u) > 0 && strings.ToLower(u[0]) == "websocket" {
@@ -1334,6 +1349,12 @@ func (p *Proxy) isSelfAddr(addr string) bool {
 		return true
 	} else if addr == p.serveIP {
 		return true
+	}
+
+	for _, ip := range p.ips {
+		if ip == addr {
+			return true
+		}
 	}
 
 	return false

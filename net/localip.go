@@ -2,7 +2,6 @@ package net
 
 import (
 	. "net"
-	"strings"
 )
 
 func LocalIPs() []string {
@@ -23,16 +22,11 @@ func LocalIPs() []string {
 			continue
 		}
 
-		if ip.IsLoopback() || ip.To4() == nil {
+		if !ip.IsGlobalUnicast() {
 			continue
 		}
 
-		ipv4 := ip.String()
-		if strings.HasPrefix(ipv4, "169.254.") || strings.HasPrefix(ipv4, "127.0.") || ipv4 == "0.0.0.0" {
-			continue
-		}
-
-		ips = append(ips, ipv4)
+		ips = append(ips, ip.String())
 	}
 
 	if len(ips) > 0 {

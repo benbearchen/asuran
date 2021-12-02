@@ -1,4 +1,4 @@
-// +build asuran tunnel
+//go:build ignore
 
 package main
 

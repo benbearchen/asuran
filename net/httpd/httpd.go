@@ -100,9 +100,13 @@ func (h *Http) Run(e func(err error)) {
 
 func RemoteHost(addr string) string {
 	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return addr
-	} else {
+	if err == nil {
 		return host
 	}
+
+	if len(addr) >= 2 && addr[0] == '[' && addr[len(addr)-1] == ']' {
+		return addr[1 : len(addr)-1]
+	}
+
+	return addr
 }

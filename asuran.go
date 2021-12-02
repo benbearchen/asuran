@@ -1,4 +1,4 @@
-// +build asuran main
+//go:build ignore
 
 package main
 

@@ -1,4 +1,4 @@
-// +build http proxy
+//go:build ignore
 
 package main
 
