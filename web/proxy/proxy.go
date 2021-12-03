@@ -1423,6 +1423,8 @@ func (p *Proxy) proxyWebsocket(client string, w http.ResponseWriter, r *http.Req
 
 	downConn, _, err := net.TryHijack(w)
 	if err != nil {
+		upConn.Close()
+
 		w.WriteHeader(502)
 		fmt.Fprintln(w, err)
 		return
@@ -1465,16 +1467,14 @@ func (p *Proxy) proxyHttps(client string, w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	defer upConn.Close()
-
 	downConn, down, err := net.TryHijack(w)
 	if err != nil {
+		upConn.Close()
+
 		w.WriteHeader(502)
 		fmt.Fprintln(w, err)
 		return
 	}
-
-	defer downConn.Close()
 
 	down.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n")
 	down.Flush()
