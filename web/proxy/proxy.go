@@ -233,8 +233,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method != "GET" && r.Method != "POST" && r.Method != "HEAD" {
 		w.WriteHeader(502)
 		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
-	} else if strings.HasPrefix(urlPath, "http://") {
-		p.proxyRequest(w, r)
+	} else if strings.HasPrefix(r.RequestURI, "http://") {
+		p.proxyUrl(r.RequestURI, w, r)
 	} else if targetHost == p.domain {
 		p.initDevice(w, remoteIP)
 	} else if !p.isSelfAddr(targetHost) && !p.isSelfAddr(remoteIP) && targetHost != remoteIP {
