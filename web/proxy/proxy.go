@@ -233,7 +233,7 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method != "GET" && r.Method != "POST" && r.Method != "HEAD" {
 		w.WriteHeader(502)
 		fmt.Fprintln(w, "unknown method", r.Method, "to", r.Host)
-	} else if strings.HasPrefix(r.RequestURI, "http://") {
+	} else if p.isOtherTargetUrl(r.RequestURI) {
 		p.proxyUrl(r.RequestURI, w, r)
 	} else if targetHost == p.domain {
 		p.initDevice(w, remoteIP)
@@ -1358,6 +1358,24 @@ func (p *Proxy) isSelfAddr(addr string) bool {
 	}
 
 	return false
+}
+
+func (p *Proxy) isOtherTargetUrl(requestUrl string) bool {
+	if !strings.HasPrefix(requestUrl, "http://") {
+		return false
+	}
+
+	u, err := url.Parse(requestUrl)
+	if err != nil {
+		return false
+	}
+
+	host := httpd.RemoteHost(u.Host)
+	if host == p.domain || p.isSelfAddr(host) {
+		return false
+	} else {
+		return true
+	}
 }
 
 func (p *Proxy) procHeader(header http.Header, settingContentType string, hp *policy.HeadersPolicy) {
