@@ -2,6 +2,7 @@ package net
 
 import (
 	. "net"
+	"strings"
 )
 
 func LocalIPs() []string {
@@ -34,4 +35,22 @@ func LocalIPs() []string {
 	} else {
 		return nil
 	}
+}
+
+func ShiftRightV4(ips []string) []string {
+	if len(ips) == 0 {
+		return ips
+	}
+
+	a6 := make([]string, 0, len(ips))
+	a4 := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		if strings.IndexByte(ip, ':') >= 0 {
+			a6 = append(a6, ip)
+		} else {
+			a4 = append(a4, ip)
+		}
+	}
+
+	return append(a6, a4...)
 }

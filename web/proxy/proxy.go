@@ -72,6 +72,7 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	if ips == nil {
 		fmt.Println("大王不好了，找不到本地 IP 啊！！")
 	} else {
+		ips = net.ShiftRightV4(ips)
 		for _, ip := range ips {
 			p.serveIP = ip
 			p.ips = append(p.ips, ip)
@@ -92,10 +93,13 @@ func NewProxy(ver string, dataDir string) *Proxy {
 					}
 				}
 
-				p.proxyAddr = gonet.JoinHostPort(ip, strconv.Itoa(port))
+				proxyAddr := gonet.JoinHostPort(ip, strconv.Itoa(port))
 
 				if scheme == "http" {
+					p.proxyAddr = proxyAddr
 					fmt.Println("标准 HTTP 代理地址:  " + p.proxyAddr)
+				} else if len(p.proxyAddr) == 0 {
+					p.proxyAddr = proxyAddr
 				}
 
 				fmt.Println("asuran 管理界面:     " + scheme + "://" + host + "/    ∈←← ←  ←    ←")
