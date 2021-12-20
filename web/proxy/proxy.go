@@ -49,6 +49,7 @@ type Proxy struct {
 	proxyAddr  string
 	disableDNS bool
 	packs      *pack.Dir
+	dirs       map[string]string
 
 	lock sync.RWMutex
 	r    *rand.Rand
@@ -61,6 +62,7 @@ func NewProxy(ver string, dataDir string) *Proxy {
 	p.lives = life.NewIPLives()
 	p.r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	p.packs = pack.New(filepath.Join(dataDir, "packs"))
+	p.dirs = make(map[string]string)
 	p.domain = "asu.run"
 
 	p.Bind(80, false)
@@ -192,6 +194,31 @@ func (p *Proxy) DisableDNS() {
 	p.disableDNS = true
 }
 
+func (p *Proxy) MapDir(name, dir string) error {
+	if len(name) <= 0 {
+		return fmt.Errorf("empty dir name")
+	}
+
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if len(dir) <= 0 {
+		delete(p.dirs, name)
+	} else {
+		p.dirs[name] = dir
+	}
+
+	return nil
+}
+
+func (p *Proxy) lookupMapDir(name string) string {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	dir, _ := p.dirs[name]
+	return dir
+}
+
 func (p *Proxy) testUrl(
 	target string,
 	w http.ResponseWriter,
@@ -271,6 +298,8 @@ func (p *Proxy) OnRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if _, m := httpd.MatchPath(urlPath, "/res"); m {
 		p.res(w, r, urlPath)
+	} else if _, m := httpd.MatchPath(urlPath, "/dir"); m {
+		p.dir(w, r, urlPath)
 	} else if page, m := httpd.MatchPath(urlPath, "/packs"); m {
 		p.dealPacks(w, r, page)
 	} else if page, m := httpd.MatchPath(urlPath, "/plugins"); m {

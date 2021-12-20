@@ -180,6 +180,13 @@ func Main() {
 				usage()
 			}
 
+		case "dir":
+			name, rest := cmd.TakeFirstArg(rest)
+			dir, rest := cmd.TakeFirstArg(rest)
+			if len(name) > 0 {
+				p.MapDir(name, dir)
+			}
+
 		default:
 			usage()
 			fmt.Println(`UNKNOWN command: "` + command + `" ` + rest)

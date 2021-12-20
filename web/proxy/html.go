@@ -105,6 +105,27 @@ func (p *Proxy) res(w http.ResponseWriter, r *http.Request, path string) {
 	http.ServeFile(w, r, f)
 }
 
+func (p *Proxy) dir(w http.ResponseWriter, r *http.Request, path string) {
+	entry := "/dir/"
+	f := filepath.Clean(path)
+	h := entry //filepath.Clean(entry)
+
+	if !strings.HasPrefix(f, h) || len(f) <= len(h) {
+		w.WriteHeader(403)
+		return
+	}
+
+	d, n := filepath.Split(f[len(h):])
+	dir := p.lookupMapDir(filepath.Clean(d))
+	if len(dir) <= 0 {
+		w.WriteHeader(404)
+		return
+	}
+
+	n = filepath.Join(dir, n)
+	http.ServeFile(w, r, n)
+}
+
 type urlHistoryData struct {
 	Even         bool
 	ID           string
