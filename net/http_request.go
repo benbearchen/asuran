@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 type HttpResponse struct {
@@ -25,7 +26,13 @@ func NewHttpGet(url string) (*HttpResponse, error) {
 }
 
 func NewHttp(reqUrl string, r *http.Request, dial func(netw, addr string) (net.Conn, error), dont302 bool) (*HttpResponse, []byte, string, error) {
-	client := &http.Client{Transport: &http.Transport{Dial: dial}, CheckRedirect: checkRedirect(dont302)}
+	client := &http.Client{
+		Transport: &http.Transport{
+			Dial:            dial,
+			IdleConnTimeout: 15 * time.Second,
+		},
+		CheckRedirect: checkRedirect(dont302),
+	}
 
 	var postBody []byte
 	var body io.Reader = nil
