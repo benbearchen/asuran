@@ -107,15 +107,13 @@ func (p *Proxy) res(w http.ResponseWriter, r *http.Request, path string) {
 
 func (p *Proxy) dir(w http.ResponseWriter, r *http.Request, path string) {
 	entry := "/dir/"
-	f := filepath.Clean(path)
-	h := entry //filepath.Clean(entry)
-
-	if !strings.HasPrefix(f, h) || len(f) <= len(h) {
+	if !strings.HasPrefix(path, entry) {
 		w.WriteHeader(403)
 		return
 	}
 
-	d, n := filepath.Split(f[len(h):])
+	path = filepath.Clean(path[len(entry):])
+	d, n := filepath.Split(path)
 	dir := p.lookupMapDir(filepath.Clean(d))
 	if len(dir) <= 0 {
 		w.WriteHeader(404)
