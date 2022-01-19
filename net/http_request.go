@@ -136,7 +136,33 @@ func (r *HttpResponse) ProxyReturn(w http.ResponseWriter, wrap io.Writer, recvFi
 		w.WriteHeader(r.ResponseCode())
 
 		var b bytes.Buffer
-		_, err := io.Copy(io.MultiWriter(&b, wrap), r.resp.Body)
+		w2 := io.MultiWriter(&b, wrap)
+		r1 := r.resp.Body
+		var buf = make([]byte, 32*1024)
+		var err error
+		for {
+			n, er := r1.Read(buf)
+			if n > 0 {
+				_, ew := w2.Write(buf[:n])
+				if ew != nil {
+					err = ew
+					break
+				}
+
+				if n < len(buf) {
+					w.(http.Flusher).Flush()
+				}
+			}
+
+			if er != nil {
+				if er != io.EOF {
+					err = er
+				}
+
+				break
+			}
+		}
+
 		return b.Bytes(), err
 	}
 }
