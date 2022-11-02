@@ -1096,7 +1096,7 @@ func (p *Proxy) ownProfile(ownerIP, page string, w http.ResponseWriter, r *http.
 	} else if op == "policy" {
 		if len(pages) <= 4 || pages[4] == "" {
 			w.WriteHeader(400)
-			fmt.Fprintln(w, "profile/.../policy/ need policy command and target, like profile/.../to/rewrite xyz/g.cn")
+			fmt.Fprintln(w, "profile/.../policy/ need policy command and target, like profile/.../policy/rewrite xyz/g.cn")
 			return
 		}
 

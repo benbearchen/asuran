@@ -39,7 +39,11 @@ func root(w ResponseWriter, req *Msg) {
 	if len(ips) > 0 {
 		m.Answer = make([]RR, len(ips))
 		for i := 0; i < len(ips); i++ {
-			m.Answer[i] = &A{Hdr: RR_Header{Name: realDomain, Rrtype: TypeA, Class: ClassINET, Ttl: 0}, A: ips[i]}
+			if ip4 := ips[i].To4(); ip4 != nil {
+				m.Answer[i] = &A{Hdr: RR_Header{Name: realDomain, Rrtype: TypeA, Class: ClassINET, Ttl: 0}, A: ip4}
+			} else {
+				m.Answer[i] = &AAAA{Hdr: RR_Header{Name: realDomain, Rrtype: TypeAAAA, Class: ClassINET, Ttl: 0}, AAAA: ips[i]}
+			}
 		}
 	}
 
