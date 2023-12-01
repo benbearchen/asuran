@@ -1624,7 +1624,12 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request, page string) {
 			url = url + "?" + r.URL.RawQuery
 		}
 
-		p.proxyUrl(url, w, r)
+		err := net.EasyTunnel(url, w, r)
+		if err != nil {
+			w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(502)
+			fmt.Fprintf(w, "Bad Gateway: %v", err)
+		}
 	} else {
 		w.WriteHeader(404)
 		fmt.Fprintln(w, "invalid tunnel:", name)
